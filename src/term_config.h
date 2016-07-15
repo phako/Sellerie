@@ -55,7 +55,7 @@ typedef struct {
   GdkColor foreground_color;
   GdkColor background_color;
   gdouble background_saturation;
-  gchar *font;
+  PangoFontDescription *font;
 } display_config_t;
 
 

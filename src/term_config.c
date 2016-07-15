@@ -537,11 +537,19 @@ gint Grise_Degrise(GtkWidget *bouton, gpointer pointeur)
 
 void read_font_button(GtkFontButton *fontButton)
 {
-	g_free(term_conf.font);
-	term_conf.font = g_strdup(gtk_font_button_get_font_name(fontButton));
+    const char *font_name = gtk_font_button_get_font_name (fontButton);
+    PangoFontDescription *old_font = term_conf.font;
 
-	if(term_conf.font != NULL)
-		vte_terminal_set_font_from_string(VTE_TERMINAL(display), term_conf.font);
+    if (font_name == NULL) {
+        return;
+    }
+
+    g_clear_pointer (&term_conf.font, pango_font_description_free);
+    term_conf.font = pango_font_description_from_string (font_name);
+    if (term_conf.font != NULL) {
+        pango_font_description_free (old_font);
+        vte_terminal_set_font (VTE_TERMINAL(display), term_conf.font);
+    }
 }
 
 
@@ -903,8 +911,11 @@ gint Load_configuration_from_file(gchar *config_name)
 		else
 		    config.crlfauto = FALSE;
 
-		g_free(term_conf.font);
-		term_conf.font = g_strdup(font[i]);
+        if (term_conf.font != NULL) {
+            pango_font_description_free (term_conf.font);
+        }
+
+		term_conf.font = pango_font_description_from_string (font[i]);
 
 		t = macro_list[i];
 		size = 0;
@@ -1014,14 +1025,15 @@ gint Load_configuration_from_file(gchar *config_name)
 	    return -1;
 	}
     }
-    vte_terminal_set_font_from_string(VTE_TERMINAL(display), term_conf.font);
 
-    vte_terminal_set_background_transparent(VTE_TERMINAL(display), term_conf.transparency);
+    vte_terminal_set_font (VTE_TERMINAL(display), term_conf.font);
+
+    /* FIXME VTE vte_terminal_set_background_transparent(VTE_TERMINAL(display), term_conf.transparency); */
     vte_terminal_set_size (VTE_TERMINAL(display), term_conf.rows, term_conf.columns);
     vte_terminal_set_scrollback_lines (VTE_TERMINAL(display), term_conf.scrollback);
     vte_terminal_set_color_foreground (VTE_TERMINAL(display), &term_conf.foreground_color);
     vte_terminal_set_color_background (VTE_TERMINAL(display), &term_conf.background_color);
-    vte_terminal_set_background_saturation(VTE_TERMINAL(display), (gdouble)term_conf.background_saturation);
+    /* FIXE VTW vte_terminal_set_background_saturation(VTE_TERMINAL(display), (gdouble)term_conf.background_saturation); */
     gtk_widget_queue_draw(display);
 
     return 0;
@@ -1075,8 +1087,9 @@ void Verify_configuration(void)
 	g_free(string);
     }
 
-    if(term_conf.font == NULL)
-	term_conf.font = g_strdup_printf(DEFAULT_FONT);
+    if(term_conf.font == NULL) {
+        term_conf.font = pango_font_description_from_string (DEFAULT_FONT);
+    }
 
 }
 
@@ -1125,7 +1138,7 @@ void Hard_default_configuration(void)
     config.echo = DEFAULT_ECHO;
     config.crlfauto = FALSE;
 
-    term_conf.font = g_strdup_printf(DEFAULT_FONT);
+    term_conf.font = pango_font_description_from_string (DEFAULT_FONT);
 
     term_conf.transparency = FALSE;
     term_conf.show_cursor = TRUE;
@@ -1231,7 +1244,7 @@ void Copy_configuration(int pos)
     cfgStoreValue(cfg, "crlfauto", string, CFG_INI, pos);
     g_free(string);
 
-    string = g_strdup(term_conf.font);
+    string = pango_font_description_to_string (term_conf.font);
     cfgStoreValue(cfg, "font", string, CFG_INI, pos);
     g_free(string);
 
@@ -1410,8 +1423,9 @@ void Config_Terminal(GtkAction *action, gpointer data)
     gtk_label_set_markup(GTK_LABEL(Label), "<b>Font selection: </b>");
     gtk_box_pack_start(GTK_BOX(BoiteH), Label, FALSE, TRUE, 0);
 
-    font =  g_strdup (term_conf.font);
+    font =  pango_font_description_to_string (term_conf.font);
     fontButton = gtk_font_button_new_with_font(font);
+    g_free (font);
     gtk_box_pack_start(GTK_BOX(BoiteH), fontButton, FALSE, TRUE, 10);
     g_signal_connect(GTK_WIDGET(fontButton), "font-set", G_CALLBACK(read_font_button), 0);
     gtk_box_pack_start(GTK_BOX(BoiteV), BoiteH, FALSE, TRUE, 0);
@@ -1549,7 +1563,7 @@ static void Transparency_OnOff(GtkWidget *Check_Bouton, gpointer data)
     gchar *string;
 
     term_conf.transparency = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(Check_Bouton));
-    vte_terminal_set_background_transparent(VTE_TERMINAL(display), term_conf.transparency);
+    /* FIXME VTE vte_terminal_set_background_transparent(VTE_TERMINAL(display), term_conf.transparency); */
     gtk_widget_set_sensitive(GTK_WIDGET(data), term_conf.transparency);
 
     if(term_conf.transparency == FALSE)
@@ -1565,7 +1579,7 @@ static void change_scale(GtkRange *range, gpointer data)
 {
     gchar *string;
     term_conf.background_saturation = gtk_range_get_value(GTK_RANGE(range))/100.0;
-    vte_terminal_set_background_saturation(VTE_TERMINAL(display), (gdouble)term_conf.background_saturation);
+    /* FIXME VTE vte_terminal_set_background_saturation(VTE_TERMINAL(display), (gdouble)term_conf.background_saturation); */
 
     string = g_strdup_printf("%g", term_conf.background_saturation);
     cfgStoreValue(cfg, "term_background_saturation", string, CFG_INI, 0);

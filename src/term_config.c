@@ -140,7 +140,7 @@ static void save_config(GtkDialog *, gint, GtkWidget *);
 static void really_save_config(GtkDialog *, gint, gpointer);
 static gint remove_section(gchar *, gchar *);
 static void Curseur_OnOff(GtkWidget *, gpointer);
-static void Selec_couleur(GdkColor *, gfloat, gfloat, gfloat);
+static void Selec_couleur(GdkRGBA *, gfloat, gfloat, gfloat);
 void config_fg_color(GtkWidget *button, gpointer data);
 void config_bg_color(GtkWidget *button, gpointer data);
 static gint scrollback_set(GtkWidget *, GdkEventFocus *, gpointer);
@@ -1260,23 +1260,23 @@ void Copy_configuration(int pos)
     cfgStoreValue(cfg, "term_visual_bell", string, CFG_INI, pos);
     g_free(string);
 
-    string = g_strdup_printf("%d", term_conf.foreground_color.red);
+    string = g_strdup_printf("%u", (guint16) (term_conf.foreground_color.red * G_MAXUINT16));
     cfgStoreValue(cfg, "term_foreground_red", string, CFG_INI, pos);
     g_free(string);
-    string = g_strdup_printf("%d", term_conf.foreground_color.green);
+    string = g_strdup_printf("%u", (guint16) (term_conf.foreground_color.green * G_MAXUINT16));
     cfgStoreValue(cfg, "term_foreground_green", string, CFG_INI, pos);
     g_free(string);
-    string = g_strdup_printf("%d", term_conf.foreground_color.blue);
+    string = g_strdup_printf("%u", (guint16) (term_conf.foreground_color.blue * G_MAXUINT16));
     cfgStoreValue(cfg, "term_foreground_blue", string, CFG_INI, pos);
     g_free(string);
 
-    string = g_strdup_printf("%d", term_conf.background_color.red);
+    string = g_strdup_printf("%u", (guint16) (term_conf.background_color.red * G_MAXUINT16));
     cfgStoreValue(cfg, "term_background_red", string, CFG_INI, pos);
     g_free(string);
-    string = g_strdup_printf("%d", term_conf.background_color.green);
+    string = g_strdup_printf("%u", (guint16) (term_conf.background_color.green * G_MAXUINT16));
     cfgStoreValue(cfg, "term_background_green", string, CFG_INI, pos);
     g_free(string);
-    string = g_strdup_printf("%d", term_conf.background_color.blue);
+    string = g_strdup_printf("%u", (guint16) (term_conf.background_color.blue * G_MAXUINT16));
     cfgStoreValue(cfg, "term_background_blue", string, CFG_INI, pos);
     g_free(string);
 }
@@ -1417,12 +1417,12 @@ void Config_Terminal(GtkAction *action, gpointer data)
     gtk_misc_set_alignment(GTK_MISC(Label), 0, 0);
     gtk_table_attach(GTK_TABLE(Table), Label, 0, 1, 1, 2, GTK_SHRINK | GTK_FILL , GTK_SHRINK, 10, 0);
 
-    fg_color_button = gtk_color_button_new_with_color (&term_conf.foreground_color);
+    fg_color_button = gtk_color_button_new_with_rgba (&term_conf.foreground_color);
     gtk_color_button_set_title (GTK_COLOR_BUTTON (fg_color_button), _("Text color"));
     gtk_table_attach (GTK_TABLE (Table), fg_color_button, 1, 2, 0, 1, GTK_SHRINK, GTK_SHRINK, 10, 0);
     g_signal_connect (GTK_WIDGET (fg_color_button), "color-set", G_CALLBACK (config_fg_color), NULL);
 
-    bg_color_button = gtk_color_button_new_with_color (&term_conf.background_color);
+    bg_color_button = gtk_color_button_new_with_rgba (&term_conf.background_color);
     gtk_color_button_set_title (GTK_COLOR_BUTTON (bg_color_button), _("Background color"));
     gtk_table_attach (GTK_TABLE (Table), bg_color_button, 1, 2, 1, 2, GTK_SHRINK, GTK_SHRINK, 10, 0);
     g_signal_connect (GTK_WIDGET (bg_color_button), "color-set", G_CALLBACK (config_bg_color), NULL);
@@ -1459,29 +1459,30 @@ void Curseur_OnOff(GtkWidget *Check_Bouton, gpointer data)
     term_conf.show_cursor = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(Check_Bouton));
 }
 
-void Selec_couleur(GdkColor *color, gfloat R, gfloat G, gfloat B)
+void Selec_couleur(GdkRGBA *color, gfloat R, gfloat G, gfloat B)
 {
-	color->red = (guint16)(65535*R);
-	color->green = (guint16)(65535*G);
-	color->blue = (guint16)(65535*B);
+	color->red = R;
+	color->green = G;
+	color->blue = B;
+    color->alpha = 1.0;
 }
 
 void config_fg_color(GtkWidget *button, gpointer data)
 {
 	gchar *string;
 
-	gtk_color_button_get_color (GTK_COLOR_BUTTON (button), &term_conf.foreground_color);
+	gtk_color_button_get_rgba (GTK_COLOR_BUTTON (button), &term_conf.foreground_color);
 
 	vte_terminal_set_color_foreground (VTE_TERMINAL(display), &term_conf.foreground_color);
 	gtk_widget_queue_draw (display);
 
-	string = g_strdup_printf ("%d", term_conf.foreground_color.red);
+	string = g_strdup_printf ("%u", (guint16) (term_conf.foreground_color.red * G_MAXUINT16));
 	cfgStoreValue (cfg, "term_foreground_red", string, CFG_INI, 0);
 	g_free (string);
-	string = g_strdup_printf ("%d", term_conf.foreground_color.green);
+	string = g_strdup_printf ("%d", (guint16) (term_conf.foreground_color.green * G_MAXUINT16));
 	cfgStoreValue (cfg, "term_foreground_green", string, CFG_INI, 0);
 	g_free (string);
-	string = g_strdup_printf ("%d", term_conf.foreground_color.blue);
+	string = g_strdup_printf ("%d", (guint16) (term_conf.foreground_color.blue * G_MAXUINT16));
 	cfgStoreValue (cfg, "term_foreground_blue", string, CFG_INI, 0);
 	g_free (string);
 }
@@ -1490,18 +1491,18 @@ void config_bg_color(GtkWidget *button, gpointer data)
 {
 	gchar *string;
 
-	gtk_color_button_get_color (GTK_COLOR_BUTTON (button), &term_conf.background_color);
+	gtk_color_button_get_rgba (GTK_COLOR_BUTTON (button), &term_conf.background_color);
 
 	vte_terminal_set_color_background (VTE_TERMINAL(display), &term_conf.background_color);
 	gtk_widget_queue_draw (display);
 
-	string = g_strdup_printf ("%d", term_conf.background_color.red);
+	string = g_strdup_printf ("%u", (guint16) (term_conf.background_color.red * G_MAXUINT16));
 	cfgStoreValue (cfg, "term_background_red", string, CFG_INI, 0);
 	g_free (string);
-	string = g_strdup_printf ("%d", term_conf.background_color.green);
+	string = g_strdup_printf ("%d", (guint16) (term_conf.background_color.green * G_MAXUINT16));
 	cfgStoreValue (cfg, "term_background_green", string, CFG_INI, 0);
 	g_free (string);
-	string = g_strdup_printf ("%d", term_conf.background_color.blue);
+	string = g_strdup_printf ("%d", (guint16) (term_conf.background_color.blue * G_MAXUINT16));
 	cfgStoreValue (cfg, "term_background_blue", string, CFG_INI, 0);
 	g_free (string);
 }

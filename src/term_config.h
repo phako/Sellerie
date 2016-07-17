@@ -46,15 +46,13 @@ struct configuration_port {
 };
 
 typedef struct {
-  gboolean transparency;
   gboolean show_cursor;
   gint rows;
   gint columns;
   gint scrollback;
   gboolean visual_bell;
-  GdkColor foreground_color;
-  GdkColor background_color;
-  gdouble background_saturation;
+  GdkRGBA foreground_color;
+  GdkRGBA background_color;
   PangoFontDescription *font;
 } display_config_t;
 

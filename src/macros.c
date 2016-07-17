@@ -503,16 +503,16 @@ void Config_macros(GtkAction *action, gpointer data)
   gtk_box_set_homogeneous (GTK_BOX (hbox), TRUE);
   gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
 
-  button = gtk_button_new_from_stock (GTK_STOCK_HELP);
+  button = gtk_button_new_with_mnemonic (_("_Help"));
   g_signal_connect(button, "clicked", G_CALLBACK(Help_screen), (gpointer)window);
   gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
 
-  button = gtk_button_new_from_stock (GTK_STOCK_OK);
+  button = gtk_button_new_with_mnemonic (_("_OK"));
   g_signal_connect(button, "clicked", G_CALLBACK(Save_shortcuts), (gpointer)treeview);
   g_signal_connect_swapped(button, "clicked", G_CALLBACK(gtk_widget_destroy), (gpointer)window);
   gtk_box_pack_end (GTK_BOX (hbox), button, TRUE, TRUE, 0);
 
-  button = gtk_button_new_from_stock (GTK_STOCK_CANCEL);
+  button = gtk_button_new_with_mnemonic (_("_Cancel"));
   g_signal_connect_swapped(button, "clicked", G_CALLBACK(gtk_widget_destroy), (gpointer)window);
   gtk_box_pack_end (GTK_BOX (hbox), button, TRUE, TRUE, 0);
 

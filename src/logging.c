@@ -85,8 +85,8 @@ void logging_start(GtkAction *action, gpointer data)
 
     file_select = gtk_file_chooser_dialog_new(_("Log file selection"), GTK_WINDOW(Fenetre),
 					      GTK_FILE_CHOOSER_ACTION_SAVE,
-					      GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-					      GTK_STOCK_OK, GTK_RESPONSE_OK, NULL);
+					      _("_Cancel"), GTK_RESPONSE_CANCEL,
+					      _("_OK"), GTK_RESPONSE_OK, NULL);
     gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(file_select), TRUE);
 
     if(logfile_default != NULL)

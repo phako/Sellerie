@@ -77,8 +77,8 @@ void send_raw_file(GtkAction *action, gpointer data)
 	file_select = gtk_file_chooser_dialog_new(_("Send RAW File"),
 	                                          GTK_WINDOW(Fenetre), 
 	                                          GTK_FILE_CHOOSER_ACTION_OPEN, 
-	                                          GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-	                                          GTK_STOCK_OK, GTK_RESPONSE_ACCEPT,
+	                                          _("_Cancel"), GTK_RESPONSE_CANCEL,
+	                                          _("_OK"), GTK_RESPONSE_ACCEPT,
 	                                          NULL);
 
 	if(fic_defaut != NULL)
@@ -292,8 +292,8 @@ void save_raw_file(GtkAction *action, gpointer data)
 	file_select = gtk_file_chooser_dialog_new(_("Save RAW File"),
 	                                          GTK_WINDOW(Fenetre), 
 	                                          GTK_FILE_CHOOSER_ACTION_SAVE, 
-	                                          GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-	                                          GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT,
+	                                          _("_Cancel"), GTK_RESPONSE_CANCEL,
+	                                          _("_OK"), GTK_RESPONSE_ACCEPT,
 	                                          NULL);
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(file_select), TRUE);
 

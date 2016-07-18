@@ -150,359 +150,186 @@ extern GtkWidget *display;
 void Config_Port_Fenetre(GtkAction *action, gpointer data)
 {
 	GtkWidget *Table, *Label, *Bouton_OK, *Bouton_annule, 
-	          *Combo, *Dialogue, *Frame, *CheckBouton, 
+	          *Combo,*Frame, *CheckBouton,
 	          *Spin, *Expander, *ExpanderVbox,
 	          *content_area, *action_area;
 
-    static GtkWidget *Combos[10];
-    GList *liste = NULL;
-    gchar *chaine = NULL;
-    gchar **dev = NULL;
-    GtkAdjustment *adj;
+    GtkBuilder *builder;
+    GtkDialog *dialog;
+    GtkWidget *combo;
+    GtkWidget *entry;
+    GList *device_list = NULL;
+    int device_list_length = 0;
+    GList *it = NULL;
+    char *rate = NULL;
     struct stat my_stat;
+    int result = GTK_RESPONSE_CANCEL;
+
+    gchar **dev = NULL;
     gchar *string;
     int i;
 
     for(dev = devices_to_check; *dev != NULL; dev++)
     {
-	for(i = 0; i < DEVICE_NUMBERS_TO_CHECK; i++)
-	{
-	    chaine = g_strdup_printf(*dev, i);
-	    if(stat(chaine, &my_stat) == 0)
-		liste = g_list_append(liste, chaine);
-	}
+        for(i = 0; i < DEVICE_NUMBERS_TO_CHECK; i++)
+        {
+            gchar *device_name = NULL;
+
+            device_name = g_strdup_printf(*dev, i);
+            if (stat(device_name, &my_stat) == 0) {
+                device_list = g_list_prepend (device_list, device_name);
+                device_list_length++;
+            }
+            else
+                g_free (device_name);
+        }
     }
 
-    if(liste == NULL)
+    device_list = g_list_reverse (device_list);
+
+    if (device_list == NULL)
     {
-	show_message(_("No serial devices found!\n\n"
-		       "Searched the following paths:\n"
-		       "\t/dev/ttyS*\n\t/dev/tts/*\n\t/dev/ttyUSB*\n\t/dev/usb/tts/*\n\n"
-		       "Enter a different device path in the 'Port' box.\n"), MSG_WRN);
+        show_message(_("No serial devices found!\n\n"
+                    "Searched the following paths:\n"
+                    "\t/dev/ttyS*\n\t/dev/tts/*\n\t/dev/ttyUSB*\n\t/dev/usb/tts/*\n\n"
+                    "Enter a different device path in the 'Port' box.\n"), MSG_WRN);
     }
 
-    Dialogue = gtk_dialog_new();
-    content_area = gtk_dialog_get_content_area(GTK_DIALOG(Dialogue));
-    action_area = gtk_dialog_get_action_area(GTK_DIALOG(Dialogue));
-    gtk_window_set_title(GTK_WINDOW(Dialogue), _("Configuration"));
-    gtk_window_set_resizable(GTK_WINDOW(Dialogue), FALSE);
-    gtk_container_set_border_width(GTK_CONTAINER(content_area), 5);
+    builder = gtk_builder_new_from_file ("../data/settings-port.ui");
+    dialog = GTK_DIALOG (gtk_builder_get_object (builder, "dialog-settings-port"));
+    combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-device"));
 
-    Frame = gtk_frame_new(_("Serial port"));
-    gtk_box_pack_start(GTK_BOX(content_area), Frame, FALSE, TRUE, 5);
-
-    Table = gtk_table_new(4, 3, FALSE);
-    gtk_container_add(GTK_CONTAINER(Frame), Table);
-
-    Label = gtk_label_new(_("Port:"));
-    gtk_table_attach(GTK_TABLE(Table), Label, 0, 1, 0, 1, 0, 0, 10, 5);
-    Label = gtk_label_new(_("Baud Rate:"));
-    gtk_table_attach(GTK_TABLE(Table), Label, 1, 2, 0, 1, 0, 0, 10, 5);
-    Label = gtk_label_new(_("Parity:"));
-    gtk_table_attach(GTK_TABLE(Table), Label, 2, 3, 0, 1, 0, 0, 10, 5);
-
-    // create the devices combo box, and add device strings
-    Combo = gtk_combo_box_text_new_with_entry();
-
-    for(i = 0; i < g_list_length(liste); i++)
-    {
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), g_list_nth_data(liste, i));
+    for (it = device_list; it != NULL; it = it->next) {
+        gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (combo),
+                                        (const gchar *) it->data);
     }
 
-    // try to restore last selected port, if any
-    if(config.port != NULL && config.port[0] != '\0')
-    {
-        GtkWidget *tmp_entry;
-        tmp_entry = gtk_bin_get_child(GTK_BIN(Combo));
-        
-        gtk_entry_set_text(GTK_ENTRY(tmp_entry), config.port);
+    g_list_free_full (device_list, g_free);
 
+    /* Set values on first page */
+    if (config.port != NULL && config.port[0] != '\0') {
+        entry = gtk_bin_get_child (GTK_BIN (combo));
+
+        gtk_entry_set_text (GTK_ENTRY (entry), config.port);
     } else {
-        gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 0);
+        gtk_combo_box_set_active (GTK_COMBO_BOX (combo), 0);
     }
 
+    combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-baud-rate"));
+    rate = g_strdup_printf ("%d", config.vitesse);
+    entry = gtk_bin_get_child (GTK_BIN (combo));
 
-    // clean up devices strings
-    //g_list_free(liste, (GDestroyNotify)g_free); // only available in glib >= 2.28
-    for(i = 0; i < g_list_length(liste); i++)
+    if (config.vitesse == 0) {
+        gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), "9600");
+    } else {
+        if (!gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), rate)) {
+            gtk_entry_set_text (GTK_ENTRY (entry), rate);
+        }
+    }
+    g_free (rate);
+
+    combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-parity"));
+    rate = g_strdup_printf ("%d", config.parite);
+    gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), rate);
+    g_free (rate);
+
+    combo = GTK_WIDGET (gtk_builder_get_object (builder, "spin-bits"));
+    gtk_spin_button_set_value (GTK_SPIN_BUTTON (combo), config.bits);
+
+    combo = GTK_WIDGET (gtk_builder_get_object (builder, "spin-stopbits"));
+    gtk_spin_button_set_value (GTK_SPIN_BUTTON (combo), config.stops);
+
+    combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-flow"));
+    rate = g_strdup_printf ("%d", config.flux);
+    gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), rate);
+    g_free (rate);
+
+    /* Set values on second page */
     {
-        g_free(g_list_nth_data(liste, i));
+        GtkWidget *spin;
+        spin = GTK_WIDGET (gtk_builder_get_object (builder, "spin-eol-delay"));
+        gtk_spin_button_set_value (GTK_SPIN_BUTTON (spin), (gfloat) config.delai);
+
+        combo = GTK_WIDGET (gtk_builder_get_object (builder, "check-use-wait-char"));
+
+        g_signal_connect (G_OBJECT (combo), "toggled", G_CALLBACK (Grise_Degrise), spin);
+
+        Entry = combo = GTK_WIDGET (gtk_builder_get_object (builder, "entry-wait-char"));
+
+        if (config.car != -1) {
+            gtk_entry_set_text (GTK_ENTRY (combo), &(config.car));
+            gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (combo), TRUE);
+        }
     }
-    g_list_free(liste);
-    g_free(chaine);
 
-    gtk_table_attach(GTK_TABLE(Table), Combo, 0, 1, 1, 2, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 5, 5);
-    Combos[0] = Combo;
-
-    Combo = gtk_combo_box_text_new_with_entry();
-    gtk_entry_set_max_length(GTK_ENTRY(gtk_bin_get_child (GTK_BIN (Combo))), 10);
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "300");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "600");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "1200");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "2400");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "4800");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "9600");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "19200");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "38400");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "57600");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "115200");
-
-    /* set the current choice to the previous setting */
-    switch(config.vitesse)
+    /* Set values on third page */
     {
-       case 300:
-           gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 0);
-           break;
-       case 600:
-           gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 1);
-           break;
-       case 1200:
-           gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 2);
-           break;
-       case 2400:
-           gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 3);
-           break;
-       case 4800:
-           gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 4);
-           break;
-       case 9600:
-           gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 5);
-           break;
-       case 19200:
-           gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 6);
-           break;
-       case 38400:
-           gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 7);
-           break;
-       case 57600:
-           gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 8);
-           break;
-       case 115200:
-           gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 9);
-           break;
-       case 0:
-           /* no previous setting, use a default */
-           gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 5);
-        default:
-            /* custom baudrate */
-            string = g_strdup_printf("%d", config.vitesse);
-            gtk_entry_set_text(GTK_ENTRY(gtk_bin_get_child (GTK_BIN (Combo))), string);
-            g_free(string);
+        combo = GTK_WIDGET (gtk_builder_get_object (builder, "spin-rs485-on"));
+        gtk_spin_button_set_value (GTK_SPIN_BUTTON (combo),
+                                   (gfloat) config.rs485_rts_time_before_transmit);
+
+        combo = GTK_WIDGET (gtk_builder_get_object (builder, "spin-rs485-off"));
+        gtk_spin_button_set_value (GTK_SPIN_BUTTON (combo),
+                                   (gfloat) config.rs485_rts_time_after_transmit);
     }
 
-    //validate input text (digits only)
-    g_signal_connect(GTK_ENTRY(gtk_bin_get_child (GTK_BIN (Combo))),
-		     "insert-text",
-		     G_CALLBACK(check_text_input), isdigit);
-
-    gtk_table_attach(GTK_TABLE(Table), Combo, 1, 2, 1, 2, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 5, 5);
-    Combos[1] = Combo;
-
-    Combo = gtk_combo_box_text_new();
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "none");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "odd");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "even");
-
-    switch(config.parite)
-    {
-	case 0:
-	    gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 0);
-	    break;
-	case 1:
-	    gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 1);
-	    break;
-	case 2:
-	    gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 2);
-	    break;
+    result = gtk_dialog_run (dialog);
+    gtk_widget_hide (GTK_WIDGET (dialog));
+    if (result == GTK_RESPONSE_OK) {
+        Lis_Config (builder);
     }
-    gtk_table_attach(GTK_TABLE(Table), Combo, 2, 3, 1, 2, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 5, 5);
-    Combos[2] = Combo;
 
-    Label = gtk_label_new(_("Bits:"));
-    gtk_table_attach(GTK_TABLE(Table), Label, 0, 1, 2, 3, 0, 0, 10, 5);
-    Label = gtk_label_new(_("Stopbits:"));
-    gtk_table_attach(GTK_TABLE(Table), Label, 1, 2, 2, 3, 0, 0, 10, 5);
-    Label = gtk_label_new(_("Flow control:"));
-    gtk_table_attach(GTK_TABLE(Table), Label, 2, 3, 2, 3, 0, 0, 10, 5);
+    g_object_unref (builder);
 
-    Combo = gtk_combo_box_text_new();
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "5");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "6");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "7");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "8");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 3);
-
-    if(config.bits >= 5 && config.bits <= 8)
-	gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), config.bits - 5);
-    gtk_table_attach(GTK_TABLE(Table), Combo, 0, 1, 3, 4, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 5, 5);
-    Combos[3] = Combo;
-
-    Combo = gtk_combo_box_text_new();
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "1");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "2");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 0);
-
-    if(config.stops == 1 || config.stops == 2)
-	gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), config.stops - 1);
-    gtk_table_attach(GTK_TABLE(Table), Combo, 1, 2, 3, 4, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 5, 5);
-    Combos[4] = Combo;
-
-    Combo = gtk_combo_box_text_new();
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "none");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "RTS/CTS");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "Xon/Xoff");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(Combo), "RS485-HalfDuplex(RTS)");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 0);
-
-    switch(config.flux)
-    {
-	case 0:
-	    gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 0);
-	    break;
-	case 1:
-	    gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 2);
-	    break;
-	case 2:
-	    gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 1);
-	    break;
-	case 3:
-	    gtk_combo_box_set_active(GTK_COMBO_BOX(Combo), 3);
-	    break;
-    }
-    gtk_table_attach(GTK_TABLE(Table), Combo, 2, 3, 3, 4, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 5, 5);
-    Combos[5] = Combo;
-
-    /* create an expander widget to hide the 'Advanced features' */
-    Expander = gtk_expander_new_with_mnemonic(_("Advanced Configuration Options"));
-    ExpanderVbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_container_add(GTK_CONTAINER(Expander), ExpanderVbox);
-    gtk_container_add(GTK_CONTAINER(content_area), Expander);
-
-    Frame = gtk_frame_new(_("ASCII file transfer"));
-    gtk_container_add(GTK_CONTAINER(ExpanderVbox), Frame);
-
-    Table = gtk_table_new(2, 2, FALSE);
-    gtk_container_add(GTK_CONTAINER(Frame), Table);
-
-    Label = gtk_label_new(_("End of line delay (milliseconds):"));
-    gtk_table_attach_defaults(GTK_TABLE(Table), Label, 0, 1, 0, 1);
-
-    adj = gtk_adjustment_new(0.0, 0.0, 500.0, 10.0, 20.0, 0.0);
-    Spin = gtk_spin_button_new(GTK_ADJUSTMENT(adj), 0, 0);
-    gtk_spin_button_set_numeric(GTK_SPIN_BUTTON(Spin), TRUE);
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(Spin), (gfloat)config.delai);
-    gtk_table_attach(GTK_TABLE(Table), Spin, 1, 2, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 5, 5);
-    Combos[6] = Spin;
-
-    Entry = gtk_entry_new();
-    gtk_entry_set_max_length(GTK_ENTRY(Entry), 1);
-
-    gtk_widget_set_sensitive(GTK_WIDGET(Entry), FALSE);
-    gtk_table_attach(GTK_TABLE(Table), Entry, 1, 2, 1, 2, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 5, 5);
-
-    CheckBouton = gtk_check_button_new_with_label(_("Wait for this special character before passing to next line:"));
-
-    g_signal_connect(GTK_WIDGET(CheckBouton), "clicked", G_CALLBACK(Grise_Degrise), (gpointer)Spin);
-
-    if(config.car != -1)
-    {
-	gtk_entry_set_text(GTK_ENTRY(Entry), &(config.car));
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(CheckBouton), TRUE);
-    }
-    gtk_table_attach_defaults(GTK_TABLE(Table), CheckBouton, 0, 1, 1, 2);
-    Combos[7] = CheckBouton;
-
-
-    Frame = gtk_frame_new(_("RS485 half-duplex parameters (RTS signal used to send)"));
-
-    gtk_container_add(GTK_CONTAINER(ExpanderVbox), Frame);
-
-    Table = gtk_table_new(2, 2, FALSE);
-    gtk_container_add(GTK_CONTAINER(Frame), Table);
-
-    Label = gtk_label_new(_("Time with RTS 'on' before transmit (milliseconds):"));
-    gtk_table_attach_defaults(GTK_TABLE(Table), Label, 0, 1, 0, 1);
-    Label = gtk_label_new(_("Time with RTS 'on' after transmit (milliseconds):"));
-    gtk_table_attach_defaults(GTK_TABLE(Table), Label, 0, 1, 1, 2);
-
-    adj = gtk_adjustment_new(0.0, 0.0, 500.0, 10.0, 20.0, 0.0);
-    Spin = gtk_spin_button_new(GTK_ADJUSTMENT(adj), 0, 0);
-    gtk_spin_button_set_numeric(GTK_SPIN_BUTTON(Spin), TRUE);
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(Spin), (gfloat)config.rs485_rts_time_before_transmit);
-    gtk_table_attach(GTK_TABLE(Table), Spin, 1, 2, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 5, 5);
-    Combos[8] = Spin;
-
-    adj = gtk_adjustment_new(0.0, 0.0, 500.0, 10.0, 20.0, 0.0);
-    Spin = gtk_spin_button_new(GTK_ADJUSTMENT(adj), 0, 0);
-    gtk_spin_button_set_numeric(GTK_SPIN_BUTTON(Spin), TRUE);
-    gtk_spin_button_set_value(GTK_SPIN_BUTTON(Spin), (gfloat)config.rs485_rts_time_after_transmit);
-    gtk_table_attach(GTK_TABLE(Table), Spin, 1, 2, 1, 2, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 5, 5);
-    Combos[9] = Spin;
-
-
-    Bouton_OK = gtk_button_new_with_mnemonic(_("_OK"));
-    gtk_box_pack_start(GTK_BOX(action_area), Bouton_OK, FALSE, TRUE, 0);
-    g_signal_connect(GTK_WIDGET(Bouton_OK), "clicked", G_CALLBACK(Lis_Config), (gpointer)Combos);
-    g_signal_connect_swapped(GTK_WIDGET(Bouton_OK), "clicked", G_CALLBACK(gtk_widget_destroy), GTK_WIDGET(Dialogue));
-    Bouton_annule = gtk_button_new_with_mnemonic(_("_Cancel"));
-    g_signal_connect_swapped(GTK_WIDGET(Bouton_annule), "clicked", G_CALLBACK(gtk_widget_destroy), GTK_WIDGET(Dialogue));
-    gtk_box_pack_start(GTK_BOX(action_area), Bouton_annule, FALSE, TRUE, 0);
-
-    gtk_widget_show_all(Dialogue);
+    gtk_widget_destroy (GTK_WIDGET (dialog));
 }
 
-gint Lis_Config(GtkWidget *bouton, GtkWidget **Combos)
+gint Lis_Config(GtkBuilder *builder)
 {
+    GObject *widget;
     gchar *message;
 
-    message = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(Combos[0]));
+    widget = gtk_builder_get_object (builder, "combo-device");
+    message = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget));
     strcpy(config.port, message);
     g_free(message);
 
-    message = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(Combos[1]));
+    widget = gtk_builder_get_object (builder, "combo-baud-rate");
+    message = (char *) gtk_combo_box_get_active_id (GTK_COMBO_BOX (widget));
     config.vitesse = atoi(message);
-    g_free(message);
 
-    message = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(Combos[3]));
-    config.bits = atoi(message);
-    g_free(message);
+    widget = gtk_builder_get_object (builder, "spin-bits");
+    config.bits = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON (widget));
 
-    config.delai = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(Combos[6]));
-    config.rs485_rts_time_before_transmit = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(Combos[8]));
-    config.rs485_rts_time_after_transmit = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(Combos[9]));
+    widget = gtk_builder_get_object (builder, "spin-eol-delay");
+    config.delai = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
 
+    widget = gtk_builder_get_object (builder, "spin-rs485-on");
+    config.rs485_rts_time_before_transmit = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
 
-    message = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(Combos[2]));
-    if(!strcmp(message, "odd"))
-	config.parite = 1;
-    else if(!strcmp(message, "even"))
-	config.parite = 2;
-    else
-	config.parite = 0;
-    g_free(message);
+    widget = gtk_builder_get_object (builder, "spin-rs485-off");
+    config.rs485_rts_time_after_transmit = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
 
-    message = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(Combos[4]));
-    config.stops = atoi(message);
-    g_free(message);
+    widget = gtk_builder_get_object (builder, "combo-parity");
+    message = (char *)gtk_combo_box_get_active_id(GTK_COMBO_BOX(widget));
+    config.parite = atoi (message);
 
-    message = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(Combos[5]));
-    if(!strcmp(message, "Xon/Xoff"))
-	config.flux = 1;
-    else if(!strcmp(message, "RTS/CTS"))
-	config.flux = 2;
-    else if(!strncmp(message, "RS485",5))
-	config.flux = 3;
-    else
-	config.flux = 0;
-    g_free(message);
+    widget = gtk_builder_get_object (builder, "spin-bits");
+    config.stops = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON (widget));
 
-    if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(Combos[7])))
+    widget = gtk_builder_get_object (builder, "combo-flow");
+    message = (char *)gtk_combo_box_get_active_id(GTK_COMBO_BOX(widget));
+    config.flux = atoi (message);
+
+    widget = gtk_builder_get_object (builder, "check-use-wait-char");
+    if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)))
     {
-	config.car = *gtk_entry_get_text(GTK_ENTRY(Entry));
-	config.delai = 0;
+        widget = gtk_builder_get_object (builder, "entry-wait-char");
+        config.car = *gtk_entry_get_text(GTK_ENTRY(widget));
+        config.delai = 0;
     }
     else
-	config.car = -1;
+        config.car = -1;
 
     Config_port();
 

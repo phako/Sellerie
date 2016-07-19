@@ -538,11 +538,12 @@ void read_font_button(GtkFontButton *fontButton)
         return;
     }
 
-    g_clear_pointer (&term_conf.font, pango_font_description_free);
     term_conf.font = pango_font_description_from_string (font_name);
     if (term_conf.font != NULL) {
-        pango_font_description_free (old_font);
+        g_clear_pointer (&old_font, pango_font_description_free);
         vte_terminal_set_font (VTE_TERMINAL(display), term_conf.font);
+    } else {
+        term_conf.font = old_font;
     }
 }
 

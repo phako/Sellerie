@@ -126,8 +126,7 @@ void send_raw_file(GtkAction *action, gpointer data)
 
 			Bouton_annuler = gtk_button_new_with_label(_("Cancel"));
 			g_signal_connect(GTK_WIDGET(Bouton_annuler), "clicked", G_CALLBACK(close_all), NULL);
-
-			gtk_container_add(GTK_CONTAINER(gtk_dialog_get_action_area(GTK_DIALOG(Window))), Bouton_annuler);
+            gtk_dialog_add_action_widget (GTK_DIALOG (Window), Bouton_annuler, GTK_RESPONSE_CANCEL);
 
 			g_signal_connect(GTK_WIDGET(Window), "delete_event", G_CALLBACK(close_all), NULL);
 

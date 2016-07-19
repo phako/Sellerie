@@ -143,7 +143,7 @@ static void Curseur_OnOff(GtkWidget *, gpointer);
 static void Selec_couleur(GdkRGBA *, gfloat, gfloat, gfloat);
 void config_fg_color(GtkWidget *button, gpointer data);
 void config_bg_color(GtkWidget *button, gpointer data);
-static gint scrollback_set(GtkWidget *, GdkEventFocus *, gpointer);
+static gint scrollback_set(GtkSpinButton *spin_button, gpointer data);
 
 extern GtkWidget *display;
 
@@ -1189,93 +1189,46 @@ gint remove_section(gchar *cfg_file, gchar *section)
     return 0;
 }
 
-
 void Config_Terminal(GtkAction *action, gpointer data)
 {
-    GtkWidget *Dialog, *content_area, *BoiteH, *BoiteV, *Label, *Check_Bouton, *Table, *HScale, *Entry;
+    GtkWidget *dialog, *content_area, *BoiteH, *BoiteV, *Label, *Table, *HScale;
     gchar *font, *scrollback;
-    GtkWidget *fontButton;
+    GtkWidget *font_button;
+    GtkWidget *check_box;
     GtkWidget *fg_color_button;
     GtkWidget *bg_color_button;
+    GtkWidget *scrollback_spin;
 
-    Dialog = gtk_dialog_new_with_buttons (_("Terminal configuration"),
-					  NULL,
-					  GTK_DIALOG_DESTROY_WITH_PARENT,
-                      _("_Close"),
-					  GTK_RESPONSE_CLOSE,
-					  NULL);
+    GtkBuilder *builder;
 
+    builder = gtk_builder_new_from_file ("../data/settings-port.ui");
 
-    BoiteV = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_container_set_border_width(GTK_CONTAINER(BoiteV), 10);
+    dialog = GTK_WIDGET (gtk_builder_get_object (builder, "dialog-settings-window"));
 
-    BoiteH = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    Label = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(Label), "<b>Font selection: </b>");
-    gtk_box_pack_start(GTK_BOX(BoiteH), Label, FALSE, TRUE, 0);
+    font_button = GTK_WIDGET (gtk_builder_get_object (builder, "font-button"));
+    gtk_font_chooser_set_font_desc (GTK_FONT_CHOOSER (font_button), term_conf.font);
+    g_signal_connect(GTK_WIDGET(font_button), "font-set", G_CALLBACK(read_font_button), 0);
 
-    fontButton = gtk_font_button_new ();
-    gtk_font_chooser_set_font_desc (GTK_FONT_CHOOSER (fontButton), term_conf.font);
-    gtk_box_pack_start(GTK_BOX(BoiteH), fontButton, FALSE, TRUE, 10);
-    g_signal_connect(GTK_WIDGET(fontButton), "font-set", G_CALLBACK(read_font_button), 0);
-    gtk_box_pack_start(GTK_BOX(BoiteV), BoiteH, FALSE, TRUE, 0);
+    check_box = GTK_WIDGET (gtk_builder_get_object (builder, "check-show-cursor"));
+    g_signal_connect(GTK_WIDGET(check_box), "toggled", G_CALLBACK(Curseur_OnOff), 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_box), term_conf.show_cursor);
 
-    Check_Bouton = gtk_check_button_new_with_label("Show cursor");
-    g_signal_connect(GTK_WIDGET(Check_Bouton), "toggled", G_CALLBACK(Curseur_OnOff), 0);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(Check_Bouton), term_conf.show_cursor);
-    gtk_box_pack_start(GTK_BOX(BoiteV), Check_Bouton, FALSE, TRUE, 5);
-
-    Label = gtk_label_new(NULL);
-    gtk_misc_set_alignment(GTK_MISC(Label), 0, 0);
-    gtk_label_set_markup(GTK_LABEL(Label), "<b>Colors: </b>");
-    gtk_box_pack_start(GTK_BOX(BoiteV), Label, FALSE, TRUE, 10);
-
-
-    Table = gtk_table_new(2, 2, FALSE);
-
-    Label = gtk_label_new("Text color:");
-    gtk_misc_set_alignment(GTK_MISC(Label), 0, 0);
-    gtk_table_attach(GTK_TABLE(Table), Label, 0, 1, 0, 1, GTK_SHRINK | GTK_FILL, GTK_SHRINK, 10, 0);
-
-    Label = gtk_label_new("Background color:");
-    gtk_misc_set_alignment(GTK_MISC(Label), 0, 0);
-    gtk_table_attach(GTK_TABLE(Table), Label, 0, 1, 1, 2, GTK_SHRINK | GTK_FILL , GTK_SHRINK, 10, 0);
-
-    fg_color_button = gtk_color_button_new_with_rgba (&term_conf.foreground_color);
-    gtk_color_button_set_title (GTK_COLOR_BUTTON (fg_color_button), _("Text color"));
-    gtk_table_attach (GTK_TABLE (Table), fg_color_button, 1, 2, 0, 1, GTK_SHRINK, GTK_SHRINK, 10, 0);
+    fg_color_button = GTK_WIDGET (gtk_builder_get_object (builder, "color-button-fg"));
+    gtk_color_chooser_set_rgba (GTK_COLOR_CHOOSER (fg_color_button), &term_conf.foreground_color);
     g_signal_connect (GTK_WIDGET (fg_color_button), "color-set", G_CALLBACK (config_fg_color), NULL);
 
-    bg_color_button = gtk_color_button_new_with_rgba (&term_conf.background_color);
-    gtk_color_button_set_title (GTK_COLOR_BUTTON (bg_color_button), _("Background color"));
-    gtk_table_attach (GTK_TABLE (Table), bg_color_button, 1, 2, 1, 2, GTK_SHRINK, GTK_SHRINK, 10, 0);
+    bg_color_button = GTK_WIDGET (gtk_builder_get_object (builder, "color-button-bg"));
+    gtk_color_chooser_set_rgba (GTK_COLOR_CHOOSER (bg_color_button), &term_conf.background_color);
     g_signal_connect (GTK_WIDGET (bg_color_button), "color-set", G_CALLBACK (config_bg_color), NULL);
 
-    gtk_box_pack_start(GTK_BOX(BoiteV), Table, FALSE, TRUE, 0);
+    scrollback_spin = GTK_WIDGET (gtk_builder_get_object (builder, "spin-scrollback"));
+    gtk_spin_button_set_value (GTK_SPIN_BUTTON (scrollback_spin), term_conf.scrollback);
+    g_signal_connect (G_OBJECT(scrollback_spin), "value-changed", G_CALLBACK(scrollback_set), NULL);
 
-    Label = gtk_label_new(NULL);
-    gtk_misc_set_alignment(GTK_MISC(Label), 0, 0);
-    gtk_label_set_markup(GTK_LABEL(Label), "<b>Screen: </b>");  
-    gtk_box_pack_start(GTK_BOX(BoiteV), Label, FALSE, TRUE, 10);
-
-    BoiteH = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    Label = gtk_label_new("Scrollback lines:");
-    gtk_box_pack_start(GTK_BOX(BoiteH), Label, FALSE, TRUE, 0);
-    Entry = gtk_entry_new();
-    gtk_entry_set_max_length(GTK_ENTRY(Entry), 4);
-    scrollback =  g_strdup_printf("%d", term_conf.scrollback);
-    gtk_entry_set_text(GTK_ENTRY(Entry), scrollback);
-    g_free(scrollback);
-    g_signal_connect(GTK_WIDGET(Entry), "focus-out-event", G_CALLBACK(scrollback_set), 0);
-    gtk_box_pack_start(GTK_BOX(BoiteH), Entry, FALSE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(BoiteV), BoiteH, FALSE, TRUE, 0);
-
-    content_area = gtk_dialog_get_content_area (GTK_DIALOG(Dialog));
-    gtk_box_pack_start(GTK_BOX(content_area), BoiteV, FALSE, TRUE, 0);
-
-    g_signal_connect_swapped(GTK_WIDGET(Dialog), "response", G_CALLBACK(gtk_widget_destroy), GTK_WIDGET(Dialog));
-
-    gtk_widget_show_all (Dialog);
+    gtk_dialog_run (GTK_DIALOG (dialog));
+    gtk_widget_hide (dialog);
+    gtk_widget_destroy (dialog);
+    g_object_unref (builder);
 }
 
 void Curseur_OnOff(GtkWidget *Check_Bouton, gpointer data)
@@ -1332,22 +1285,11 @@ void config_bg_color(GtkWidget *button, gpointer data)
 }
 
 
-gint scrollback_set(GtkWidget *Entry, GdkEventFocus *event, gpointer data)
+gint scrollback_set(GtkSpinButton *spin_button, gpointer data)
 {
-  const gchar *text;
-  gint scrollback;
-  
-  if (Entry)
-  {
-    text = gtk_entry_get_text(GTK_ENTRY(Entry));
-    scrollback = (gint)g_ascii_strtoll(text, NULL, 10);
-    if (scrollback)
-      term_conf.scrollback = scrollback;
-    else
-      term_conf.scrollback = DEFAULT_SCROLLBACK;
+    int scrollback = gtk_spin_button_get_value_as_int (spin_button);
+    term_conf.scrollback = scrollback;
     vte_terminal_set_scrollback_lines (VTE_TERMINAL(display), term_conf.scrollback);
-  }
-  return FALSE;
 }
 
 /**

@@ -970,13 +970,13 @@ gint Load_configuration_from_file(gchar *config_name)
 		else
 		    term_conf.visual_bell = FALSE;
 
-		term_conf.foreground_color.red = foreground_red[i];
-		term_conf.foreground_color.green = foreground_green[i];
-		term_conf.foreground_color.blue = foreground_blue[i];
+		term_conf.foreground_color.red = (double) foreground_red[i] / G_MAXUINT16;
+		term_conf.foreground_color.green = (double) foreground_green[i] / G_MAXUINT16;
+		term_conf.foreground_color.blue = (double) foreground_blue[i] / G_MAXUINT16;
 
-		term_conf.background_color.red = background_red[i];
-		term_conf.background_color.green = background_green[i];
-		term_conf.background_color.blue = background_blue[i];
+		term_conf.background_color.red = (double) background_red[i] / G_MAXUINT16;
+		term_conf.background_color.green = (double) background_green[i] / G_MAXUINT16;
+		term_conf.background_color.blue = (double) background_blue[i] / G_MAXUINT16;
 
 		/* rows and columns are empty when the conf is autogenerate in the
 		   first save; so set term to default */

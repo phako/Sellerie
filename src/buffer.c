@@ -62,7 +62,7 @@ void put_chars(char *chars, unsigned int size, gboolean crlf_auto)
     {
 	/* BUFFER_RECEPTION*2 for worst case scenario, all \n or \r chars */
 	char out_buffer[BUFFER_RECEPTION*2];
-	int i, out_size = 0;
+	unsigned int i, out_size = 0;
       
 	for (i=0; i<size; i++)
         {

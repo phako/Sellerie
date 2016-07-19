@@ -1,5 +1,5 @@
 /***********************************************************************/
-/* config.c                                                            */
+/* term_config.c                                                            */
 /* --------                                                            */
 /*           GTKTerm Software                                          */
 /*                      (c) Julien Schmitt                             */
@@ -53,7 +53,7 @@
 
 #define DEVICE_NUMBERS_TO_CHECK 12
 
-gchar *devices_to_check[] = {
+const gchar *devices_to_check[] = {
     "/dev/ttyS%d",
     "/dev/tts/%d",
     "/dev/ttyUSB%d",
@@ -143,17 +143,12 @@ static void Curseur_OnOff(GtkWidget *, gpointer);
 static void Selec_couleur(GdkRGBA *, gfloat, gfloat, gfloat);
 void config_fg_color(GtkWidget *button, gpointer data);
 void config_bg_color(GtkWidget *button, gpointer data);
-static gint scrollback_set(GtkSpinButton *spin_button, gpointer data);
+static void scrollback_set(GtkSpinButton *spin_button, gpointer data);
 
 extern GtkWidget *display;
 
 void Config_Port_Fenetre(GtkAction *action, gpointer data)
 {
-	GtkWidget *Table, *Label, *Bouton_OK, *Bouton_annule, 
-	          *Combo,*Frame, *CheckBouton,
-	          *Spin, *Expander, *ExpanderVbox,
-	          *content_area, *action_area;
-
     GtkBuilder *builder;
     GtkDialog *dialog;
     GtkWidget *combo;
@@ -165,9 +160,8 @@ void Config_Port_Fenetre(GtkAction *action, gpointer data)
     struct stat my_stat;
     int result = GTK_RESPONSE_CANCEL;
 
-    gchar **dev = NULL;
-    gchar *string;
-    int i;
+    const gchar **dev = NULL;
+    guint i;
 
     for(dev = devices_to_check; *dev != NULL; dev++)
     {
@@ -523,14 +517,14 @@ void Save_config_file(void)
     gtk_widget_show_all (dialog);
 }
 
-void really_save_config(GtkDialog *Fenetre, gint id, gpointer data)
+void really_save_config(GtkDialog *dialog, gint response_id, gpointer data)
 {
     int max, cfg_num, i;
     gchar *string = NULL;
 
     cfg_num = -1;
 
-    if(id == GTK_RESPONSE_ACCEPT)
+    if(response_id == GTK_RESPONSE_ACCEPT)
     {
 	max = cfgParse(config_file, cfg, CFG_INI);
 
@@ -576,12 +570,12 @@ void really_save_config(GtkDialog *Fenetre, gint id, gpointer data)
 	Save_config_file();
 }
 
-void save_config(GtkDialog *Fenetre, gint id, GtkWidget *edit)
+void save_config(GtkDialog *dialog, gint response_id, GtkWidget *edit)
 {
 	int max, i;
 	const gchar *config_name;
 
-	if(id == GTK_RESPONSE_ACCEPT)
+	if(response_id == GTK_RESPONSE_ACCEPT)
 	{
 		max = cfgParse(config_file, cfg, CFG_INI);
 
@@ -610,7 +604,7 @@ void save_config(GtkDialog *Fenetre, gint id, GtkWidget *edit)
 				                       NULL);
 
 				if (gtk_dialog_run(GTK_DIALOG(message_dialog)) == GTK_RESPONSE_ACCEPT)
-					really_save_config(Fenetre, GTK_RESPONSE_ACCEPT, (gpointer)config_name);
+					really_save_config(NULL, GTK_RESPONSE_ACCEPT, (gpointer)config_name);
 
 				gtk_widget_destroy(message_dialog);
 
@@ -618,17 +612,17 @@ void save_config(GtkDialog *Fenetre, gint id, GtkWidget *edit)
 			}
 		}
 		if(i == max) /* Section does not exist */
-			really_save_config(Fenetre, GTK_RESPONSE_ACCEPT, (gpointer)config_name);
+			really_save_config(NULL, GTK_RESPONSE_ACCEPT, (gpointer)config_name);
 	}
 }
 
-void load_config(GtkDialog *Fenetre, gint id, GtkTreeSelection *Selection_Liste)
+void load_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Selection_Liste)
 {
     GtkTreeIter iter;
     GtkTreeModel *Modele;
     gchar *txt, *message;
 
-    if(id == GTK_RESPONSE_ACCEPT)
+    if(response_id == GTK_RESPONSE_ACCEPT)
     {
 	if(gtk_tree_selection_get_selected(Selection_Liste, &Modele, &iter))
 	{
@@ -646,13 +640,13 @@ void load_config(GtkDialog *Fenetre, gint id, GtkTreeSelection *Selection_Liste)
     }
 }
 
-void delete_config(GtkDialog *Fenetre, gint id, GtkTreeSelection *Selection_Liste)
+void delete_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Selection_Liste)
 {
     GtkTreeIter iter;
     GtkTreeModel *Modele;
     gchar *txt;
 
-    if(id == GTK_RESPONSE_ACCEPT)
+    if(response_id == GTK_RESPONSE_ACCEPT)
     {
 	if(gtk_tree_selection_get_selected(Selection_Liste, &Modele, &iter))
 	{
@@ -663,9 +657,10 @@ void delete_config(GtkDialog *Fenetre, gint id, GtkTreeSelection *Selection_List
     }
 }
 
-gint Load_configuration_from_file(gchar *config_name)
+gint Load_configuration_from_file(const gchar *config_name)
 {
-    int max, i, j, k, size;
+    int max, i, j, size;
+    size_t k;
     gchar *string = NULL;
     gchar *str;
     macro_t *macros = NULL;
@@ -838,8 +833,8 @@ gint Load_configuration_from_file(gchar *config_name)
 
     vte_terminal_set_size (VTE_TERMINAL(display), term_conf.rows, term_conf.columns);
     vte_terminal_set_scrollback_lines (VTE_TERMINAL(display), term_conf.scrollback);
-    vte_terminal_set_color_foreground (VTE_TERMINAL(display), &term_conf.foreground_color);
-    vte_terminal_set_color_background (VTE_TERMINAL(display), &term_conf.background_color);
+    vte_terminal_set_color_foreground (VTE_TERMINAL(display), (const GdkRGBA *)&term_conf.foreground_color);
+    vte_terminal_set_color_background (VTE_TERMINAL(display), (const GdkRGBA *)&term_conf.background_color);
     gtk_widget_queue_draw(display);
 
     return 0;
@@ -1112,9 +1107,9 @@ gint remove_section(gchar *cfg_file, gchar *section)
     FILE *f = NULL;
     char *buffer = NULL;
     char *buf;
-    long size;
+    size_t size;
     gchar *to_search;
-    long i, j, length, sect;
+    size_t i, j, length, sect;
 
     f = fopen(cfg_file, "r");
     if(f == NULL)
@@ -1191,8 +1186,7 @@ gint remove_section(gchar *cfg_file, gchar *section)
 
 void Config_Terminal(GtkAction *action, gpointer data)
 {
-    GtkWidget *dialog, *content_area, *BoiteH, *BoiteV, *Label, *Table, *HScale;
-    gchar *font, *scrollback;
+    GtkWidget *dialog;
     GtkWidget *font_button;
     GtkWidget *check_box;
     GtkWidget *fg_color_button;
@@ -1250,7 +1244,7 @@ void config_fg_color(GtkWidget *button, gpointer data)
 
 	gtk_color_chooser_get_rgba (GTK_COLOR_CHOOSER (button), &term_conf.foreground_color);
 
-	vte_terminal_set_color_foreground (VTE_TERMINAL(display), &term_conf.foreground_color);
+	vte_terminal_set_color_foreground (VTE_TERMINAL(display), (const GdkRGBA *)&term_conf.foreground_color);
 	gtk_widget_queue_draw (display);
 
 	string = g_strdup_printf ("%u", (guint16) (term_conf.foreground_color.red * G_MAXUINT16));
@@ -1270,7 +1264,7 @@ void config_bg_color(GtkWidget *button, gpointer data)
 
 	gtk_color_chooser_get_rgba (GTK_COLOR_CHOOSER (button), &term_conf.background_color);
 
-	vte_terminal_set_color_background (VTE_TERMINAL(display), &term_conf.background_color);
+	vte_terminal_set_color_background (VTE_TERMINAL(display), (const GdkRGBA *)&term_conf.background_color);
 	gtk_widget_queue_draw (display);
 
 	string = g_strdup_printf ("%u", (guint16) (term_conf.background_color.red * G_MAXUINT16));
@@ -1285,10 +1279,10 @@ void config_bg_color(GtkWidget *button, gpointer data)
 }
 
 
-gint scrollback_set(GtkSpinButton *spin_button, gpointer data)
+void scrollback_set(GtkSpinButton *spin_button, gpointer data)
 {
-    int scrollback = gtk_spin_button_get_value_as_int (spin_button);
-    term_conf.scrollback = scrollback;
+    int scrollback_value = gtk_spin_button_get_value_as_int (spin_button);
+    term_conf.scrollback = scrollback_value;
     vte_terminal_set_scrollback_lines (VTE_TERMINAL(display), term_conf.scrollback);
 }
 

@@ -1,6 +1,6 @@
 # GtkTerm src/Makefile.am
 
-AM_CFLAGS = $(gtk_CFLAGS) $(vte_CFLAGS)
+AM_CFLAGS = $(gtk_CFLAGS) $(vte_CFLAGS) $(WARN_CFLAGS) -Wno-format-nonliteral -Wno-error=deprecated-declarations
 
 bin_PROGRAMS = gtkterm
 
@@ -38,6 +38,7 @@ gtkterm_SOURCES = \
     logging.c \
     logging.h 
 
+gtkterm_LDFLAGS = $(WARN_LDFLAGS)
 gtkterm_LDADD = $(gtk_LIBS) $(vte_LIBS)
 
 CLEANFILES = *~

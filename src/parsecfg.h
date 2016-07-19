@@ -80,7 +80,7 @@ typedef enum {
 
 
 typedef struct {
-	char *parameterName;
+	const char *parameterName;
 	cfgValueType type;
 	void *value;
 } cfgStruct;

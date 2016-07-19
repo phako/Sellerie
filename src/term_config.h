@@ -22,7 +22,7 @@ void select_config_callback(GtkAction *action, gpointer data);
 void save_config_callback(GtkAction *action, gpointer data);
 void delete_config_callback(GtkAction *action, gpointer data);
 void Verify_configuration(void);
-gint Load_configuration_from_file(gchar *);
+gint Load_configuration_from_file(const gchar *);
 gint Check_configuration_file(void);
 void check_text_input(GtkEditable *editable,
 		       gchar       *new_text,
@@ -40,7 +40,7 @@ struct configuration_port {
   gint delai;                  // end of char delay: in ms
   gint rs485_rts_time_before_transmit;
   gint rs485_rts_time_after_transmit;
-  gchar car;             // caractere à attendre
+  gchar car;             // caractere Ã  attendre
   gboolean echo;               // echo local
   gboolean crlfauto;         // line feed auto
 };

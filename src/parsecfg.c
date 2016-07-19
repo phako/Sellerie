@@ -368,6 +368,8 @@ static void cfgFatalFunc(cfgErrorCode error_code, const char *file, int line, co
 		break;
 	case CFG_JUST_RETURN_WITHOUT_MSG:
 		break;
+    case CFG_NO_ERROR:
+        break;
 	default:
 		i18n_fprintf(stderr, _("%s(%d): %s\nUnexplained error\n"), file, line, str);
 	}
@@ -689,7 +691,8 @@ static int store_value(cfgStruct cfg[], const char *parameter, const char *value
 					*(double *) (cfg[num].value) = dtmp;
 				}
 				return (CFG_NO_ERROR);
-
+            case CFG_END:
+                g_assert_not_reached ();
 			default:
 				return (CFG_INTERNAL_ERROR);
 			}
@@ -911,7 +914,8 @@ static int alloc_for_new_section(cfgStruct cfg[], int *section)
 			*(double **) (cfg[num].value) = ptr;
 			*(*((double **) (cfg[num].value)) + *section) = 0;
 			break;
-
+        case CFG_END:
+            g_assert_not_reached ();
 		default:
 			return (CFG_INTERNAL_ERROR);
 		}
@@ -1051,6 +1055,8 @@ static int dump_simple(FILE *fp, cfgStruct cfg[], cfgFileType type)
 		case CFG_DOUBLE:
 			fprintf(fp, "%s\t= %f\n", cfg[i].parameterName, *(double *) (cfg[i].value));
 			break;
+        case CFG_END:
+            g_assert_not_reached();
 		default:
 			cfgFatal(CFG_INTERNAL_ERROR, "?", 0, NULL);
 			return (-1);
@@ -1112,6 +1118,8 @@ static int dump_ini(FILE *fp, cfgStruct cfg[], cfgFileType type, int max)
 			case CFG_DOUBLE:
 				fprintf(fp, "%s\t= %f\n", cfg[i].parameterName, (*(double **) (cfg[i].value))[j]);
 				break;
+            case CFG_END:
+                g_assert_not_reached();
 			default:
 				cfgFatal(CFG_INTERNAL_ERROR, "?", 0, NULL);
 				return (-1);

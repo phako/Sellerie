@@ -35,6 +35,7 @@
 #include "widgets.h"
 #include "serie.h"
 #include "buffer.h"
+#include "fichier.h"
 
 #include <config.h>
 #include <glib/gi18n.h>
@@ -64,11 +65,9 @@ void ecriture(gpointer data, gint source);
 gboolean timer(gpointer pointer);
 gboolean idle(gpointer pointer);
 void remove_input(void);
-void add_input(void);
 void write_file(char *, unsigned int);
 
 extern struct configuration_port config;
-
 
 void send_raw_file(GtkAction *action, gpointer data)
 {

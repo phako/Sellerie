@@ -26,13 +26,14 @@
 #include "fichier.h"
 #include "auto_config.h"
 #include "i18n.h"
+#include "cmdline.h"
 
 #include <config.h>
 #include <glib/gi18n.h>
 
 extern struct configuration_port config;
 
-void display_help(void)
+static void display_help(void)
 {
   i18n_printf(_("\nGTKTerm version %s\n"), VERSION);
   i18n_printf(_("\t (c) Julien Schmitt\n"));

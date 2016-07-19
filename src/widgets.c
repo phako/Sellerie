@@ -71,6 +71,7 @@
 #include "macros.h"
 #include "auto_config.h"
 #include "logging.h"
+#include "widgets.h"
 
 #include <config.h>
 #include <glib/gi18n.h>
@@ -81,10 +82,6 @@ gboolean crlfauto_on;
 GtkWidget *StatusBar;
 GtkWidget *signals[6];
 static GtkWidget *Hex_Box;
-static GtkWidget *log_pause_resume_menu = NULL;
-static GtkWidget *log_start_menu = NULL;
-static GtkWidget *log_stop_menu = NULL;
-static GtkWidget *log_clear_menu = NULL;
 GtkWidget *scrolled_window;
 GtkWidget *Fenetre;
 GtkWidget *popup_menu;
@@ -98,7 +95,7 @@ GtkTextBuffer *buffer;
 GtkTextIter iter;
 
 /* Variables for hexadecimal display */
-static gint bytes_per_line = 16;
+static guint bytes_per_line = 16;
 static gchar blank_data[128];
 static guint total_bytes;
 static gboolean show_index = FALSE;
@@ -397,7 +394,7 @@ void toggle_logging_sensitivity(gboolean currentlyLogging)
   gtk_action_set_sensitive(action, currentlyLogging);
 }
 
-gboolean terminal_button_press_callback(GtkWidget *widget,
+static gboolean terminal_button_press_callback(GtkWidget *widget,
                                         GdkEventButton *event,
                                         gpointer *data)
 {
@@ -414,7 +411,7 @@ gboolean terminal_button_press_callback(GtkWidget *widget,
     return FALSE;
 }
 
-void terminal_popup_menu_callback(GtkWidget *widget, gpointer data)
+static void terminal_popup_menu_callback(GtkWidget *widget, gpointer data)
 {
   gtk_menu_popup(GTK_MENU(popup_menu), NULL, NULL, NULL, NULL,
                  0, gtk_get_current_event_time());
@@ -583,7 +580,7 @@ void put_hexadecimal(gchar *string, guint size)
   static guint bytes;
   glong column, row;
 
-  gint i = 0;
+  guint i = 0;
 
   if(size == 0)
     return;
@@ -690,7 +687,7 @@ gboolean Envoie_car(GtkWidget *widget, GdkEventKey *event, gpointer pointer)
 
 void help_about_callback(GtkAction *action, gpointer data)
 {
-  gchar *authors[] = {"Julien Schimtt", "Zach Davis", NULL};
+  const gchar *authors[] = {"Julien Schimtt", "Zach Davis", NULL};
 
   gtk_show_about_dialog(GTK_WINDOW(Fenetre),
                         "program-name", "GTKTerm",
@@ -704,7 +701,7 @@ void help_about_callback(GtkAction *action, gpointer data)
                         NULL);
 }
 
-void show_control_signals(int stat)
+static void show_control_signals(int stat)
 {
   if(stat & TIOCM_RI)
     gtk_widget_set_sensitive(GTK_WIDGET(signals[0]), TRUE);
@@ -765,14 +762,14 @@ void Set_status_message(gchar *msg)
   gtk_statusbar_push(GTK_STATUSBAR(StatusBar), id, msg);
 }
 
-void Set_window_title(gchar *msg)
+void Set_window_title(const gchar *msg)
 {
     gchar* header = g_strdup_printf("GtkTerm - %s", msg);
     gtk_window_set_title(GTK_WINDOW(Fenetre), header);
     g_free(header);
 }
 
-void show_message(gchar *message, gint type_msg)
+void show_message(const gchar *message, gint type_msg)
 {
  GtkWidget *Fenetre_msg;
 

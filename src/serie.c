@@ -40,6 +40,7 @@
 #include "fichier.h"
 #include "buffer.h"
 #include "i18n.h"
+#include "serie.h"
 
 #include <config.h>
 #include <glib/gi18n.h>
@@ -63,12 +64,13 @@ gint create_lockfile(char *);
 void remove_lockfile(void);
 void Ferme_Port(void);
 void Ouvre_Port(char *);
+gboolean Lis_port(GIOChannel *src, GIOCondition cond, gpointer data);
 
 gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
 {
     gint bytes_read;
     static gchar c[BUFFER_RECEPTION];
-    guint i;
+    gint i;
 
     bytes_read = BUFFER_RECEPTION;
 
@@ -104,7 +106,7 @@ gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
     return TRUE;
 }
 
-gboolean io_err(GIOChannel* src, GIOCondition cond, gpointer data)
+static gboolean io_err(GIOChannel* src, GIOCondition cond, gpointer data)
 {
     Ferme_Port();
     return TRUE;
@@ -245,6 +247,8 @@ gboolean Config_port(void)
 	case 8:
 	    termios_p.c_cflag |= CS8;
 	    break;
+    default:
+        g_assert_not_reached();
     }
     switch(config.parite)
     {
@@ -403,7 +407,7 @@ int lis_sig(void)
 /*
  * Find out name to use for lockfile when locking tty.
  */
-char *mbasename(char *s, char *res, int reslen)
+static char *mbasename(char *s, char *res, int reslen)
 {
     char *p;
 
@@ -493,8 +497,13 @@ gint create_lockfile(char *port)
         }
 	(void)umask(mask);
 	res = chown(lockfile, real_uid, real_gid);
+      if (res < 0)
+        i18n_fprintf(stderr, "Fail");
+
 	snprintf(buf, sizeof(buf), "%10ld gtkterm %.20s\n", (long)getpid(), username);
 	res = write(fd, buf, strlen(buf));
+      if (res < 0)
+        i18n_fprintf(stderr, "Fail");
 	close(fd);
     }
 
@@ -526,14 +535,12 @@ gint set_custom_speed(int speed, int port_fd)
 {
 
     struct serial_struct ser;
-    int arby;
 
     ioctl(port_fd, TIOCGSERIAL, &ser);
     ser.custom_divisor = ser.baud_base / speed;
     if(!(ser.custom_divisor))
 	ser.custom_divisor = 1;
 
-    arby = ser.baud_base / ser.custom_divisor;
     ser.flags &= ~ASYNC_SPD_MASK;
     ser.flags |= ASYNC_SPD_CUST;
 

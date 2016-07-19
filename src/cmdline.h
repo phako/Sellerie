@@ -15,4 +15,5 @@
 /*                                                                     */
 /***********************************************************************/
 
-int read_command_line(int, char **);
+int read_command_line(int argc, char **argv, gchar *configuration_to_read);
+

@@ -26,12 +26,13 @@ void Set_status_message(gchar *);
 void put_text(gchar *, guint);
 void put_hexadecimal(gchar *, guint);
 void Set_local_echo(gboolean);
-void show_message(gchar *, gint);
+void show_message(const gchar *, gint);
 void clear_display(void);
 void set_view(guint);
 gint send_serial(gchar *, gint);
 void Put_temp_message(const gchar *, gint);
-void Set_window_title(gchar *msg);
+void Set_window_title(const gchar *msg);
+void Set_crlfauto(gboolean crlfauto);
 
 void toggle_logging_pause_resume(gboolean currentlyLogging);
 void toggle_logging_sensitivity(gboolean currentlyLogging);

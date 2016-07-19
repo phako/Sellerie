@@ -906,11 +906,8 @@ gint Load_configuration_from_file(gchar *config_name)
 		else
 		    config.crlfauto = FALSE;
 
-        if (term_conf.font != NULL) {
-            pango_font_description_free (term_conf.font);
-        }
-
-		term_conf.font = pango_font_description_from_string (font[i]);
+        g_clear_pointer (&term_conf.font, pango_font_description_free);
+        term_conf.font = pango_font_description_from_string (font[i]);
 
 		t = macro_list[i];
 		size = 0;
@@ -1390,9 +1387,8 @@ void Config_Terminal(GtkAction *action, gpointer data)
     gtk_label_set_markup(GTK_LABEL(Label), "<b>Font selection: </b>");
     gtk_box_pack_start(GTK_BOX(BoiteH), Label, FALSE, TRUE, 0);
 
-    font =  pango_font_description_to_string (term_conf.font);
-    fontButton = gtk_font_button_new_with_font(font);
-    g_free (font);
+    fontButton = gtk_font_button_new ();
+    gtk_font_chooser_set_font_desc (GTK_FONT_CHOOSER (fontButton), term_conf.font);
     gtk_box_pack_start(GTK_BOX(BoiteH), fontButton, FALSE, TRUE, 10);
     g_signal_connect(GTK_WIDGET(fontButton), "font-set", G_CALLBACK(read_font_button), 0);
     gtk_box_pack_start(GTK_BOX(BoiteV), BoiteH, FALSE, TRUE, 0);

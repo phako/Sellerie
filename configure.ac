@@ -1,7 +1,7 @@
 # GtkTerm autoconf script
 
 AC_INIT([GtkTerm], [1.0], [https://fedorahosted.org/gtkterm])
-AM_INIT_AUTOMAKE([foreign -Wall -Werror])
+AM_INIT_AUTOMAKE([foreign -Wall -Wno-compat])
 AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
 
@@ -25,6 +25,7 @@ AC_SUBST(GNUCFLAGS)
 
 # Linux is required for arbitrary baud rates
 AC_CHECK_HEADERS_ONCE([linux/serial.h])
+AC_SUBST([GLIB_COMPILE_RESOURCES], [`$PKG_CONFIG --variable glib_compile_resources gio-2.0`])
 
 AC_CONFIG_FILES([Makefile src/Makefile po/Makefile.in])
 

@@ -195,7 +195,7 @@ void Config_Port_Fenetre(GtkAction *action, gpointer data)
                     "Enter a different device path in the 'Port' box.\n"), MSG_WRN);
     }
 
-    builder = gtk_builder_new_from_file ("../data/settings-port.ui");
+    builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/settings-port.ui");
     dialog = GTK_DIALOG (gtk_builder_get_object (builder, "dialog-settings-port"));
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-device"));
 
@@ -1201,7 +1201,7 @@ void Config_Terminal(GtkAction *action, gpointer data)
 
     GtkBuilder *builder;
 
-    builder = gtk_builder_new_from_file ("../data/settings-port.ui");
+    builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/settings-window.ui");
 
     dialog = GTK_WIDGET (gtk_builder_get_object (builder, "dialog-settings-window"));
 

@@ -1175,6 +1175,7 @@ static int fetch_simple(const char *file, FILE *fp, char *parameter_name, void *
 		if ((ptr = parse_word(ptr, &read_parameter, CFG_PARAMETER)) == NULL) {	/* malloc read_parameter */
 			cfgFatal(CFG_SYNTAX_ERROR, file, line, line_buf);
 			free(line_buf);
+            free(read_parameter);
 			return (-1);
 		}
 		if (strcasecmp(read_parameter, parameter_name) == 0) {

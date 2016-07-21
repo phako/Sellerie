@@ -390,6 +390,7 @@ void create_main_window(void)
   update_copy_sensivity(VTE_TERMINAL(display), NULL);
 
   popup_menu = gtk_menu_new_from_model (G_MENU_MODEL (gtk_builder_get_object (builder, "popup-menu")));
+  gtk_menu_attach_to_widget (GTK_MENU (popup_menu), display, NULL);
 
   /* set up logging buttons availability */
   toggle_logging_pause_resume(FALSE);

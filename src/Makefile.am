@@ -1,6 +1,6 @@
 # GtkTerm src/Makefile.am
 
-AM_CFLAGS = $(gtk_CFLAGS) $(vte_CFLAGS) $(WARN_CFLAGS) -Wno-format-nonliteral -Wno-error=deprecated-declarations
+AM_CFLAGS = $(gtk_CFLAGS) $(vte_CFLAGS) $(WARN_CFLAGS) -Wno-format-nonliteral
 
 bin_PROGRAMS = gtkterm
 
@@ -11,7 +11,7 @@ resource_depends = \
 	$(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies \
 		--sourcedir=$(top_srcdir)/data $(top_srcdir)/data//org.jensge.GtkTerm.gresource.xml)
 
-resource.c: $(top_srcdir)/data/org.jensge.GtkTerm.gresource.xml
+resource.c: $(top_srcdir)/data/org.jensge.GtkTerm.gresource.xml $(resource_depends)
 	$(AM_V_GEN) $(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(top_srcdir)/data --generate $<
 
 gtkterm_SOURCES = \

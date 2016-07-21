@@ -94,6 +94,8 @@ GtkWidget *Text;
 GtkTextBuffer *buffer;
 GtkTextIter iter;
 
+static GtkBuilder *builder;
+
 /* Variables for hexadecimal display */
 static guint bytes_per_line = 16;
 static gchar blank_data[128];
@@ -107,210 +109,116 @@ void signals_toggle_RTS_callback(GtkAction *action, gpointer data);
 void help_about_callback(GtkAction *action, gpointer data);
 gboolean Envoie_car(GtkWidget *, GdkEventKey *, gpointer);
 gboolean control_signals_read(void);
-void echo_toggled_callback(GtkAction *action, gpointer data);
 void CR_LF_auto_toggled_callback(GtkAction *action, gpointer data);
-void view_radio_callback(GtkAction *action, gpointer data);
-void view_hexadecimal_chars_radio_callback(GtkAction* action, gpointer data);
-void view_index_toggled_callback(GtkAction *action, gpointer data);
-void view_send_hex_toggled_callback(GtkAction *action, gpointer data);
 void initialize_hexadecimal_display(void);
 gboolean Send_Hexadecimal(GtkWidget *, GdkEventKey *, gpointer);
 gboolean pop_message(void);
-static gchar *translate_menu(const gchar *, gpointer);
 static void Got_Input(VteTerminal *, gchar *, guint, gpointer);
 void edit_copy_callback(GtkAction *action, gpointer data);
 void update_copy_sensivity(VteTerminal *terminal, gpointer data);
 void edit_paste_callback(GtkAction *action, gpointer data);
 void edit_select_all_callback(GtkAction *action, gpointer data);
 
+static void on_quit (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_clear_buffer (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_send_raw_file (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_save_raw_file (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_edit_copy_callback (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_edit_paste_callback (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_edit_select_all_callback (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_logging_start (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_logging_pause_resume (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_logging_stop (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_logging_clear (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_config_port (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_config_terminal (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_local_echo_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_config_macros (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_config_profile_select (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_config_profile_save (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_config_profile_delete (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_signals_send_break (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_signals_send_dtr (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_signals_send_rts (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_about (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_action_radio (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_crlf_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_view_ascii_hex_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_view_index_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_view_send_hex_change_state  (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_view_hex_width_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 
-/* Menu */
-const GtkActionEntry menu_entries[] = {
-  /* Toplevel */
-  {"File", NULL, N_("_File")},
-  {"Edit", NULL, N_("_Edit")},
-  {"Log", NULL, N_("_Log")},
-  {"Configuration", NULL, N_("_Configuration")},
-  {"Signals", NULL, N_("Control _signals")},
-  {"View", NULL, N_("_View")},
-  {"ViewHexadecimalChars", NULL, N_("Hexadecimal _chars")},
-  {"Help", NULL, N_("_Help")},
+const GActionEntry menu_actions[] = {
+    /* File menu */
+    {"clear", on_clear_buffer } ,
+    {"send-file", on_send_raw_file },
+    {"save-file", on_save_raw_file },
+    {"quit", on_quit },
 
-  /* File menu */
-  {"FileExit", GTK_STOCK_QUIT, NULL, "<shift><control>Q", NULL, gtk_main_quit},
-  {"ClearScreen", GTK_STOCK_CLEAR, N_("_Clear screen"), "<shift><control>L", NULL, G_CALLBACK(clear_buffer)},
-  {"SendFile", GTK_STOCK_JUMP_TO, N_("Send _RAW file"), "<shift><control>R", NULL, G_CALLBACK(send_raw_file)},
-  {"SaveFile", GTK_STOCK_SAVE_AS, N_("_Save RAW file"), "", NULL, G_CALLBACK(save_raw_file)},
+    /* Edit menu */
+    {"copy", on_edit_copy_callback },
+    {"paste", on_edit_paste_callback },
+    {"select-all", on_edit_select_all_callback },
 
-  /* Edit menu */
-  {"EditCopy", GTK_STOCK_COPY, NULL, "<shift><control>C", NULL, G_CALLBACK(edit_copy_callback)},
-  {"EditPaste", GTK_STOCK_PASTE, NULL, "<shift><control>V", NULL, G_CALLBACK(edit_paste_callback)},
-  {"EditSelectAll", GTK_STOCK_SELECT_ALL, NULL, "<shift><control>A", NULL, G_CALLBACK(edit_select_all_callback)},
+    /* Log menu */
+    {"log.to-file", on_logging_start },
+    {"log.pause-resume", on_logging_pause_resume },
+    {"log.stop", on_logging_stop },
+    {"log.clear", on_logging_clear },
 
-  /* Log Menu */
-  {"LogToFile", GTK_STOCK_MEDIA_RECORD, N_("To file..."), "", NULL, G_CALLBACK(logging_start)},
-  {"LogPauseResume", GTK_STOCK_MEDIA_PAUSE, NULL, "", NULL, G_CALLBACK(logging_pause_resume)},
-  {"LogStop", GTK_STOCK_MEDIA_STOP, NULL, "", NULL, G_CALLBACK(logging_stop)},
-  {"LogClear", GTK_STOCK_CLEAR, NULL, "", NULL, G_CALLBACK(logging_clear)},
+    /* Configuration menu */
+    {"config.port", on_config_port },
+    {"config.terminal", on_config_terminal },
+    {"config.local-echo", on_action_toggle, NULL, "false", on_local_echo_change_state},
+    {"config.crlf", on_action_toggle, NULL, "false", on_crlf_change_state },
 
-  /* Confuguration Menu */
-  {"ConfigPort", GTK_STOCK_PROPERTIES, N_("_Port"), "<shift><control>S", NULL, G_CALLBACK(Config_Port_Fenetre)},
-  {"ConfigTerminal", GTK_STOCK_PREFERENCES, N_("_Main window"), "", NULL, G_CALLBACK(Config_Terminal)},
-  {"Macros", NULL, N_("_Macros"), NULL, NULL, G_CALLBACK(Config_macros)},
-  {"SelectConfig", GTK_STOCK_OPEN, N_("_Load configuration"), "", NULL, G_CALLBACK(select_config_callback)},
-  {"SaveConfig", GTK_STOCK_SAVE_AS, N_("_Save configuration"), "", NULL, G_CALLBACK(save_config_callback)},
-  {"DeleteConfig", GTK_STOCK_DELETE, N_("_Delete configuration"), "", NULL, G_CALLBACK(delete_config_callback)},
+    {"config.macros", on_config_macros },
 
-  /* Signals Menu */
-  {"SignalsSendBreak", NULL, N_("Send break"), "<shift><control>B", NULL, G_CALLBACK(signals_send_break_callback)},
-  {"SignalsDTR", NULL, N_("Toggle DTR"), "F7", NULL, G_CALLBACK(signals_toggle_DTR_callback)},
-  {"SignalsRTS", NULL, N_("Toggle RTS"), "F8", NULL, G_CALLBACK(signals_toggle_RTS_callback)},
+    {"config.profile.select", on_config_profile_select },
+    {"config.profile.save", on_config_profile_save },
+    {"config.profile.delete", on_config_profile_delete },
 
-  /* About menu */
-  {"HelpAbout", GTK_STOCK_ABOUT, NULL, NULL, NULL, G_CALLBACK(help_about_callback)}
+    /* View menu */
+    {"view.ascii-hex", on_action_radio, "s", "'ascii'", on_view_ascii_hex_change_state },
+    {"view.index", on_action_toggle, NULL, "false", on_view_index_change_state },
+    {"view.send-hex", on_action_toggle, NULL, "false", on_view_send_hex_change_state },
+    {"view.hex-width", on_action_radio, "s", "'8'", on_view_hex_width_change_state },
+
+    /* Signals menu */
+    {"signals.send-break", on_signals_send_break },
+    {"signals.send-dtr", on_signals_send_dtr },
+    {"signals.send-rts", on_signals_send_rts },
+
+    /* Help menu */
+    {"about", on_about }
 };
-
-const GtkToggleActionEntry menu_toggle_entries[] = {
-  /* Configuration Menu */
-  {"LocalEcho", NULL, N_("Local _echo"), NULL, NULL, G_CALLBACK(echo_toggled_callback), FALSE},
-  {"CRLFauto", NULL, N_("_CR LF auto"), NULL, NULL, G_CALLBACK(CR_LF_auto_toggled_callback), FALSE},
-
-  /* View Menu */
-  {"ViewIndex", NULL, N_("Show _index"), NULL, NULL, G_CALLBACK(view_index_toggled_callback), FALSE},
-  {"ViewSendHexData", NULL, N_("_Send hexadecimal data"), NULL, NULL, G_CALLBACK(view_send_hex_toggled_callback), FALSE}
-};
-
-const GtkRadioActionEntry menu_view_radio_entries[] = {
-  {"ViewASCII", NULL, N_("_ASCII"), NULL, NULL, ASCII_VIEW},
-  {"ViewHexadecimal", NULL, N_("_Hexadecimal"), NULL, NULL, HEXADECIMAL_VIEW}
-};
-
-const GtkRadioActionEntry menu_hex_chars_length_radio_entries[] = {
-  {"ViewHex8", NULL, "_8", NULL, NULL, 8},
-  {"ViewHex10", NULL, "1_0", NULL, NULL, 10},
-  {"ViewHex16", NULL, "_16", NULL, NULL, 16},
-  {"ViewHex24", NULL, "_24", NULL, NULL, 24},
-  {"ViewHex32", NULL, "_32", NULL, NULL, 32}
-};
-
-static const char *ui_description =
-"<ui>"
-"  <menubar name='MenuBar'>"
-"    <menu action='File'>"
-"      <menuitem action='ClearScreen'/>"
-"      <menuitem action='SendFile'/>"
-"      <menuitem action='SaveFile'/>"
-"      <separator/>"
-"      <menuitem action='FileExit'/>"
-"    </menu>"
-"    <menu action='Edit'>"
-"      <menuitem action='EditCopy'/>"
-"      <menuitem action='EditPaste'/>"
-"      <separator/>"
-"      <menuitem action='EditSelectAll'/>"
-"    </menu>"
-"    <menu action='Log'>"
-"      <menuitem action='LogToFile'/>"
-"      <menuitem action='LogPauseResume'/>"
-"      <menuitem action='LogStop'/>"
-"      <menuitem action='LogClear'/>"
-"    </menu>"
-"    <menu action='Configuration'>"
-"      <menuitem action='ConfigPort'/>"
-"      <menuitem action='ConfigTerminal'/>"
-"      <menuitem action='LocalEcho'/>"
-"      <menuitem action='CRLFauto'/>"
-"      <menuitem action='Macros'/>"
-"      <separator/>"
-"      <menuitem action='SelectConfig'/>"
-"      <menuitem action='SaveConfig'/>"
-"      <menuitem action='DeleteConfig'/>"
-"    </menu>"
-"    <menu action='Signals'>"
-"      <menuitem action='SignalsSendBreak'/>"
-"      <menuitem action='SignalsDTR'/>"
-"      <menuitem action='SignalsRTS'/>"
-"    </menu>"
-"    <menu action='View'>"
-"      <menuitem action='ViewASCII'/>"
-"      <menuitem action='ViewHexadecimal'/>"
-"      <menu action='ViewHexadecimalChars'>"
-"        <menuitem action='ViewHex8'/>"
-"        <menuitem action='ViewHex10'/>"
-"        <menuitem action='ViewHex16'/>"
-"        <menuitem action='ViewHex24'/>"
-"        <menuitem action='ViewHex32'/>"
-"      </menu>"
-"      <menuitem action='ViewIndex'/>"
-"      <separator/>"
-"      <menuitem action='ViewSendHexData'/>"
-"    </menu>"
-"    <menu action='Help'>"
-"      <menuitem action='HelpAbout'/>"
-"    </menu>"
-"  </menubar>"
-"  <popup name='PopupMenu'>"
-"    <menuitem action='EditCopy'/>"
-"    <menuitem action='EditPaste'/>"
-"    <separator/>"
-"    <menuitem action='EditSelectAll'/>"
-"  </popup>"
-"</ui>";
-
-static gchar *translate_menu(const gchar *path, gpointer data)
-{
-  return _(path);
-}
-
-void view_send_hex_toggled_callback(GtkAction *action, gpointer data)
-{
-  if(gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(action)))
-    gtk_widget_show(GTK_WIDGET(Hex_Box));
-  else
-    gtk_widget_hide(GTK_WIDGET(Hex_Box));
-}
-
-void view_index_toggled_callback(GtkAction *action, gpointer data)
-{
-  show_index = gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(action));
-  set_view(HEXADECIMAL_VIEW);
-}
-
-void view_hexadecimal_chars_radio_callback(GtkAction* action, gpointer data)
-{
-  gint current_value;
-  current_value = gtk_radio_action_get_current_value(GTK_RADIO_ACTION(action));
-
-  bytes_per_line = current_value;
-  set_view(HEXADECIMAL_VIEW);
-}
 
 void set_view(guint type)
 {
-  GtkAction *action;
-  GtkAction *show_index_action;
-  GtkAction *hex_chars_action;
+  GActionGroup *group;
+  GSimpleAction *show_index_action;
+  GSimpleAction *action;
 
-  show_index_action = gtk_action_group_get_action(action_group, "ViewIndex");
-  hex_chars_action = gtk_action_group_get_action(action_group, "ViewHexadecimalChars");
+  group = gtk_widget_get_action_group (Fenetre, "main");
+  action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group), "view.hex-width"));
+
+  show_index_action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group),
+              "view.index"));
 
   clear_display();
   set_clear_func(clear_display);
   switch(type)
     {
     case ASCII_VIEW:
-      action = gtk_action_group_get_action(action_group, "ViewASCII");
-      gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(action), TRUE);
-      gtk_action_set_sensitive(show_index_action, FALSE);
-      gtk_action_set_sensitive(hex_chars_action, FALSE);
+      g_simple_action_set_enabled (show_index_action, FALSE);
+      g_simple_action_set_enabled (action, FALSE);
       total_bytes = 0;
       set_display_func(put_text);
       break;
     case HEXADECIMAL_VIEW:
-      action = gtk_action_group_get_action(action_group, "ViewHexadecimal");
-      gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(action), TRUE);
-      gtk_action_set_sensitive(show_index_action, TRUE);
-      gtk_action_set_sensitive(hex_chars_action, TRUE);
+      g_simple_action_set_enabled (show_index_action, TRUE);
+      g_simple_action_set_enabled (action, TRUE);
       total_bytes = 0;
       set_display_func(put_hexadecimal);
       break;
@@ -320,78 +228,72 @@ void set_view(guint type)
   write_buffer();
 }
 
-void view_radio_callback(GtkAction *action, gpointer data)
-{
-  gint current_value;
-  current_value = gtk_radio_action_get_current_value(GTK_RADIO_ACTION(action));
-
-  set_view(current_value);
-}
-
 void Set_local_echo(gboolean echo)
 {
-  GtkAction *action;
+  GActionGroup *group;
+  GSimpleAction *action;
+  GVariant *value;
+
+  group = gtk_widget_get_action_group (Fenetre, "main");
+  action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group), "view.hex-width"));
 
   echo_on = echo;
 
-  action = gtk_action_group_get_action(action_group, "LocalEcho");
-  if(action)
-    gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(action), echo_on);
-}
+  value = g_variant_new_boolean (echo);
 
-void echo_toggled_callback(GtkAction *action, gpointer data)
-{
-  echo_on = gtk_toggle_action_get_active (GTK_TOGGLE_ACTION(action));
-  configure_echo(echo_on);
+  if(action)
+      g_simple_action_set_state (action, value);
+
+  g_variant_unref (value);
 }
 
 void Set_crlfauto(gboolean crlfauto)
 {
-  GtkAction *action;
+  GActionGroup *group;
+  GSimpleAction *action;
+  GVariant *value;
+
+  group = gtk_widget_get_action_group (Fenetre, "main");
+  action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group), "view.hex-width"));
 
   crlfauto_on = crlfauto;
 
-  action = gtk_action_group_get_action(action_group, "CRLFauto");
-  if(action)
-    gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(action), crlfauto_on);
-}
+  value = g_variant_new_boolean (crlfauto);
 
-void CR_LF_auto_toggled_callback(GtkAction *action, gpointer data)
-{
-  crlfauto_on = gtk_toggle_action_get_active (GTK_TOGGLE_ACTION(action));
-  configure_crlfauto(crlfauto_on);
+  if(action)
+      g_simple_action_set_state (action, value);
+
+  g_variant_unref (value);
 }
 
 void toggle_logging_pause_resume(gboolean currentlyLogging)
 {
-  GtkAction *action;
+    GtkMenuItem *menu = GTK_MENU_ITEM (gtk_builder_get_object (builder, "menu-log-pause-resume"));
 
-  action = gtk_action_group_get_action(action_group, "LogPauseResume");
-
-  if (currentlyLogging)
-  {
-    gtk_action_set_label(action, NULL);
-    gtk_action_set_stock_id(action, GTK_STOCK_MEDIA_PAUSE);
-  }
-  else
-  {
-    gtk_action_set_label(action, _("Resume"));
-    gtk_action_set_stock_id(action, GTK_STOCK_MEDIA_PLAY);
-  }
+    if (currentlyLogging)
+    {
+        gtk_menu_item_set_label (menu, _("_Pause logging"));
+    }
+    else
+    {
+        gtk_menu_item_set_label (menu, _("_Resume"));
+    }
 }
 
 void toggle_logging_sensitivity(gboolean currentlyLogging)
 {
-  GtkAction *action;
+    GActionGroup *group;
+    GAction *action;
 
-  action = gtk_action_group_get_action(action_group, "LogToFile");
-  gtk_action_set_sensitive(action, !currentlyLogging);
-  action = gtk_action_group_get_action(action_group, "LogPauseResume");
-  gtk_action_set_sensitive(action, currentlyLogging);
-  action = gtk_action_group_get_action(action_group, "LogStop");
-  gtk_action_set_sensitive(action, currentlyLogging);
-  action = gtk_action_group_get_action(action_group, "LogClear");
-  gtk_action_set_sensitive(action, currentlyLogging);
+    group = gtk_widget_get_action_group (Fenetre, "main");
+    action = g_action_map_lookup_action (G_ACTION_MAP (group), "log.to-file");
+    g_simple_action_set_enabled (G_SIMPLE_ACTION (action), !currentlyLogging);
+    action = g_action_map_lookup_action (G_ACTION_MAP (group), "log.pause-resume");
+    g_simple_action_set_enabled (G_SIMPLE_ACTION (action), currentlyLogging);
+    action = g_action_map_lookup_action (G_ACTION_MAP (group), "log.stop");
+    g_simple_action_set_enabled (G_SIMPLE_ACTION (action), currentlyLogging);
+    action = g_action_map_lookup_action (G_ACTION_MAP (group), "log.clear");
+    g_simple_action_set_enabled (G_SIMPLE_ACTION (action), currentlyLogging);
 }
 
 static gboolean terminal_button_press_callback(GtkWidget *widget,
@@ -419,12 +321,20 @@ static void terminal_popup_menu_callback(GtkWidget *widget, gpointer data)
 
 void create_main_window(void)
 {
-  GtkWidget *menu, *main_vbox, *label;
+  GtkWidget *main_vbox, *label;
   GtkWidget *hex_send_entry;
-  GtkAccelGroup *accel_group;
-  GError *error;
+  GActionGroup *group;
 
-  Fenetre = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  group = G_ACTION_GROUP (g_simple_action_group_new ());
+  g_action_map_add_action_entries (G_ACTION_MAP (group),
+                                   menu_actions,
+                                   G_N_ELEMENTS (menu_actions),
+                                   NULL);
+
+  builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/main-window.ui");
+
+  Fenetre = GTK_WIDGET (gtk_builder_get_object (builder, "window-main"));
+  gtk_widget_insert_action_group (Fenetre, "main", group);
 
   shortcuts = gtk_accel_group_new();
   gtk_window_add_accel_group(GTK_WINDOW(Fenetre), GTK_ACCEL_GROUP(shortcuts));
@@ -434,47 +344,14 @@ void create_main_window(void)
   
   Set_window_title("GtkTerm");
 
-  main_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_container_add(GTK_CONTAINER(Fenetre), main_vbox);
+  main_vbox = GTK_WIDGET (gtk_builder_get_object (builder, "box-main"));
 
-  /* Create the UIManager */
-  ui_manager = gtk_ui_manager_new();
-
-  accel_group = gtk_ui_manager_get_accel_group (ui_manager);
-  gtk_window_add_accel_group (GTK_WINDOW (Fenetre), accel_group);
-
-  /* Create the actions */
-  action_group = gtk_action_group_new("MenuActions");
-  gtk_action_group_set_translate_func(action_group, translate_menu, NULL, NULL);
-
-  gtk_action_group_add_actions(action_group, menu_entries,
-                               G_N_ELEMENTS (menu_entries),
-                               Fenetre);
-  gtk_action_group_add_toggle_actions(action_group, menu_toggle_entries,
-                                      G_N_ELEMENTS (menu_toggle_entries),
-                                      Fenetre);
-  gtk_action_group_add_radio_actions(action_group, menu_view_radio_entries,
-                                     G_N_ELEMENTS (menu_view_radio_entries),
-                                     -1, G_CALLBACK(view_radio_callback),
-                                     Fenetre);
-  gtk_action_group_add_radio_actions(action_group, menu_hex_chars_length_radio_entries,
-                                     G_N_ELEMENTS (menu_hex_chars_length_radio_entries),
-                                     16, G_CALLBACK(view_hexadecimal_chars_radio_callback),
-                                     Fenetre);
-
-  gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
-
-  /* Load the UI */
-  error = NULL;
-  if(!gtk_ui_manager_add_ui_from_string(ui_manager, ui_description, -1, &error))
   {
-    g_message ("building menus failed: %s", error->message);
-    g_error_free (error);
-    exit (EXIT_FAILURE);
+      gtk_box_pack_start (GTK_BOX (main_vbox),
+              gtk_menu_bar_new_from_model (
+                  G_MENU_MODEL (gtk_builder_get_object (builder, "window-menu"))),
+              FALSE, FALSE, 0);
   }
-
-  menu = gtk_ui_manager_get_widget (ui_manager, "/MenuBar");
-  gtk_box_pack_start(GTK_BOX(main_vbox), menu, FALSE, TRUE, 0);
 
   /* create vte window */
   display = vte_terminal_new();
@@ -512,7 +389,7 @@ void create_main_window(void)
                    G_CALLBACK(update_copy_sensivity), NULL);
   update_copy_sensivity(VTE_TERMINAL(display), NULL);
 
-  popup_menu = gtk_ui_manager_get_widget(ui_manager, "/PopupMenu");
+  popup_menu = gtk_menu_new_from_model (G_MENU_MODEL (gtk_builder_get_object (builder, "popup-menu")));
 
   /* set up logging buttons availability */
   toggle_logging_pause_resume(FALSE);
@@ -864,13 +741,15 @@ void edit_copy_callback(GtkAction *action, gpointer data)
 
 void update_copy_sensivity(VteTerminal *terminal, gpointer data)
 {
-  GtkAction *action;
+  GActionGroup *group;
+  GAction *action;
   gboolean can_copy;
 
   can_copy = vte_terminal_get_has_selection(VTE_TERMINAL(terminal));
 
-  action = gtk_action_group_get_action(action_group, "EditCopy");
-  gtk_action_set_sensitive(action, can_copy);
+  group = gtk_widget_get_action_group (Fenetre, "main");
+  action = g_action_map_lookup_action (G_ACTION_MAP (group), "copy");
+  g_simple_action_set_enabled (G_SIMPLE_ACTION (action), can_copy);
 }
 
 void edit_paste_callback(GtkAction *action, gpointer data)
@@ -881,4 +760,176 @@ void edit_paste_callback(GtkAction *action, gpointer data)
 void edit_select_all_callback(GtkAction *action, gpointer data)
 {
   vte_terminal_select_all(VTE_TERMINAL(display));
+}
+
+
+void on_quit (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    gtk_main_quit ();
+}
+
+void on_clear_buffer (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    clear_buffer ();
+}
+
+void on_send_raw_file (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    send_raw_file (NULL, NULL);
+}
+
+void on_save_raw_file (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    save_raw_file (NULL, NULL);
+}
+
+void on_edit_copy_callback (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    edit_copy_callback (NULL, NULL);
+}
+
+void on_edit_paste_callback (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    edit_paste_callback (NULL, NULL);
+}
+
+void on_edit_select_all_callback (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    edit_select_all_callback (NULL, NULL);
+}
+
+void on_logging_start (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    logging_start (NULL, NULL);
+}
+
+void on_logging_pause_resume (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    logging_pause_resume ();
+}
+
+void on_logging_stop (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    logging_stop ();
+}
+
+void on_logging_clear (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    logging_clear ();
+}
+
+void on_config_port (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    Config_Port_Fenetre (NULL, NULL);
+}
+
+void on_config_terminal (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    Config_Terminal (NULL, NULL);
+}
+
+void on_config_macros (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    Config_macros (NULL, NULL);
+}
+
+void on_config_profile_select (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    select_config_callback (NULL, NULL);
+}
+
+void on_config_profile_save (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    save_config_callback (NULL, NULL);
+}
+
+void on_config_profile_delete (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    delete_config_callback (NULL, NULL);
+}
+
+void on_signals_send_break (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    signals_send_break_callback (NULL, NULL);
+}
+
+void on_signals_send_dtr (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    signals_toggle_DTR_callback (NULL, NULL);
+}
+
+void on_signals_send_rts (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    signals_toggle_RTS_callback (NULL, NULL);
+}
+
+void on_about (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    help_about_callback (NULL, NULL);
+}
+
+void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    GVariant *state;
+    g_warning ("==> on_action_toggle!");
+
+    /* Toggle the current state. */
+    state = g_action_get_state (G_ACTION (action));
+    g_action_change_state (G_ACTION (action),
+                           g_variant_new_boolean (!g_variant_get_boolean (state)));
+    g_variant_unref (state);
+}
+
+void on_local_echo_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    configure_echo(g_variant_get_boolean (parameter));
+    g_simple_action_set_state (action, parameter);
+}
+
+void on_crlf_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    crlfauto_on = g_variant_get_boolean (parameter);
+    configure_crlfauto (crlfauto_on);
+    g_simple_action_set_state (action, parameter);
+}
+
+void on_view_index_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    show_index = g_variant_get_boolean (parameter);
+    set_view(HEXADECIMAL_VIEW);
+    g_simple_action_set_state (action, parameter);
+}
+
+void on_view_send_hex_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    gboolean show_hex_view = g_variant_get_boolean (parameter);
+    if (show_hex_view) {
+        gtk_widget_show (GTK_WIDGET (Hex_Box));
+    } else {
+        gtk_widget_hide (GTK_WIDGET (Hex_Box));
+    }
+
+    g_simple_action_set_state (action, parameter);
+}
+
+void on_action_radio (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    g_action_change_state (G_ACTION (action), parameter);
+}
+
+static void on_view_ascii_hex_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    gsize length = 0;
+    const char *value = g_variant_get_string (parameter, &length);
+    if (strncmp (value, "hex", length) == 0) {
+        set_view (HEXADECIMAL_VIEW);
+    } else if (strncmp (value, "ascii", length) == 0) {
+        set_view (ASCII_VIEW);
+    }
+
+    g_simple_action_set_state (action, parameter);
+}
+
+static void on_view_hex_width_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    gsize length = 0;
+    const char *value = g_variant_get_string (parameter, &length);
+    gint current_value = atoi (value);
+
+    bytes_per_line = current_value;
+    set_view (HEXADECIMAL_VIEW);
+
+    g_simple_action_set_state (action, parameter);
 }

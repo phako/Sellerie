@@ -100,15 +100,15 @@
       <section>
         <item>
           <attribute name="label" translatable="yes">_Load configuration…</attribute>
-          <attribute name="action">main.profile.select</attribute>
+          <attribute name="action">main.config.profile.select</attribute>
         </item>
         <item>
           <attribute name="label" translatable="yes">_Save configuration…</attribute>
-          <attribute name="action">main.profile.save</attribute>
+          <attribute name="action">main.config.profile.save</attribute>
         </item>
         <item>
           <attribute name="label" translatable="yes">_Delete configuration…</attribute>
-          <attribute name="action">main.profile.delete</attribute>
+          <attribute name="action">main.config.profile.delete</attribute>
         </item>
       </section>
     </submenu>

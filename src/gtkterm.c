@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
   create_main_window();
 
-  if(read_command_line(argc, argv, NULL) < 0)
+  if(read_command_line(argc, argv) < 0)
     {
       delete_buffer();
       exit(1);

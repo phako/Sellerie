@@ -30,7 +30,7 @@
 /*                                                                     */
 /***********************************************************************/
 
-#include "serie.h"
+#include "serial-port.h"
 #include "term_config.h"
 #include "widgets.h"
 #include "parsecfg.h"
@@ -55,6 +55,8 @@
 #endif
 
 #define DEVICE_NUMBERS_TO_CHECK 12
+
+extern GtSerialPort *serial_port;
 
 static const gchar *devices_to_check[] = {
     "/dev/ttyS%d",
@@ -345,9 +347,9 @@ gint Lis_Config(GtkBuilder *builder)
     else
         config.car = -1;
 
-    Config_port();
+    gt_serial_port_config (serial_port);
 
-    message = get_port_string();
+    message = gt_serial_port_to_string (serial_port);
     gt_main_window_set_status (message);
     Set_window_title(message);
     g_free(message);
@@ -649,10 +651,10 @@ void load_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Selectio
 	    gtk_tree_model_get(GTK_TREE_MODEL(Modele), &iter, 0, (gint *)&txt, -1);
 	    Load_configuration_from_file(txt);
 	    Verify_configuration();
-	    Config_port();
+        gt_serial_port_config (serial_port);
 	    add_shortcuts();
 
-	    message = get_port_string();
+	    message = gt_serial_port_to_string (serial_port);
         gt_main_window_set_status (message);
 	    Set_window_title(message);
 	    g_free(message);

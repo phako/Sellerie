@@ -23,7 +23,9 @@
 
 #include "buffer.h"
 #include "i18n.h"
-#include "serie.h"
+
+/* For BUFFER_RECEPTION */
+#include "serial-port.h"
 
 #include <stdlib.h>
 #include <string.h>

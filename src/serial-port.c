@@ -23,13 +23,13 @@
 #include <config.h>
 #endif
 
+#include "serial-port.h"
+
 #include "term_config.h"
-#include "serie.h"
 #include "widgets.h"
 #include "fichier.h"
 #include "buffer.h"
 #include "i18n.h"
-#include "serie.h"
 
 #include <termios.h>
 #include <fcntl.h>
@@ -55,24 +55,39 @@
 
 #define P_LOCK "/var/lock/lockdev"  /* lock file location */
 
-static struct termios termios_save;
-static int serial_port_fd = -1;
+typedef struct {
+    struct termios termios_save;
+    int serial_port_fd;
 
-static guint callback_handler_in, callback_handler_err;
-static gboolean callback_activated = FALSE;
-static char lockfile[128] = {0};
+    guint callback_handler_in;
+    guint callback_handler_err;
+    gboolean callback_activated;
+    char lockfile[128];
+} GtSerialPortPrivate;
+
+struct _GtSerialPort {
+    GObject parent_instance;
+};
+
+struct _GtSerialPortClass {
+    GObjectClass parent_class;
+};
+
+G_DEFINE_TYPE_WITH_PRIVATE (GtSerialPort, gt_serial_port, G_TYPE_OBJECT)
+
 
 extern struct configuration_port config;
 
 /* Local functions prototype */
-static gint create_lockfile(char *);
-static void remove_lockfile(void);
-static void Ferme_Port(void);
-static void Ouvre_Port(char *);
+static gint gt_serial_port_lock (GtSerialPort *, char *);
+static void gt_serial_port_unlock (GtSerialPort *);
+static void gt_serial_port_close (GtSerialPort *);
 static gboolean Lis_port(GIOChannel *src, GIOCondition cond, gpointer data);
 
 gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
 {
+    GtSerialPort *self = GT_SERIAL_PORT (data);
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     gint bytes_read;
     static gchar c[BUFFER_RECEPTION];
     gint i;
@@ -81,7 +96,7 @@ gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
 
     while(bytes_read == BUFFER_RECEPTION)
     {
-	bytes_read = read(serial_port_fd, c, BUFFER_RECEPTION);
+	bytes_read = read(priv->serial_port_fd, c, BUFFER_RECEPTION);
 	if(bytes_read > 0)
 	{
 	    put_chars(c, bytes_read, config.crlfauto);
@@ -113,15 +128,17 @@ gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
 
 static gboolean io_err(GIOChannel* src, GIOCondition cond, gpointer data)
 {
-    Ferme_Port();
+    gt_serial_port_close (GT_SERIAL_PORT (data));
+
     return TRUE;
 }
 
-int Send_chars(char *string, int length)
+int gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
 {
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     int bytes_written = 0;
 
-    if(serial_port_fd == -1)
+    if(priv->serial_port_fd == -1)
         return 0;
 
     /* Normally it never happens, but it is better not to segfault ;) */
@@ -132,46 +149,40 @@ int Send_chars(char *string, int length)
     if( config.flux==3 )
     {
 	/* set RTS (start to send) */
-	Set_signals( 1 );
+        gt_serial_port_set_signals (self, 1);
 	if( config.rs485_rts_time_before_transmit>0 )
 	    usleep(config.rs485_rts_time_before_transmit*1000);
     }
 
-    bytes_written = write(serial_port_fd, string, length);
+    bytes_written = write(priv->serial_port_fd, string, length);
 
     /* RS485 half-duplex mode ? */
     if( config.flux==3 )
     {
 	/* wait all chars are send */
-	tcdrain( serial_port_fd );
+	tcdrain( priv->serial_port_fd );
 	if( config.rs485_rts_time_after_transmit>0 )
 	    usleep(config.rs485_rts_time_after_transmit*1000);
 	/* reset RTS (end of send, now receiving back) */
-	Set_signals( 1 );
+	gt_serial_port_set_signals(self, 1 );
     }
 
     return bytes_written;
 }
 
-void Ouvre_Port(char *port)
+gboolean gt_serial_port_config (GtSerialPort *self)
 {
-    serial_port_fd = open(port, O_RDWR | O_NOCTTY | O_NDELAY);
-}
-
-gboolean Config_port(void)
-{
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     struct termios termios_p;
     gchar *msg = NULL;
 
-    Ferme_Port();
-    remove_lockfile();
+    gt_serial_port_close (self);
+    gt_serial_port_unlock (self);
 
-    Ouvre_Port(config.port);
-
-
-    if(serial_port_fd == -1)
+    priv->serial_port_fd = open (config.port, O_RDWR | O_NOCTTY | O_NDELAY);
+    if(priv->serial_port_fd == -1)
     {
-        msg = g_strdup_printf(_("Cannot open %s: %s\n"), 
+        msg = g_strdup_printf(_("Cannot open %s: %s\n"),
                               config.port, strerror_utf8(errno));
         show_message(msg, MSG_ERR);
         g_free(msg);
@@ -179,9 +190,9 @@ gboolean Config_port(void)
         return FALSE;
     }
 
-    if(create_lockfile(config.port) == -1)
+    if(gt_serial_port_lock (self, config.port) == -1)
     {
-        Ferme_Port();
+        gt_serial_port_close (self);
         msg = g_strdup_printf(_("Cannot open create lockfile\n"));
         show_message(msg, MSG_ERR);
         g_free(msg);
@@ -189,8 +200,8 @@ gboolean Config_port(void)
         return FALSE;
     }
 
-    tcgetattr(serial_port_fd, &termios_p);
-    memcpy(&termios_save, &termios_p, sizeof(struct termios));
+    tcgetattr(priv->serial_port_fd, &termios_p);
+    memcpy(&(priv->termios_save), &termios_p, sizeof(struct termios));
 
     switch(config.vitesse)
     {
@@ -227,7 +238,7 @@ gboolean Config_port(void)
 
 	default:
 #ifdef HAVE_LINUX_SERIAL_H
-	    set_custom_speed(config.vitesse, serial_port_fd);
+        gt_serial_port_set_custom_speed (self, config.vitesse);
 	    termios_p.c_cflag |= B38400;
 #else
         Ferme_Port();
@@ -286,65 +297,67 @@ gboolean Config_port(void)
     termios_p.c_lflag = 0;
     termios_p.c_cc[VTIME] = 0;
     termios_p.c_cc[VMIN] = 1;
-    tcsetattr(serial_port_fd, TCSANOW, &termios_p);
-    tcflush(serial_port_fd, TCOFLUSH);
-    tcflush(serial_port_fd, TCIFLUSH);
+    tcsetattr(priv->serial_port_fd, TCSANOW, &termios_p);
+    tcflush(priv->serial_port_fd, TCOFLUSH);
+    tcflush(priv->serial_port_fd, TCIFLUSH);
 
-    callback_handler_in = g_io_add_watch_full(g_io_channel_unix_new(serial_port_fd),
+    priv->callback_handler_in = g_io_add_watch_full(g_io_channel_unix_new(priv->serial_port_fd),
 					   10,
-					   G_IO_IN, 
-					   (GIOFunc)Lis_port, 
-					   NULL, NULL);
+					   G_IO_IN,
+					   (GIOFunc)Lis_port,
+					   self, NULL);
 
-    callback_handler_err = g_io_add_watch_full(g_io_channel_unix_new(serial_port_fd),
+    priv->callback_handler_err = g_io_add_watch_full(g_io_channel_unix_new(priv->serial_port_fd),
 					   10,
-					   G_IO_ERR, 
-					   (GIOFunc)io_err, 
-					   NULL, NULL);
+					   G_IO_ERR,
+					   (GIOFunc)io_err,
+					   self, NULL);
 
-    callback_activated = TRUE;
+    priv->callback_activated = TRUE;
 
     Set_local_echo(config.echo);
 
     return TRUE;
 }
 
-void configure_echo(gboolean echo)
+void gt_serial_port_set_local_echo(GtSerialPort *self, gboolean echo)
 {
     config.echo = echo;
 }
 
-void configure_crlfauto(gboolean crlfauto)
+void gt_serial_port_set_crlfauto(GtSerialPort *self, gboolean crlfauto)
 {
     config.crlfauto = crlfauto;
 }
 
-void Ferme_Port(void)
+void gt_serial_port_close (GtSerialPort *self)
 {
-    if(serial_port_fd != -1)
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+    if(priv->serial_port_fd != -1)
     {
-	if(callback_activated == TRUE)
+	if(priv->callback_activated == TRUE)
 	{
-	    g_source_remove(callback_handler_in);
-	    g_source_remove(callback_handler_err);
-	    callback_activated = FALSE;
+	    g_source_remove(priv->callback_handler_in);
+	    g_source_remove(priv->callback_handler_err);
+	    priv->callback_activated = FALSE;
 	}
-	tcsetattr(serial_port_fd, TCSANOW, &termios_save);
-	tcflush(serial_port_fd, TCOFLUSH);
-	tcflush(serial_port_fd, TCIFLUSH);
-	close(serial_port_fd);
-	serial_port_fd = -1;
+	tcsetattr(priv->serial_port_fd, TCSANOW, &(priv->termios_save));
+	tcflush(priv->serial_port_fd, TCOFLUSH);
+	tcflush(priv->serial_port_fd, TCIFLUSH);
+	close(priv->serial_port_fd);
+	priv->serial_port_fd = -1;
     }
 }
 
-void Set_signals(guint param)
+void gt_serial_port_set_signals(GtSerialPort *self, guint param)
 {
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     int stat_;
 
-    if(serial_port_fd == -1)
+    if(priv->serial_port_fd == -1)
 	return;
 
-    if(ioctl(serial_port_fd, TIOCMGET, &stat_) == -1)
+    if(ioctl(priv->serial_port_fd, TIOCMGET, &stat_) == -1)
     {
 	i18n_perror(_("Control signals read"));
 	return;
@@ -357,7 +370,7 @@ void Set_signals(guint param)
 	    stat_ &= ~TIOCM_DTR;
 	else
 	    stat_ |= TIOCM_DTR;
-	if(ioctl(serial_port_fd, TIOCMSET, &stat_) == -1)
+	if(ioctl(priv->serial_port_fd, TIOCMSET, &stat_) == -1)
 	    i18n_perror(_("DTR write"));
     }
     /* RTS */
@@ -367,25 +380,26 @@ void Set_signals(guint param)
 	    stat_ &= ~TIOCM_RTS;
 	else
 	    stat_ |= TIOCM_RTS;
-	if(ioctl(serial_port_fd, TIOCMSET, &stat_) == -1)
+	if(ioctl(priv->serial_port_fd, TIOCMSET, &stat_) == -1)
 	    i18n_perror(_("RTS write"));
     }
 }
 
-int lis_sig(void)
+int gt_serial_port_read_signals (GtSerialPort *self)
 {
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     static int stat = 0;
     int stat_read;
 
   if ( config.flux==3 )
   {
     //reset RTS (default = receive)
-    Set_signals( 1 );
+    gt_serial_port_set_signals (self, 1);
   }
 
-    if(serial_port_fd != -1)
+    if (priv->serial_port_fd != -1)
     {
-	if(ioctl(serial_port_fd, TIOCMGET, &stat_read) == -1)
+	if(ioctl(priv->serial_port_fd, TIOCMGET, &stat_read) == -1)
 	{
             /* Ignore EINVAL, as some serial ports
 	       genuinely lack these lines */
@@ -393,7 +407,7 @@ int lis_sig(void)
 	    if (errno != EINVAL)
 	    {
 		i18n_perror(_("Control signals read"));
-		Ferme_Port();
+        gt_serial_port_close (self);
 	    }
 
 	    return -2;
@@ -435,8 +449,9 @@ static char *mbasename(char *s, char *res, int reslen)
     return res;
 }
 
-gint create_lockfile(char *port)
+gint gt_serial_port_lock (GtSerialPort *self, char *port)
 {
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     char buf[128];
     char *username;
     struct stat stt;
@@ -453,11 +468,11 @@ gint create_lockfile(char *port)
 
     /* First see if the lock file directory is present. */
     if(P_LOCK[0] && stat(P_LOCK, &stt) == 0)
-	snprintf(lockfile, sizeof(lockfile), "%s/LCK..%s", P_LOCK, mbasename(port, buf, sizeof(buf)));
+	snprintf(priv->lockfile, sizeof(priv->lockfile), "%s/LCK..%s", P_LOCK, mbasename(port, buf, sizeof(buf)));
     else
-	lockfile[0] = 0;
+	priv->lockfile[0] = 0;
 
-    if(lockfile[0] && (fd = open(lockfile, O_RDONLY)) >= 0)
+    if(priv->lockfile[0] && (fd = open(priv->lockfile, O_RDONLY)) >= 0)
     {
 	n = read(fd, buf, 127);
 	close(fd);
@@ -476,7 +491,7 @@ gint create_lockfile(char *port)
 	    {
 		i18n_fprintf(stderr, _("Lockfile is stale. Overriding it..\n"));
 		sleep(1);
-		unlink(lockfile);
+		unlink(priv->lockfile);
 	    }
 	    else
 		n = 0;
@@ -485,23 +500,23 @@ gint create_lockfile(char *port)
 	if(n == 0)
 	{
 	    i18n_fprintf(stderr, _("Device %s is locked.\n"), port);
-	    lockfile[0] = 0;
+	    priv->lockfile[0] = 0;
 	    return -1;
 	}
     }
 
-    if(lockfile[0])
+    if(priv->lockfile[0])
     {
 	/* Create lockfile compatible with UUCP-1.2 */
 	mask = umask(022);
-	if((fd = open(lockfile, O_WRONLY | O_CREAT | O_EXCL, 0666)) < 0)
+	if((fd = open(priv->lockfile, O_WRONLY | O_CREAT | O_EXCL, 0666)) < 0)
 	{
 	    i18n_fprintf(stderr, _("Cannot create lockfile. Sorry.\n"));
-	    lockfile[0] = 0;
+	    priv->lockfile[0] = 0;
 	    return -1;
         }
 	(void)umask(mask);
-	res = chown(lockfile, real_uid, real_gid);
+	res = chown(priv->lockfile, real_uid, real_gid);
       if (res < 0)
         i18n_fprintf(stderr, "Fail");
 
@@ -515,33 +530,37 @@ gint create_lockfile(char *port)
     return 0;
 }
 
-void remove_lockfile(void)
+void gt_serial_port_unlock (GtSerialPort *self)
 {
-    if(lockfile[0])
-	unlink(lockfile);
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    if(priv->lockfile[0])
+        unlink(priv->lockfile);
 }
 
-void Close_port_and_remove_lockfile(void)
+void gt_serial_port_close_and_unlock (GtSerialPort *self)
 {
-    Ferme_Port();
-    remove_lockfile();
+    gt_serial_port_close (self);
+    gt_serial_port_unlock (self);
 }
 
-void sendbreak(void)
+void gt_serial_port_send_brk (GtSerialPort *self)
 {
-    if(serial_port_fd == -1)
-	return;
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    if (priv->serial_port_fd == -1)
+        return;
     else
-	tcsendbreak(serial_port_fd, 0);
+        tcsendbreak(priv->serial_port_fd, 0);
 }
 
 #ifdef HAVE_LINUX_SERIAL_H
-gint set_custom_speed(int speed, int port_fd)
+void gt_serial_port_set_custom_speed(GtSerialPort *self, int speed)
 {
-
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     struct serial_struct ser;
 
-    ioctl(port_fd, TIOCGSERIAL, &ser);
+    ioctl(priv->serial_port_fd, TIOCGSERIAL, &ser);
     ser.custom_divisor = ser.baud_base / speed;
     if(!(ser.custom_divisor))
 	ser.custom_divisor = 1;
@@ -549,18 +568,17 @@ gint set_custom_speed(int speed, int port_fd)
     ser.flags &= ~ASYNC_SPD_MASK;
     ser.flags |= ASYNC_SPD_CUST;
 
-    ioctl(port_fd, TIOCSSERIAL, &ser);
-
-    return 0;
+    ioctl(priv->serial_port_fd, TIOCSSERIAL, &ser);
 }
 #endif
 
-gchar* get_port_string(void)
+gchar* gt_serial_port_to_string (GtSerialPort *self)
 {
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     gchar* msg;
     gchar parity;
 
-    if(serial_port_fd == -1)
+    if(priv->serial_port_fd == -1)
     {
 	msg = g_strdup(_("No open port"));
     } else {
@@ -589,11 +607,32 @@ gchar* get_port_string(void)
 			      config.stops
 			      );
     }
-    
+
     return msg;
 }
 
-int gt_serial_port_get_fd (void)
+int gt_serial_port_get_fd (GtSerialPort *self)
 {
-    return serial_port_fd;
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    return priv->serial_port_fd;
+}
+
+static void
+gt_serial_port_class_init (GtSerialPortClass *klass)
+{
+}
+
+static void
+gt_serial_port_init (GtSerialPort *self)
+{
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    priv->serial_port_fd = -1;
+}
+
+GtSerialPort *
+gt_serial_port_new (void)
+{
+    return GT_SERIAL_PORT (g_object_new (GT_TYPE_SERIAL_PORT, NULL));
 }

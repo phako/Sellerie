@@ -20,7 +20,7 @@
 #endif
 
 #include "widgets.h"
-#include "serie.h"
+#include "serial-port.h"
 #include "term_config.h"
 #include "cmdline.h"
 #include "parsecfg.h"
@@ -33,10 +33,14 @@
 #include <gdk/gdk.h>
 #include <glib/gi18n.h>
 
+GtSerialPort *serial_port;
+
 int main(int argc, char *argv[])
 {
   gchar *message;
   char *config_file;
+
+  serial_port = gt_serial_port_new ();
 
   config_file = g_strdup_printf("%s/.gtktermrc", getenv("HOME"));
   gt_config_set_file_path (config_file);
@@ -57,9 +61,9 @@ int main(int argc, char *argv[])
       exit(1);
     }
 
-  Config_port();
+  gt_serial_port_config (serial_port);
 
-  message = get_port_string();
+  message = gt_serial_port_to_string (serial_port);
   Set_window_title(message);
   gt_main_window_set_status (message);
   g_free(message);
@@ -72,7 +76,8 @@ int main(int argc, char *argv[])
 
   delete_buffer();
 
-  Close_port_and_remove_lockfile();
+  gt_serial_port_close_and_unlock (serial_port);
+  g_object_unref (serial_port);
 
   return 0;
 }

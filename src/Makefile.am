@@ -27,9 +27,7 @@ gtkterm_SOURCES = \
     term_config.c \
     fichier.c \
     gtkterm.c \
-    serie.c \
     fichier.h \
-    serie.h \
     widgets.c \
     widgets.h \
     cmdline.c \
@@ -44,7 +42,9 @@ gtkterm_SOURCES = \
     i18n.h \
     auto_config.h \
     logging.c \
-    logging.h 
+    logging.h  \
+	serial-port.c \
+	serial-port.h
 
 gtkterm_LDFLAGS = $(WARN_LDFLAGS) -export-dynamic
 gtkterm_LDADD = $(gtk_LIBS) $(vte_LIBS)

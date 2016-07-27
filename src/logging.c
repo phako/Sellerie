@@ -19,7 +19,6 @@
 #endif
 
 #include "widgets.h"
-#include "serie.h"
 #include "buffer.h"
 #include "logging.h"
 

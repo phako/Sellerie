@@ -54,7 +54,7 @@
 
 #include "term_config.h"
 #include "fichier.h"
-#include "serie.h"
+#include "serial-port.h"
 #include "widgets.h"
 #include "buffer.h"
 #include "macros.h"
@@ -77,6 +77,8 @@
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 #include <vte/vte.h>
+
+extern GtSerialPort *serial_port;
 
 static guint id;
 static gboolean echo_on;
@@ -524,7 +526,7 @@ gint send_serial(gchar *string, gint len)
 {
   gint bytes_written;
 
-  bytes_written = Send_chars(string, len);
+  bytes_written = gt_serial_port_send_chars (serial_port, string, len);
   if(bytes_written > 0)
     {
       if(echo_on)
@@ -592,25 +594,25 @@ static void show_control_signals(int stat)
 
 void signals_send_break_callback(GtkAction *action, gpointer data)
 {
-  sendbreak();
+  gt_serial_port_send_brk (serial_port);
   Put_temp_message(_("Break signal sent!"), 800);
 }
 
 void signals_toggle_DTR_callback(GtkAction *action, gpointer data)
 {
-  Set_signals(0);
+  gt_serial_port_set_signals (serial_port, 0);
 }
 
 void signals_toggle_RTS_callback(GtkAction *action, gpointer data)
 {
-  Set_signals(1);
+  gt_serial_port_set_signals (serial_port, 1);
 }
 
 gboolean control_signals_read(void)
 {
   int state;
 
-  state = lis_sig();
+  state = gt_serial_port_read_signals (serial_port);
   if(state >= 0)
     show_control_signals(state);
 
@@ -884,13 +886,13 @@ void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user
 }
 
 void on_local_echo_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
-    configure_echo(g_variant_get_boolean (parameter));
+    gt_serial_port_set_local_echo (serial_port, g_variant_get_boolean (parameter));
     g_simple_action_set_state (action, parameter);
 }
 
 void on_crlf_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
     crlfauto_on = g_variant_get_boolean (parameter);
-    configure_crlfauto (crlfauto_on);
+    gt_serial_port_set_crlfauto (serial_port, crlfauto_on);
     g_simple_action_set_state (action, parameter);
 }
 

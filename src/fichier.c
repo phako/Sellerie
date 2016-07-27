@@ -27,7 +27,7 @@
 
 #include "term_config.h"
 #include "widgets.h"
-#include "serie.h"
+#include "serial-port.h"
 #include "buffer.h"
 #include "fichier.h"
 
@@ -43,6 +43,8 @@
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
+
+extern GtSerialPort *serial_port;
 
 /* Global variables */
 static gint nb_car;
@@ -259,7 +261,7 @@ void add_input(void)
         int fd = -1;
 
         input_running = TRUE;
-        fd = gt_serial_port_get_fd ();
+        fd = gt_serial_port_get_fd (serial_port);
         callback_handler = g_io_add_watch_full(g_io_channel_unix_new(fd),
                                                10,
                                                G_IO_OUT | G_IO_ERR,

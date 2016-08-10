@@ -41,31 +41,27 @@
 #include <glib/gi18n.h>
 
 /* Global variables */
-gint nb_car;
-gint car_written;
-gint current_buffer_position;
-gint bytes_read;
-GtkAdjustment *adj;
-GtkWidget *ProgressBar;
-gint Fichier;
-guint callback_handler;
-gchar *fic_defaut = NULL;
-GtkWidget *Window;
-gboolean waiting_for_char = FALSE;
-gboolean waiting_for_timer = FALSE;
-gboolean input_running = FALSE;
-gchar *str = NULL;
-FILE *Fic;
+static gint nb_car;
+static gint car_written;
+static gint current_buffer_position;
+static gint bytes_read;
+static GtkWidget *ProgressBar;
+static gint Fichier;
+static guint callback_handler;
+static gchar *fic_defaut = NULL;
+static GtkWidget *Window;
+static gboolean waiting_for_char = FALSE;
+static gboolean waiting_for_timer = FALSE;
+static gboolean input_running = FALSE;
+static gchar *str = NULL;
+static FILE *Fic;
 
 /* Local functions prototype */
-gint Envoie_fichier(GtkFileChooser *FS);
-gint Sauve_fichier(GtkFileChooser *FS);
-gint close_all(void);
-void ecriture(gpointer data, gint source);
-gboolean timer(gpointer pointer);
-gboolean idle(gpointer pointer);
-void remove_input(void);
-void write_file(char *, unsigned int);
+static gint close_all(void);
+static void ecriture(gpointer data, gint source);
+static gboolean timer(gpointer pointer);
+static void remove_input(void);
+static void write_file(char *, unsigned int);
 
 extern struct configuration_port config;
 
@@ -147,7 +143,7 @@ void send_raw_file(GtkAction *action, gpointer data)
 	gtk_widget_destroy(file_select);
 }
 
-void ecriture(gpointer data, gint source)
+static void ecriture(gpointer data, gint source)
 {
     static gchar buffer[BUFFER_EMISSION];
     static gchar *current_buffer;
@@ -233,7 +229,7 @@ void ecriture(gpointer data, gint source)
     return;
 }
 
-gboolean timer(gpointer pointer)
+static gboolean timer(gpointer pointer)
 {
     if(waiting_for_timer == TRUE)
     {
@@ -260,7 +256,7 @@ void add_input(void)
     }
 }
 
-void remove_input(void)
+static void remove_input(void)
 {
     if(input_running == TRUE)
     {
@@ -269,7 +265,7 @@ void remove_input(void)
     }
 }
 
-gint close_all(void)
+static gint close_all(void)
 {
     remove_input();
     waiting_for_char = FALSE;
@@ -281,7 +277,7 @@ gint close_all(void)
     return FALSE;
 }
 
-void write_file(char *data, unsigned int size)
+static void write_file(char *data, unsigned int size)
 {
     fwrite(data, size, 1, Fic);
 }
@@ -337,3 +333,24 @@ void save_raw_file(GtkAction *action, gpointer data)
 	gtk_widget_destroy(file_select);
 }
 
+gboolean gt_file_get_waiting_for_char (void)
+{
+  return waiting_for_char;
+}
+
+void gt_file_set_waiting_for_char (gboolean waiting)
+{
+  waiting_for_char = waiting;
+}
+
+const char *gt_file_get_default (void)
+{
+  return fic_defaut;
+}
+
+void gt_file_set_default (const char *file)
+{
+  g_free (fic_defaut);
+
+  fic_defaut = g_strdup (file);
+}

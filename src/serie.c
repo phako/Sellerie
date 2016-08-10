@@ -81,14 +81,14 @@ gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
 	{
 	    put_chars(c, bytes_read, config.crlfauto);
 
-	    if(config.car != -1 && waiting_for_char == TRUE)
+	    if(config.car != -1 && gt_file_get_waiting_for_char() == TRUE)
 	    {
 		i = 0;
 		while(i < bytes_read)
 		{
 		    if(c[i] == config.car)
 		    {
-			waiting_for_char = FALSE;
+			gt_file_set_waiting_for_char (FALSE);
 			add_input();
 			i = bytes_read;
 		    }

@@ -15,8 +15,6 @@
 #ifndef SERIE_H_
 #define SERIE_H_
 
-extern int serial_port_fd;
-
 int Send_chars(char *, int);
 gboolean Config_port(void);
 void Set_signals(guint);
@@ -27,6 +25,7 @@ void configure_crlfauto(gboolean);
 void sendbreak(void);
 gint set_custom_speed(int, int);
 gchar* get_port_string(void);
+gint gt_serial_port_get_fd (void);
 
 
 #define BUFFER_RECEPTION 8192

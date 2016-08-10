@@ -247,12 +247,15 @@ void add_input(void)
 {
     if(input_running == FALSE)
     {
-	input_running = TRUE;
-    callback_handler = g_io_add_watch_full(g_io_channel_unix_new(serial_port_fd),
-					   10,
-					   G_IO_OUT, 
-					   (GIOFunc)ecriture, 
-					   NULL, NULL);
+        int fd = -1;
+
+        input_running = TRUE;
+        fd = gt_serial_port_get_fd ();
+        callback_handler = g_io_add_watch_full(g_io_channel_unix_new(fd),
+                                               10,
+                                               G_IO_OUT,
+                                               (GIOFunc)ecriture,
+                                               NULL, NULL);
 
     }
 }

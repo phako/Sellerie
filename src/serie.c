@@ -50,21 +50,21 @@
 #endif
 
 
-struct termios termios_save;
-int serial_port_fd = -1;
+static struct termios termios_save;
+static int serial_port_fd = -1;
 
-guint callback_handler_in, callback_handler_err;
-gboolean callback_activated = FALSE;
-char lockfile[128] = {0};
+static guint callback_handler_in, callback_handler_err;
+static gboolean callback_activated = FALSE;
+static char lockfile[128] = {0};
 
 extern struct configuration_port config;
 
 /* Local functions prototype */
-gint create_lockfile(char *);
-void remove_lockfile(void);
-void Ferme_Port(void);
-void Ouvre_Port(char *);
-gboolean Lis_port(GIOChannel *src, GIOCondition cond, gpointer data);
+static gint create_lockfile(char *);
+static void remove_lockfile(void);
+static void Ferme_Port(void);
+static void Ouvre_Port(char *);
+static gboolean Lis_port(GIOChannel *src, GIOCondition cond, gpointer data);
 
 gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
 {
@@ -586,4 +586,9 @@ gchar* get_port_string(void)
     }
     
     return msg;
+}
+
+int gt_serial_port_get_fd (void)
+{
+    return serial_port_fd;
 }

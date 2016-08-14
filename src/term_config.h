@@ -45,17 +45,6 @@ struct configuration_port {
   gboolean crlfauto;         // line feed auto
 };
 
-typedef struct {
-  gboolean show_cursor;
-  gint rows;
-  gint columns;
-  gint scrollback;
-  gboolean visual_bell;
-  GdkRGBA foreground_color;
-  GdkRGBA background_color;
-  PangoFontDescription *font;
-} display_config_t;
-
 
 #define DEFAULT_FONT "Monospace, 12"
 #define DEFAULT_SCROLLBACK 200
@@ -71,6 +60,7 @@ typedef struct {
 #define DEFAULT_DELAY_RS485 30
 #define DEFAULT_ECHO FALSE
 
-extern gchar *config_file;
+const char *gt_config_get_file_path (void);
+void gt_config_set_file_path (const char *path);
 
 #endif

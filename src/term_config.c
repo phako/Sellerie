@@ -53,7 +53,7 @@
 
 #define DEVICE_NUMBERS_TO_CHECK 12
 
-const gchar *devices_to_check[] = {
+static const gchar *devices_to_check[] = {
     "/dev/ttyS%d",
     "/dev/tts/%d",
     "/dev/ttyUSB%d",
@@ -63,35 +63,35 @@ const gchar *devices_to_check[] = {
 };
 
 /* Configuration file variables */
-gchar **port;
-gint *speed;
-gint *bits;
-gint *stopbits;
-gchar **parity;
-gchar **flow;
-gint *wait_delay;
-gint *wait_char;
-gint *rts_time_before_tx;
-gint *rts_time_after_tx;
-gint *echo;
-gint *crlfauto;
-cfgList **macro_list = NULL;
-gchar **font;
+static gchar **port;
+static gint *speed;
+static gint *bits;
+static gint *stopbits;
+static gchar **parity;
+static gchar **flow;
+static gint *wait_delay;
+static gint *wait_char;
+static gint *rts_time_before_tx;
+static gint *rts_time_after_tx;
+static gint *echo;
+static gint *crlfauto;
+static cfgList **macro_list = NULL;
+static gchar **font;
 
-gint *show_cursor;
-gint *rows;
-gint *columns;
-gint *scrollback;
-gint *visual_bell;
-gint *foreground_red;
-gint *foreground_blue;
-gint *foreground_green;
-gint *background_red;
-gint *background_blue;
-gint *background_green;
+static gint *show_cursor;
+static gint *rows;
+static gint *columns;
+static gint *scrollback;
+static gint *visual_bell;
+static gint *foreground_red;
+static gint *foreground_blue;
+static gint *foreground_green;
+static gint *background_red;
+static gint *background_blue;
+static gint *background_green;
 
 
-cfgStruct cfg[] = {
+static cfgStruct cfg[] = {
     {"port", CFG_STRING, &port},
     {"speed", CFG_INT, &speed},
     {"bits", CFG_INT, &bits},
@@ -120,17 +120,29 @@ cfgStruct cfg[] = {
     {NULL, CFG_END, NULL}
 };
 
-gchar *config_file;
+static gchar *config_file = NULL;
 
 struct configuration_port config;
-display_config_t term_conf;
 
-GtkWidget *Entry;
+typedef struct {
+  gboolean show_cursor;
+  gint rows;
+  gint columns;
+  gint scrollback;
+  gboolean visual_bell;
+  GdkRGBA foreground_color;
+  GdkRGBA background_color;
+  PangoFontDescription *font;
+} display_config_t;
 
-gint Grise_Degrise(GtkWidget *bouton, gpointer pointeur);
-void read_font_button(GtkFontButton *fontButton);
-void Hard_default_configuration(void);
-void Copy_configuration(int);
+static display_config_t term_conf;
+
+static GtkWidget *Entry;
+
+static gint Grise_Degrise(GtkWidget *bouton, gpointer pointeur);
+static void read_font_button(GtkFontButton *fontButton);
+static void Hard_default_configuration(void);
+static void Copy_configuration(int);
 
 static void Select_config(gchar *, void *);
 static void Save_config_file(void);
@@ -141,8 +153,8 @@ static void really_save_config(GtkDialog *, gint, gpointer);
 static gint remove_section(gchar *, gchar *);
 static void Curseur_OnOff(GtkWidget *, gpointer);
 static void Selec_couleur(GdkRGBA *, gfloat, gfloat, gfloat);
-void config_fg_color(GtkWidget *button, gpointer data);
-void config_bg_color(GtkWidget *button, gpointer data);
+static void config_fg_color(GtkWidget *button, gpointer data);
+static void config_bg_color(GtkWidget *button, gpointer data);
 static void scrollback_set(GtkSpinButton *spin_button, gpointer data);
 
 extern GtkWidget *display;
@@ -1324,3 +1336,13 @@ invalid_input:
     g_signal_stop_emission_by_name(editable, "insert-text");
 }
 
+const char *gt_config_get_file_path (void)
+{
+    return config_file;
+}
+
+void gt_config_set_file_path (const char *path)
+{
+    g_free (config_file);
+    config_file = g_strdup (path);
+}

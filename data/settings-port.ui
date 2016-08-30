@@ -219,6 +219,7 @@
                     <property name="hexpand">True</property>
                     <property name="text" translatable="yes">1</property>
                     <property name="adjustment">adjustment2</property>
+                    <property name="numeric">True</property>
                     <property name="value">1</property>
                   </object>
                   <packing>
@@ -280,7 +281,8 @@
                     <property name="has_entry">True</property>
                     <child internal-child="entry">
                       <object class="GtkEntry">
-                        <property name="can_focus">False</property>
+                        <property name="can_focus">True</property>
+                        <property name="caps_lock_warning">False</property>
                       </object>
                     </child>
                   </object>
@@ -301,8 +303,8 @@
                     <property name="active_id">9600</property>
                     <child internal-child="entry">
                       <object class="GtkEntry">
-                        <property name="can_focus">False</property>
-                        <property name="input_purpose">digits</property>
+                        <property name="can_focus">True</property>
+                        <property name="input_purpose">number</property>
                       </object>
                     </child>
                   </object>

@@ -235,7 +235,8 @@ void Set_local_echo(gboolean echo)
   GVariant *value;
 
   group = gtk_widget_get_action_group (Fenetre, "main");
-  action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group), "view.hex-width"));
+  action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group),
+                            "config.logal-echo"));
 
   echo_on = echo;
 
@@ -254,7 +255,8 @@ void Set_crlfauto(gboolean crlfauto)
   GVariant *value;
 
   group = gtk_widget_get_action_group (Fenetre, "main");
-  action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group), "view.hex-width"));
+  action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group),
+              "config.crlf"));
 
   crlfauto_on = crlfauto;
 

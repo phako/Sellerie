@@ -31,11 +31,11 @@
             </child>
             <child>
               <object class="GtkButton" id="button3">
-                <property name="label">gtk-close</property>
+                <property name="label">_Close</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="use_stock">True</property>
+                <property name="use_underline">True</property>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -239,7 +239,7 @@
       </object>
     </child>
     <action-widgets>
-      <action-widget response="0">button3</action-widget>
+      <action-widget response="-7">button3</action-widget>
     </action-widgets>
   </object>
 </interface>

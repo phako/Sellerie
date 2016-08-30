@@ -224,6 +224,10 @@ void Config_Port_Fenetre(GtkAction *action, gpointer data)
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-baud-rate"));
     rate = g_strdup_printf ("%d", config.vitesse);
     entry = gtk_bin_get_child (GTK_BIN (combo));
+    g_signal_connect (G_OBJECT (entry),
+                      "insert-text",
+                      G_CALLBACK (check_text_input),
+                      isdigit);
 
     if (config.vitesse == 0) {
         gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), "9600");

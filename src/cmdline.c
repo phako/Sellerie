@@ -29,20 +29,6 @@
 #include <glib/gi18n.h>
 #include <glib.h>
 
-#define GTKTERM_ERROR gtkterm_error_quark ()
-
-static GQuark gtkterm_error_quark (void);
-
-static GQuark gtkterm_error_quark (void)
-{
-  return g_quark_from_static_string ("g-gtkterm-error-quark");
-}
-
-typedef enum _GtkTermError {
-  GTK_TERM_ERROR_PARITY,
-  GTK_TERM_ERROR_FLOW,
-} GtkTermError;
-
 extern struct configuration_port config;
 
 static gboolean on_parity_parse (const gchar *name,
@@ -62,7 +48,11 @@ static gboolean on_parity_parse (const gchar *name,
     return TRUE;
   }
 
-  g_set_error (error, GTKTERM_ERROR, GTK_TERM_ERROR_PARITY, "Invalid parity value (even, odd): %s", value);
+  g_set_error (error,
+               G_OPTION_ERROR,
+               G_OPTION_ERROR_FAILED,
+               "Invalid parity value (even, odd): %s",
+               value);
 
   return FALSE;
 }
@@ -100,7 +90,11 @@ static gboolean on_flow_parse (const gchar *name,
     return TRUE;
   }
 
-  g_set_error (error, GTKTERM_ERROR, GTK_TERM_ERROR_FLOW, "Invalid flow value (Xon, RTS, RS485): %s", value);
+  g_set_error (error,
+               G_OPTION_ERROR,
+               G_OPTION_ERROR_FAILED,
+               "Invalid flow value (Xon, RTS, RS485): %s",
+               value);
 
   return FALSE;
 }

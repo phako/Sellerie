@@ -636,10 +636,30 @@ gboolean control_signals_read(void)
   return TRUE;
 }
 
-void Set_status_message(gchar *msg)
+void gt_main_window_set_status (const char *msg)
 {
-  gtk_statusbar_pop(GTK_STATUSBAR(StatusBar), id);
-  gtk_statusbar_push(GTK_STATUSBAR(StatusBar), id, msg);
+    gt_main_window_pop_status ();
+    gt_main_window_push_status (msg);
+}
+
+void gt_main_window_push_status (const char *msg)
+{
+    gtk_statusbar_push (GTK_STATUSBAR (StatusBar), id, msg);
+}
+
+void gt_main_window_pop_status (void)
+{
+    gtk_statusbar_pop (GTK_STATUSBAR (StatusBar), id);
+}
+
+void gt_main_window_add_shortcut (guint key, GdkModifierType mod, GClosure *closure)
+{
+    gtk_accel_group_connect (shortcuts, key, mod, GTK_ACCEL_MASK, closure);
+}
+
+void gt_main_window_remove_shortcut (GClosure *closure)
+{
+    gtk_accel_group_disconnect (shortcuts, closure);
 }
 
 void Set_window_title(const gchar *msg)
@@ -778,12 +798,12 @@ void on_clear_buffer (GSimpleAction *action, GVariant *parameter, gpointer user_
 
 void on_send_raw_file (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    send_raw_file (NULL, NULL);
+    send_raw_file (GTK_WINDOW (Fenetre));
 }
 
 void on_save_raw_file (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    save_raw_file (NULL, NULL);
+    save_raw_file (GTK_WINDOW (Fenetre));
 }
 
 void on_edit_copy_callback (GSimpleAction *action, GVariant *parameter, gpointer user_data)
@@ -803,7 +823,7 @@ void on_edit_select_all_callback (GSimpleAction *action, GVariant *parameter, gp
 
 void on_logging_start (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    logging_start (NULL, NULL);
+    logging_start (GTK_WINDOW (Fenetre));
 }
 
 void on_logging_pause_resume (GSimpleAction *action, GVariant *parameter, gpointer user_data)

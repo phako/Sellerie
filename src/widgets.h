@@ -22,7 +22,13 @@
 #define HEXADECIMAL_VIEW 1
 
 void create_main_window(void);
-void Set_status_message(gchar *);
+
+void gt_main_window_set_status (const char *msg);
+void gt_main_window_push_status (const char *msg);
+void gt_main_window_pop_status (void);
+void gt_main_window_add_shortcut (guint key, GdkModifierType mod, GClosure *closure);
+void gt_main_window_remove_shortcut (GClosure *closure);
+
 void put_text(gchar *, guint);
 void put_hexadecimal(gchar *, guint);
 void Set_local_echo(gboolean);
@@ -36,11 +42,5 @@ void Set_crlfauto(gboolean crlfauto);
 
 void toggle_logging_pause_resume(gboolean currentlyLogging);
 void toggle_logging_sensitivity(gboolean currentlyLogging);
-
-extern GtkWidget *Fenetre;
-extern GtkWidget *StatusBar;
-extern guint id;
-extern GtkWidget *Text;
-extern GtkAccelGroup *shortcuts;
 
 #endif

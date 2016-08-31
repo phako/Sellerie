@@ -173,7 +173,7 @@ void add_shortcuts(void)
       macros[i].closure = g_cclosure_new_swap(G_CALLBACK(shortcut_callback), (gpointer)i, NULL);
       gtk_accelerator_parse(macros[i].shortcut, &acc_key, &mod);
       if(acc_key != 0)
-	gtk_accel_group_connect(shortcuts, acc_key, mod, GTK_ACCEL_MASK, macros[i].closure);
+          gt_main_window_add_shortcut (acc_key, mod, macros[i].closure);
       i++;
     }
 }
@@ -207,7 +207,7 @@ void remove_shortcuts(void)
 
   while(macros[i].shortcut != NULL)
     {
-      gtk_accel_group_disconnect(shortcuts, macros[i].closure);
+        gt_main_window_remove_shortcut (macros[i].closure);
       i++;
     }
 

@@ -65,12 +65,12 @@ static void write_file(char *, unsigned int);
 
 extern struct configuration_port config;
 
-void send_raw_file(GtkAction *action, gpointer data)
+void send_raw_file(GtkWindow *parent)
 {
 	GtkWidget *file_select;
 
 	file_select = gtk_file_chooser_dialog_new(_("Send RAW File"),
-	                                          GTK_WINDOW(Fenetre), 
+	                                          parent,
 	                                          GTK_FILE_CHOOSER_ACTION_OPEN, 
 	                                          _("_Cancel"), GTK_RESPONSE_CANCEL,
 	                                          _("_OK"), GTK_RESPONSE_ACCEPT,
@@ -103,8 +103,8 @@ void send_raw_file(GtkAction *action, gpointer data)
 
 			fic_defaut = g_strdup(fileName);
 			msg = g_strdup_printf(_("%s : transfer in progress..."), fileName);
+            gt_main_window_push_status (msg);
 
-			gtk_statusbar_push(GTK_STATUSBAR(StatusBar), id, msg);
 			car_written = 0;
 			current_buffer_position = 0;
 			bytes_read = 0;
@@ -270,7 +270,7 @@ static gint close_all(void)
     remove_input();
     waiting_for_char = FALSE;
     waiting_for_timer = FALSE;
-    gtk_statusbar_pop(GTK_STATUSBAR(StatusBar), id);
+    gt_main_window_pop_status ();
     close(Fichier);
     gtk_widget_destroy(Window);
 
@@ -282,12 +282,12 @@ static void write_file(char *data, unsigned int size)
     fwrite(data, size, 1, Fic);
 }
 
-void save_raw_file(GtkAction *action, gpointer data)
+void save_raw_file(GtkWindow *parent)
 {
 	GtkWidget *file_select;
 
 	file_select = gtk_file_chooser_dialog_new(_("Save RAW File"),
-	                                          GTK_WINDOW(Fenetre), 
+	                                          parent,
 	                                          GTK_FILE_CHOOSER_ACTION_SAVE, 
 	                                          _("_Cancel"), GTK_RESPONSE_CANCEL,
 	                                          _("_OK"), GTK_RESPONSE_ACCEPT,

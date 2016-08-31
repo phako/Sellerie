@@ -344,7 +344,7 @@ gint Lis_Config(GtkBuilder *builder)
     Config_port();
 
     message = get_port_string();
-    Set_status_message(message);
+    gt_main_window_set_status (message);
     Set_window_title(message);
     g_free(message);
 
@@ -605,7 +605,7 @@ void save_config(GtkDialog *dialog, gint response_id, GtkWidget *edit)
 			if(!strcmp(config_name, cfgSectionNumberToName(i)))
 			{
 				GtkWidget *message_dialog;
-				message_dialog = gtk_message_dialog_new_with_markup(GTK_WINDOW(Fenetre),
+				message_dialog = gtk_message_dialog_new_with_markup(GTK_WINDOW(dialog),
 				                     GTK_DIALOG_DESTROY_WITH_PARENT,
 				                     GTK_MESSAGE_QUESTION,
 				                     GTK_BUTTONS_NONE,
@@ -649,7 +649,7 @@ void load_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Selectio
 	    add_shortcuts();
 
 	    message = get_port_string();
-	    Set_status_message(message);
+        gt_main_window_set_status (message);
 	    Set_window_title(message);
 	    g_free(message);
 	}

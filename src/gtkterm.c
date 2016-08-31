@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 
   message = get_port_string();
   Set_window_title(message);
-  Set_status_message(message);
+  gt_main_window_set_status (message);
   g_free(message);
 
   add_shortcuts();

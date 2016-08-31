@@ -138,7 +138,7 @@ int read_command_line (int argc, char **argv)
     result = 0;
   }
 
-  g_object_unref (context);
+  g_option_context_free (context);
 
   return result;
 }

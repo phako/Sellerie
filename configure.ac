@@ -1,7 +1,7 @@
 # GtkTerm autoconf script
 
 AC_INIT([GtkTerm], [1.0], [https://fedorahosted.org/gtkterm])
-AM_INIT_AUTOMAKE([foreign -Wall -Wno-compat])
+AM_INIT_AUTOMAKE([foreign -Wall -Wno-portability])
 AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
 

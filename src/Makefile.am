@@ -38,7 +38,7 @@ gtkterm_SOURCES = \
     logging.c \
     logging.h 
 
-gtkterm_LDFLAGS = $(WARN_LDFLAGS)
+gtkterm_LDFLAGS = $(WARN_LDFLAGS) -export-dynamic
 gtkterm_LDADD = $(gtk_LIBS) $(vte_LIBS)
 
 CLEANFILES = *~

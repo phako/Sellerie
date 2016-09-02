@@ -23,7 +23,7 @@ typedef struct
 }
 macro_t;
 
-void Config_macros(GtkAction *action, gpointer data);
+void Config_macros(GtkWindow *parent);
 void remove_shortcuts(void);
 void add_shortcuts(void);
 void create_shortcuts(macro_t *, gint);

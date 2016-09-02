@@ -28,6 +28,11 @@
 #include <config.h>
 #include <glib/gi18n.h>
 
+void gt_macros_add_shortcut (GtkButton *button, gpointer pointer);
+void gt_macros_remove_shortcut (GtkButton *button, gpointer pointer);
+void gt_macros_save (GtkButton *button, gpointer pointer);
+void gt_macros_show_help (GtkButton *button, gpointer pointer);
+
 enum
   {
     COLUMN_SHORTCUT,
@@ -214,18 +219,10 @@ void remove_shortcuts(void)
   macros_destroy();
 }
 
-static GtkTreeModel *create_model(void)
+static GtkTreeModel *create_model(GtkListStore *store)
 {
   gint i = 0;
-  GtkListStore *store;
   GtkTreeIter iter;
-
-  /* create list store */
-  store = gtk_list_store_new (NUM_COLUMNS,
-			      G_TYPE_STRING,
-			      G_TYPE_STRING,
-			      G_TYPE_BOOLEAN,
-			      G_TYPE_BOOLEAN);
 
   /* add data to the list store */
   if(macros != NULL)
@@ -264,59 +261,29 @@ shortcut_edited (GtkCellRendererText *cell,
   return TRUE;
 }
 
-static void
-add_columns (GtkTreeView *treeview)
-{
-  GtkCellRenderer *renderer;
-  GtkTreeViewColumn *column;
-  GtkTreeModel *model = gtk_tree_view_get_model (treeview);
-
-  renderer = gtk_cell_renderer_text_new ();
-  column = gtk_tree_view_column_new_with_attributes (_("Shortcut"),
-						     renderer,
-						     "text",
-						     COLUMN_SHORTCUT,
-						     NULL);
-  gtk_tree_view_column_set_sort_column_id (column, COLUMN_SHORTCUT);
-  gtk_tree_view_append_column (treeview, column);
-
-  renderer = gtk_cell_renderer_text_new ();
-  g_signal_connect (renderer, "edited", G_CALLBACK(shortcut_edited), model);
-  column = gtk_tree_view_column_new_with_attributes ("Action", renderer, "text", COLUMN_ACTION, NULL);
-  g_object_set(G_OBJECT(renderer), "editable", TRUE, NULL);
-  gtk_tree_view_column_set_sort_column_id (column, COLUMN_ACTION);
-  gtk_tree_view_append_column (treeview, column);
-}
-
-static gint Add_shortcut(GtkWidget *button, gpointer pointer)
+void gt_macros_add_shortcut (GtkButton *button, gpointer pointer)
 {
   GtkTreeIter iter;
   GtkTreeModel *model = (GtkTreeModel *)pointer;
 
-
   gtk_list_store_append(GTK_LIST_STORE(model), &iter);
 
-  gtk_list_store_set(GTK_LIST_STORE(model), &iter, COLUMN_SHORTCUT, "None", -1);
-
-  return FALSE;
+  gtk_list_store_set(GTK_LIST_STORE(model), &iter, 0, NULL, 1, NULL, -1);
 }
 
-static gboolean Delete_shortcut(GtkWidget *button, gpointer pointer)
+void gt_macros_remove_shortcut (GtkButton *button, gpointer pointer)
 {
-  GtkTreeIter iter;
-  GtkTreeView *treeview = (GtkTreeView *)pointer;
-  GtkTreeModel *model = gtk_tree_view_get_model (treeview);
-  GtkTreeSelection *selection = gtk_tree_view_get_selection (treeview);
+    GtkTreeIter iter;
+    GtkTreeView *treeview = GTK_TREE_VIEW (pointer);
+    GtkTreeModel *model = gtk_tree_view_get_model (treeview);
+    GtkTreeSelection *selection = gtk_tree_view_get_selection (treeview);
 
-  if (gtk_tree_selection_get_selected (selection, NULL, &iter))
-    {
-      gtk_list_store_remove (GTK_LIST_STORE (model), &iter);
+    if (gtk_tree_selection_get_selected (selection, NULL, &iter)) {
+        gtk_list_store_remove (GTK_LIST_STORE (model), &iter);
     }
-
-  return FALSE;
 }
 
-static gboolean Save_shortcuts(GtkWidget *button, gpointer pointer)
+void gt_macros_save (GtkButton *button, gpointer pointer)
 {
   GtkTreeIter iter;
   GtkTreeView *treeview = (GtkTreeView *)pointer;
@@ -352,157 +319,135 @@ static gboolean Save_shortcuts(GtkWidget *button, gpointer pointer)
     }
 
   add_shortcuts();
-
-  return FALSE;
 }
 
-static gboolean key_pressed(GtkWidget *widget, GdkEventKey *key, gpointer pointer)
+void gt_macros_show_help (GtkButton *button, gpointer pointer)
 {
-  GtkTreeIter iter;
-  GtkTreeView *treeview = (GtkTreeView *)pointer;
-  GtkTreeModel *model = gtk_tree_view_get_model (treeview);
-  GtkTreeSelection *selection = gtk_tree_view_get_selection (treeview);
-  gchar *str = NULL;
+    GtkWidget *Dialog;
 
-  switch(key->keyval)
-    {
-    case GDK_KEY_Shift_L:
-    case GDK_KEY_Shift_R:
-    case GDK_KEY_Control_L:
-    case GDK_KEY_Control_R:
-    case GDK_KEY_Caps_Lock:
-    case GDK_KEY_Shift_Lock:
-    case GDK_KEY_Meta_L:
-    case GDK_KEY_Meta_R:
-    case GDK_KEY_Alt_L:
-    case GDK_KEY_Alt_R:
-    case GDK_KEY_Super_L:
-    case GDK_KEY_Super_R:
-    case GDK_KEY_Hyper_L:
-    case GDK_KEY_Hyper_R:
-    case GDK_KEY_Mode_switch:
-      return FALSE;
-    default:
-      break;
+    Dialog = gtk_message_dialog_new(GTK_WINDOW (pointer),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_INFO,
+            GTK_BUTTONS_CLOSE,
+            _("The \"action\" field of a macro is the data to be sent on the port. Text can be entered, but also special chars, like \\n, \\t, \\r, etc. You can also enter hexadecimal data preceded by a '\\'. The hexadecimal data should not begin with a letter (eg. use \\0FF and not \\FF)\nExamples :\n\t\"Hello\\n\" sends \"Hello\" followed by a Line Feed\n\t\"Hello\\0A\" does the same thing but the LF is entered in hexadecimal"));
+
+    gtk_dialog_run(GTK_DIALOG (Dialog));
+    gtk_widget_destroy(Dialog);
+}
+
+static void accel_set_func (GtkTreeViewColumn *tree_column,
+                            GtkCellRenderer   *cell,
+                            GtkTreeModel      *model,
+                            GtkTreeIter       *iter,
+                            gpointer           data)
+{
+    char *keycode;
+    guint keyval = 0;
+    GdkModifierType mask = 0;
+
+    gtk_tree_model_get (model, iter, 0, &keycode, -1);
+    if (keycode != NULL) {
+        gtk_accelerator_parse (keycode, &keyval, &mask);
     }
 
-  if(gtk_tree_selection_get_selected(selection, NULL, &iter))
-    {
-      str = gtk_accelerator_name(key->keyval, key->state & ~GDK_MOD2_MASK);
-      gtk_list_store_set(GTK_LIST_STORE (model), &iter, COLUMN_SHORTCUT, str, -1);
-      g_free(str);
+    g_object_set (cell,
+                  "visible", TRUE,
+                  "sensitive", TRUE,
+                  "editable", TRUE,
+                  "accel-key", keyval,
+                  "accel-mods", mask,
+                  NULL);
+    g_free (keycode);
+}
 
-      g_signal_handlers_disconnect_by_func(window, G_CALLBACK(key_pressed), pointer);
+static void
+accel_edited_callback (GtkCellRendererAccel *cell,
+                       gchar                *path_string,
+                       guint                 keyval,
+                       GdkModifierType       mask,
+                       guint                 hardware_keycode,
+                       GtkTreeView          *view)
+{
+    GtkTreeModel *model;
+    GtkTreePath *path;
+    GtkTreeIter iter;
+    char *name = NULL;
+
+    model = gtk_tree_view_get_model (view);
+
+    path = gtk_tree_path_new_from_string (path_string);
+    if (!path)
+        return;
+
+    if (!gtk_tree_model_get_iter (model, &iter, path)) {
+        gtk_tree_path_free (path);
+
+        return;
     }
-  return FALSE;
+    gtk_tree_path_free (path);
+
+    name = gtk_accelerator_name (keyval, mask);
+
+    gtk_list_store_set (GTK_LIST_STORE (model), &iter, 0, name, -1);
+    g_free (name);
 }
 
-
-static gboolean Capture_shortcut(GtkWidget *button, gpointer pointer)
+static void
+accel_cleared_callback (GtkCellRendererAccel *cell,
+                        gchar                *path_string,
+                        GtkTreeView          *view)
 {
-  g_signal_connect_after(window, "key_press_event", G_CALLBACK(key_pressed), pointer);
+    GtkTreeModel *model;
+    GtkTreePath *path;
+    GtkTreeIter iter;
 
-  return FALSE;
+    model = gtk_tree_view_get_model (view);
+
+    path = gtk_tree_path_new_from_string (path_string);
+    if (!path)
+        return;
+
+    if (!gtk_tree_model_get_iter (model, &iter, path)) {
+        gtk_tree_path_free (path);
+        return;
+    }
+    gtk_tree_path_free (path);
+
+    gtk_list_store_set (GTK_LIST_STORE (model), &iter, 0, NULL, -1);
 }
 
-static gboolean Help_screen(GtkWidget *button, gpointer pointer)
+void Config_macros(GtkWindow *parent)
 {
-  GtkWidget *Dialog;
+    GtkBuilder *builder = NULL;
+    GtkWidget *treeview = NULL;
+    GtkTreeModel *model = NULL;
+    GtkCellRenderer *renderer = NULL;
+    GtkTreeViewColumn *column = NULL;
 
-  Dialog = gtk_message_dialog_new(pointer,
-                                  GTK_DIALOG_DESTROY_WITH_PARENT,
-                                  GTK_MESSAGE_INFO,
-                                  GTK_BUTTONS_CLOSE,
-                                  _("The \"action\" field of a macro is the data to be sent on the port. Text can be entered, but also special chars, like \\n, \\t, \\r, etc. You can also enter hexadecimal data preceded by a '\\'. The hexadecimal data should not begin with a letter (eg. use \\0FF and not \\FF)\nExamples :\n\t\"Hello\\n\" sends \"Hello\" followed by a Line Feed\n\t\"Hello\\0A\" does the same thing but the LF is entered in hexadecimal"));
+    builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/macros.ui");
+    gtk_builder_connect_signals (builder, NULL);
+    window = GTK_WIDGET (gtk_builder_get_object (builder, "dialog-macros"));
+    gtk_window_set_transient_for (GTK_WINDOW (window), parent);
+    treeview = GTK_WIDGET (gtk_builder_get_object (builder, "treeview"));
+    model = gtk_tree_view_get_model (GTK_TREE_VIEW (treeview));
+    create_model (GTK_LIST_STORE (model));
+    renderer = GTK_CELL_RENDERER (gtk_builder_get_object (builder,
+                                                          "cellrenderer_action"));
+    g_signal_connect (renderer, "edited", G_CALLBACK (shortcut_edited), model);
 
-  gtk_dialog_run(GTK_DIALOG (Dialog));
-  gtk_widget_destroy(Dialog);
+    column = GTK_TREE_VIEW_COLUMN (gtk_builder_get_object (builder,
+                                                           "column_shortcut"));
+    renderer  = GTK_CELL_RENDERER (gtk_builder_get_object (builder,
+                                                           "cellrenderer_shortcut"));
+    gtk_tree_view_column_set_cell_data_func (column, renderer, accel_set_func, NULL, NULL);
 
-  return FALSE;
-}
+    g_signal_connect (renderer, "accel-edited",
+                      G_CALLBACK (accel_edited_callback), treeview);
+    g_signal_connect (renderer, "accel-cleared",
+                      G_CALLBACK (accel_cleared_callback), treeview);
 
 
-void Config_macros(GtkAction *action, gpointer data)
-{
-  GtkWidget *vbox, *hbox;
-  GtkWidget *sw;
-  GtkTreeModel *model;
-  GtkWidget *treeview;
-  GtkWidget *button;
-  GtkWidget *separator;
-
-  /* create window, etc */
-  window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-  gtk_window_set_title (GTK_WINDOW (window), _("Configure Macros"));
-
-  g_signal_connect (window, "destroy",
-		    G_CALLBACK (gtk_widget_destroyed), &window);
-  gtk_container_set_border_width (GTK_CONTAINER (window), 8);
-
-  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
-  gtk_container_add (GTK_CONTAINER (window), vbox);
-
-  sw = gtk_scrolled_window_new (NULL, NULL);
-  gtk_scrolled_window_set_shadow_type (GTK_SCROLLED_WINDOW (sw),
-				       GTK_SHADOW_ETCHED_IN);
-  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (sw),
-				  GTK_POLICY_NEVER,
-				  GTK_POLICY_AUTOMATIC);
-  gtk_box_pack_start (GTK_BOX (vbox), sw, TRUE, TRUE, 0);
-
-  /* create tree model */
-  model = create_model ();
-
-  /* create tree view */
-  treeview = gtk_tree_view_new_with_model (model);
-  gtk_tree_view_set_search_column (GTK_TREE_VIEW (treeview),
-				   COLUMN_SHORTCUT);
-
-  g_object_unref (model);
-
-  gtk_container_add (GTK_CONTAINER (sw), treeview);
-
-  /* add columns to the tree view */
-  add_columns (GTK_TREE_VIEW (treeview));
-
-  hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 4);
-  gtk_box_set_homogeneous (GTK_BOX (hbox), TRUE);
-  gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
-
-  button = gtk_button_new_with_mnemonic (_("_Add"));
-  g_signal_connect(button, "clicked", G_CALLBACK(Add_shortcut), (gpointer)model);
-  gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
-
-  button = gtk_button_new_with_mnemonic (_("_Delete"));
-  g_signal_connect(button, "clicked", G_CALLBACK(Delete_shortcut), (gpointer)treeview);
-  gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
-
-  button = gtk_button_new_with_mnemonic (_("_Capture Shortcut"));
-  g_signal_connect(button, "clicked", G_CALLBACK(Capture_shortcut), (gpointer)treeview);
-  gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
-
-  separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-  gtk_box_pack_start (GTK_BOX (vbox), separator, FALSE, TRUE, 0);
-
-  hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 4);
-  gtk_box_set_homogeneous (GTK_BOX (hbox), TRUE);
-  gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
-
-  button = gtk_button_new_with_mnemonic (_("_Help"));
-  g_signal_connect(button, "clicked", G_CALLBACK(Help_screen), (gpointer)window);
-  gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
-
-  button = gtk_button_new_with_mnemonic (_("_OK"));
-  g_signal_connect(button, "clicked", G_CALLBACK(Save_shortcuts), (gpointer)treeview);
-  g_signal_connect_swapped(button, "clicked", G_CALLBACK(gtk_widget_destroy), (gpointer)window);
-  gtk_box_pack_end (GTK_BOX (hbox), button, TRUE, TRUE, 0);
-
-  button = gtk_button_new_with_mnemonic (_("_Cancel"));
-  g_signal_connect_swapped(button, "clicked", G_CALLBACK(gtk_widget_destroy), (gpointer)window);
-  gtk_box_pack_end (GTK_BOX (hbox), button, TRUE, TRUE, 0);
-
-  gtk_window_set_default_size (GTK_WINDOW(window), 300, 400);
-
-  gtk_widget_show_all(window);
+    gtk_widget_show (GTK_WIDGET (window));
+    g_object_unref (builder);
 }
 

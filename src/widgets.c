@@ -853,7 +853,7 @@ void on_config_terminal (GSimpleAction *action, GVariant *parameter, gpointer us
 
 void on_config_macros (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    Config_macros (NULL, NULL);
+    Config_macros (GTK_WINDOW (Fenetre));
 }
 
 void on_config_profile_select (GSimpleAction *action, GVariant *parameter, gpointer user_data)

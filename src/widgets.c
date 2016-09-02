@@ -555,18 +555,24 @@ gboolean Envoie_car(GtkWidget *widget, GdkEventKey *event, gpointer pointer)
 
 void help_about_callback(GtkAction *action, gpointer data)
 {
-  const gchar *authors[] = {"Julien Schimtt", "Zach Davis", NULL};
+  const gchar *authors[] = {"Julien Schimtt", "Zach Davis", "Jens Georg", NULL};
+  GdkPixbuf *logo = NULL;
+
+  logo = gdk_pixbuf_new_from_resource_at_scale ("/org/jensge/GtkTerm/Serial-port.svg",
+                                                128, 128, TRUE, NULL);
 
   gtk_show_about_dialog(GTK_WINDOW(Fenetre),
-                        "program-name", "GTKTerm",
+                        "program-name", "GTKTerm-lzr",
                         "version", VERSION,
-                        "comments", _("GTKTerm is a simple GTK+ terminal used to communicate with the serial port."),
+                        "comments", _("GTKTerm-lzr is a simple GTK+ terminal used to communicate with the serial port."),
                         "copyright", "Copyright © Julien Schimtt",
                         "authors", authors,
-                        "website", "https://fedorahosted.org/gtkterm/",
-                        "website-label", "https://fedorahosted.org/gtkterm/",
+                        "website", "https://github.com/phako/gtkterm",
+                        "website-label", "https://github.com/phako/gtkterm",
                         "license-type", GTK_LICENSE_LGPL_3_0,
+                        "logo", logo,
                         NULL);
+  g_object_unref (logo);
 }
 
 static void show_control_signals(int stat)

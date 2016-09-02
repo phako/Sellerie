@@ -58,7 +58,7 @@ static FILE *Fic;
 
 /* Local functions prototype */
 static gint close_all(void);
-static void ecriture(gpointer data, gint source);
+static gboolean on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data);
 static gboolean timer(gpointer pointer);
 static void remove_input(void);
 static void write_file(char *, unsigned int);
@@ -143,13 +143,22 @@ void send_raw_file(GtkWindow *parent)
 	gtk_widget_destroy(file_select);
 }
 
-static void ecriture(gpointer data, gint source)
+static gboolean on_serial_io_ready (GIOChannel *source,
+                                GIOCondition condition,
+                                gpointer data)
 {
     static gchar buffer[BUFFER_EMISSION];
     static gchar *current_buffer;
     static gint bytes_to_write;
     gint bytes_written;
     gchar *car;
+
+    if (condition == G_IO_ERR) {
+        str = g_strdup_printf (_("Error sending file\n"));
+        show_message(str, MSG_ERR);
+        close_all();
+        return FALSE;
+    }
 
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(ProgressBar), (gfloat)car_written/(gfloat)nb_car );
 
@@ -172,7 +181,7 @@ static void ecriture(gpointer data, gint source)
         str = g_strdup_printf(_("Error sending file\n"));
         show_message(str, MSG_ERR);
         close_all();
-        return;
+        return FALSE;
     }
 
 	car = current_buffer;
@@ -200,7 +209,7 @@ static void ecriture(gpointer data, gint source)
 	    str = g_strdup_printf(_("Error sending file: %s\n"), strerror(errno));
 	    show_message(str, MSG_ERR);
 	    close_all();
-	    return;
+	    return FALSE;
 	}
 
 	car_written += bytes_written;
@@ -224,9 +233,9 @@ static void ecriture(gpointer data, gint source)
     else
     {
 	close_all();
-	return;
+	return FALSE;
     }
-    return;
+    return TRUE;
 }
 
 static gboolean timer(gpointer pointer)
@@ -249,8 +258,8 @@ void add_input(void)
         fd = gt_serial_port_get_fd ();
         callback_handler = g_io_add_watch_full(g_io_channel_unix_new(fd),
                                                10,
-                                               G_IO_OUT,
-                                               (GIOFunc)ecriture,
+                                               G_IO_OUT | G_IO_ERR,
+                                               (GIOFunc)on_serial_io_ready,
                                                NULL, NULL);
 
     }

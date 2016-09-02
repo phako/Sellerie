@@ -159,7 +159,7 @@ static void scrollback_set(GtkSpinButton *spin_button, gpointer data);
 
 extern GtkWidget *display;
 
-void Config_Port_Fenetre(GtkAction *action, gpointer data)
+void Config_Port_Fenetre(GtkWindow *parent)
 {
     GtkBuilder *builder;
     GtkDialog *dialog;
@@ -203,6 +203,7 @@ void Config_Port_Fenetre(GtkAction *action, gpointer data)
 
     builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/settings-port.ui");
     dialog = GTK_DIALOG (gtk_builder_get_object (builder, "dialog-settings-port"));
+    gtk_window_set_transient_for (GTK_WINDOW (dialog), parent);
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-device"));
 
     for (it = device_list; it != NULL; it = it->next) {

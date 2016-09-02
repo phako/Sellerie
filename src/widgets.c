@@ -832,7 +832,7 @@ void on_logging_clear (GSimpleAction *action, GVariant *parameter, gpointer user
 
 void on_config_port (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    Config_Port_Fenetre (NULL, NULL);
+    Config_Port_Fenetre (GTK_WINDOW (Fenetre));
 }
 
 void on_config_terminal (GSimpleAction *action, GVariant *parameter, gpointer user_data)

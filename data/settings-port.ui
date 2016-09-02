@@ -72,6 +72,7 @@
   </object>
   <object class="GtkDialog" id="dialog-settings-port">
     <property name="can_focus">False</property>
+    <property name="title" translatable="yes">Configure serial port</property>
     <property name="type_hint">dialog</property>
     <child internal-child="vbox">
       <object class="GtkBox">
@@ -105,6 +106,8 @@
                 <property name="label">_OK</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
+                <property name="can_default">True</property>
+                <property name="has_default">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_underline">True</property>
               </object>

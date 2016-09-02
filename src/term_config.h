@@ -15,7 +15,7 @@
 #ifndef TERM_CONFIG_H_
 #define TERM_CONFIG_H_
 
-void Config_Port_Fenetre(GtkAction *action, gpointer data);
+void Config_Port_Fenetre(GtkWindow *parent);
 gint Lis_Config(GtkBuilder *builder);
 void Config_Terminal(GtkAction *action, gpointer data);
 void select_config_callback(GtkAction *action, gpointer data);

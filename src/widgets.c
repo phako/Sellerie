@@ -163,7 +163,7 @@ const GActionEntry menu_actions[] = {
 
     /* Log menu */
     {"log.to-file", on_logging_start },
-    {"log.pause-resume", on_logging_pause_resume },
+    {"log.pause-resume", on_action_toggle, NULL, "false", on_logging_pause_resume },
     {"log.stop", on_logging_stop },
     {"log.clear", on_logging_clear },
 
@@ -193,6 +193,16 @@ const GActionEntry menu_actions[] = {
     /* Help menu */
     {"about", on_about }
 };
+
+static GSimpleAction *find_action (const char *action)
+{
+    GActionGroup *group;
+
+    group = gtk_widget_get_action_group (Fenetre, "main");
+
+    return G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group),
+                                                        action));
+}
 
 void set_view(guint type)
 {
@@ -268,34 +278,13 @@ void Set_crlfauto(gboolean crlfauto)
   g_variant_unref (value);
 }
 
-void toggle_logging_pause_resume(gboolean currentlyLogging)
-{
-    GtkMenuItem *menu = GTK_MENU_ITEM (gtk_builder_get_object (builder, "menu-log-pause-resume"));
-
-    if (currentlyLogging)
-    {
-        gtk_menu_item_set_label (menu, _("_Pause logging"));
-    }
-    else
-    {
-        gtk_menu_item_set_label (menu, _("_Resume"));
-    }
-}
-
 void toggle_logging_sensitivity(gboolean currentlyLogging)
 {
-    GActionGroup *group;
-    GAction *action;
-
-    group = gtk_widget_get_action_group (Fenetre, "main");
-    action = g_action_map_lookup_action (G_ACTION_MAP (group), "log.to-file");
-    g_simple_action_set_enabled (G_SIMPLE_ACTION (action), !currentlyLogging);
-    action = g_action_map_lookup_action (G_ACTION_MAP (group), "log.pause-resume");
-    g_simple_action_set_enabled (G_SIMPLE_ACTION (action), currentlyLogging);
-    action = g_action_map_lookup_action (G_ACTION_MAP (group), "log.stop");
-    g_simple_action_set_enabled (G_SIMPLE_ACTION (action), currentlyLogging);
-    action = g_action_map_lookup_action (G_ACTION_MAP (group), "log.clear");
-    g_simple_action_set_enabled (G_SIMPLE_ACTION (action), currentlyLogging);
+    g_simple_action_set_enabled (find_action ("log.to-file"), !currentlyLogging);
+    g_simple_action_set_enabled (find_action ("log.pause-resume"),
+                                 currentlyLogging);
+    g_simple_action_set_enabled (find_action ("log.stop"), currentlyLogging);
+    g_simple_action_set_enabled (find_action ("log.clear"), currentlyLogging);
 }
 
 static gboolean terminal_button_press_callback(GtkWidget *widget,
@@ -395,7 +384,6 @@ void create_main_window(void)
   gtk_menu_attach_to_widget (GTK_MENU (popup_menu), display, NULL);
 
   /* set up logging buttons availability */
-  toggle_logging_pause_resume(FALSE);
   toggle_logging_sensitivity(FALSE);
 
   /* send hex char box (hidden when not in use) */
@@ -829,6 +817,7 @@ void on_logging_start (GSimpleAction *action, GVariant *parameter, gpointer user
 void on_logging_pause_resume (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
     logging_pause_resume ();
+    g_simple_action_set_state (action, parameter);
 }
 
 void on_logging_stop (GSimpleAction *action, GVariant *parameter, gpointer user_data)
@@ -893,7 +882,6 @@ void on_about (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 
 void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
     GVariant *state;
-    g_warning ("==> on_action_toggle!");
 
     /* Toggle the current state. */
     state = g_action_get_state (G_ACTION (action));

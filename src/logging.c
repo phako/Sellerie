@@ -104,7 +104,6 @@ void logging_start(GtkWindow *parent)
     gtk_widget_destroy(file_select);
 
     toggle_logging_sensitivity(Logging);
-    toggle_logging_pause_resume(Logging);
 }
 
 void logging_clear(void)
@@ -136,7 +135,6 @@ void logging_pause_resume(void)
     } else {
 	Logging = TRUE;
     }
-    toggle_logging_pause_resume(Logging);
 }
 
 void logging_stop(void)
@@ -152,7 +150,6 @@ void logging_stop(void)
     LoggingFileName = NULL;
 
     toggle_logging_sensitivity(Logging);
-    toggle_logging_pause_resume(Logging);
 }
 
 void log_chars(gchar *chars, guint size)

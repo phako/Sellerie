@@ -23,11 +23,11 @@ resource.c: $(top_srcdir)/data/org.jensge.GtkTerm.gresource.xml $(resource_depen
 	$(AM_V_GEN) $(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(top_srcdir)/data --generate $<
 
 gtkterm_SOURCES = \
+    term_config.h \
     term_config.c \
     fichier.c \
     gtkterm.c \
     serie.c \
-    config.h \
     fichier.h \
     serie.h \
     widgets.c \

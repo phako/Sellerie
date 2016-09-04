@@ -50,6 +50,7 @@ gtkterm_LDFLAGS = $(WARN_LDFLAGS) -export-dynamic
 gtkterm_LDADD = $(gtk_LIBS) $(vte_LIBS)
 
 CLEANFILES = *~
+MOSTLYCLEANFILES = resource.c
 
 
 AM_CPPFLAGS = -DLOCALEDIR=\""$(localedir)"\"

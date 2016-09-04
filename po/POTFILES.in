@@ -2,6 +2,11 @@
 # Copyright (C) 1995 Free Software Foundation, Inc.
 
 # Package source files
+data/settings-port.ui
+data/settings-window.ui
+data/org.jensge.GtkTerm.gresource.xml
+data/macros.ui
+data/main-window.ui
 src/buffer.c
 src/cmdline.c
 src/fichier.c

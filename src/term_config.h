@@ -15,6 +15,8 @@
 #ifndef TERM_CONFIG_H_
 #define TERM_CONFIG_H_
 
+#include <gtk/gtk.h>
+
 void Config_Port_Fenetre(GtkWindow *parent);
 gint Lis_Config(GtkBuilder *builder);
 void Config_Terminal(GtkAction *action, gpointer data);

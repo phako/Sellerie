@@ -19,20 +19,9 @@
 /*                                                                     */
 /***********************************************************************/
 
-#include <gtk/gtk.h>
-#include <glib.h>
-#include <termios.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <signal.h>
-#include <string.h>
-#include <errno.h>
-#include <pwd.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include "term_config.h"
 #include "serie.h"
@@ -42,13 +31,29 @@
 #include "i18n.h"
 #include "serie.h"
 
-#include <config.h>
-#include <glib/gi18n.h>
+#include <termios.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <signal.h>
+#include <string.h>
+#include <errno.h>
+#include <pwd.h>
+
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #ifdef HAVE_LINUX_SERIAL_H
 #include <linux/serial.h>
 #endif
 
+#include <gtk/gtk.h>
+#include <glib.h>
+#include <glib/gi18n.h>
+
+#define P_LOCK "/var/lock/lockdev"  /* lock file location */
 
 static struct termios termios_save;
 static int serial_port_fd = -1;

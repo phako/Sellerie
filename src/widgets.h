@@ -15,6 +15,9 @@
 #ifndef WIDGETS_H_
 #define WIDGETS_H_
 
+#include <glib.h>
+#include <gdk/gdk.h>
+
 #define MSG_WRN 0
 #define MSG_ERR 1
 

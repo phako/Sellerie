@@ -15,10 +15,9 @@
 /*      - 0.98 : all GUI functions moved to widgets.c                  */
 /*                                                                     */
 /***********************************************************************/
-
-#include <gtk/gtk.h>
-#include <gdk/gdk.h>
-#include <stdlib.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include "widgets.h"
 #include "serie.h"
@@ -27,9 +26,11 @@
 #include "parsecfg.h"
 #include "buffer.h"
 #include "macros.h"
-#include "auto_config.h"
 
-#include <config.h>
+#include <stdlib.h>
+
+#include <gtk/gtk.h>
+#include <gdk/gdk.h>
 #include <glib/gi18n.h>
 
 int main(int argc, char *argv[])

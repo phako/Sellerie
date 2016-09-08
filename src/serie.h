@@ -15,6 +15,8 @@
 #ifndef SERIE_H_
 #define SERIE_H_
 
+#include <glib.h>
+
 int Send_chars(char *, int);
 gboolean Config_port(void);
 void Set_signals(guint);
@@ -32,7 +34,6 @@ gint gt_serial_port_get_fd (void);
 #define BUFFER_EMISSION 4096
 #define LINE_FEED 0x0A
 #define POLL_DELAY 100               /* in ms (for control signals) */
-#define P_LOCK "/var/lock/lockdev"  /* lock file location */
 
 
 #endif

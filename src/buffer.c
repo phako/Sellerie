@@ -17,15 +17,21 @@
 /*                                                                     */
 /***********************************************************************/
 
-#include <glib.h>
-#include <stdlib.h>
-#include <string.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include "buffer.h"
 #include "i18n.h"
 #include "serie.h"
 
-#include <config.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <glib/gi18n.h>
+#include <glib.h>
+
+#define BUFFER_SIZE (128 * 1024)
 
 static char *buffer = NULL;
 static char *current_buffer;

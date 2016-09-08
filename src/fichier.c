@@ -21,15 +21,9 @@
 /*                                                                     */
 /***********************************************************************/
 
-#include <gtk/gtk.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <errno.h>
-#include <string.h>
-#include <glib.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include "term_config.h"
 #include "widgets.h"
@@ -37,8 +31,18 @@
 #include "buffer.h"
 #include "fichier.h"
 
-#include <config.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <string.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#include <glib.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
 
 /* Global variables */
 static gint nb_car;

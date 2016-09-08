@@ -15,6 +15,8 @@
 #ifndef MACROS_H_
 #define MACROS_H_
 
+#include <gtk/gtk.h>
+
 typedef struct
 {
   gchar *shortcut;

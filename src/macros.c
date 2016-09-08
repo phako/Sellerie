@@ -15,17 +15,20 @@
 /*                                                                     */
 /***********************************************************************/
 
-#include <gtk/gtk.h>
-#include <gdk/gdk.h>
-#include <gdk/gdkkeysyms.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include "widgets.h"
 #include "macros.h"
 
-#include <config.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
+#include <gtk/gtk.h>
+#include <gdk/gdk.h>
+#include <gdk/gdkkeysyms.h>
 #include <glib/gi18n.h>
 
 void gt_macros_add_shortcut (GtkButton *button, gpointer pointer);

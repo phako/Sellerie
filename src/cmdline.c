@@ -16,16 +16,16 @@
 /*      - 0.98 : file creation by Julien                               */
 /*                                                                     */
 /***********************************************************************/
-
-#include <gtk/gtk.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include "term_config.h"
 #include "fichier.h"
-#include "auto_config.h"
 #include "i18n.h"
 #include "cmdline.h"
 
-#include <config.h>
+#include <gtk/gtk.h>
 #include <glib/gi18n.h>
 #include <glib.h>
 

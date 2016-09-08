@@ -17,6 +17,12 @@
 /*                                                                     */
 /***********************************************************************/
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include "i18n.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <iconv.h>
@@ -25,9 +31,8 @@
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
-#include <glib.h>
 
-#include "i18n.h"
+#include <glib.h>
 
 static char *iconv_from_utf8_to_locale(const char *str, const char *fallback_string)
 {

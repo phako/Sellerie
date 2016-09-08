@@ -48,8 +48,23 @@
 /*      - 0.98 : file creation by Julien                               */
 /*                                                                     */
 /***********************************************************************/
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
-#include <gtk/gtk.h>
+#include "term_config.h"
+#include "fichier.h"
+#include "serie.h"
+#include "widgets.h"
+#include "buffer.h"
+#include "macros.h"
+#include "logging.h"
+#include "widgets.h"
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
 #if defined (__linux__)
 #  include <asm/termios.h>       /* For control signals */
 #endif
@@ -58,23 +73,10 @@
      || defined (__OpenBSD__) || defined (__OpenBSD_kernel__)
 #  include <sys/ttycom.h>        /* For control signals */
 #endif
-#include <vte/vte.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 
-#include "term_config.h"
-#include "fichier.h"
-#include "serie.h"
-#include "widgets.h"
-#include "buffer.h"
-#include "macros.h"
-#include "auto_config.h"
-#include "logging.h"
-#include "widgets.h"
-
-#include <config.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
+#include <vte/vte.h>
 
 guint id;
 gboolean echo_on;

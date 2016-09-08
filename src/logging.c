@@ -14,22 +14,26 @@
 /*                                                                     */
 /***********************************************************************/
 
-#include <gtk/gtk.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <errno.h>
-#include <string.h>
-#include <glib.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include "widgets.h"
 #include "serie.h"
 #include "buffer.h"
 #include "logging.h"
 
-#include <config.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <string.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#include <gtk/gtk.h>
+#include <glib.h>
 #include <glib/gi18n.h>
 
 #define MAX_WRITE_ATTEMPTS 5

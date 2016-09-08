@@ -30,26 +30,29 @@
 /*                                                                     */
 /***********************************************************************/
 
-#include <gtk/gtk.h>
-#include <termios.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <vte/vte.h>
-#include <glib/gi18n.h>
-
 #include "serie.h"
 #include "term_config.h"
 #include "widgets.h"
 #include "parsecfg.h"
 #include "macros.h"
 #include "i18n.h"
-#include "config.h"
 
+#include <termios.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#include <gtk/gtk.h>
+#include <glib/gi18n.h>
+#include <vte/vte.h>
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #define DEVICE_NUMBERS_TO_CHECK 12
 

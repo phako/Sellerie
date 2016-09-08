@@ -19,7 +19,7 @@
 #ifndef BUFFER_H_
 #define BUFFER_H_
 
-#define BUFFER_SIZE (128 * 1024)
+#include <glib.h>
 
 void create_buffer(void);
 void delete_buffer(void);

@@ -15,6 +15,9 @@
 #ifndef FICHIER_H_
 #define FICHIER_H_
 
+#include <gtk/gtk.h>
+#include <glib.h>
+
 void send_raw_file(GtkWindow *parent);
 void save_raw_file(GtkWindow *parent);
 void add_input(void);

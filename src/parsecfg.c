@@ -22,11 +22,12 @@
 
 /* $Id: parsecfg.c,v 1.15 2001/06/27 15:24:00 gm Exp $ */
 
-/*
 #ifdef HAVE_CONFIG_H
-#  include "config.h"
+#  include <config.h>
 #endif
-*/
+
+#include "parsecfg.h"
+#include "i18n.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,10 +35,6 @@
 #include <limits.h>
 #include <errno.h>
 
-#include "parsecfg.h"
-#include "i18n.h"
-
-#include <config.h>
 #include <glib/gi18n.h>
 
 /* proto type declaration of private functions */

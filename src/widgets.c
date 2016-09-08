@@ -78,25 +78,21 @@
 #include <gtk/gtk.h>
 #include <vte/vte.h>
 
-guint id;
-gboolean echo_on;
-gboolean crlfauto_on;
-GtkWidget *StatusBar;
-GtkWidget *signals[6];
+static guint id;
+static gboolean echo_on;
+static gboolean crlfauto_on;
+static GtkWidget *StatusBar;
+static GtkWidget *signals[6];
 static GtkWidget *Hex_Box;
-GtkWidget *scrolled_window;
-GtkWidget *Fenetre;
-GtkWidget *popup_menu;
-GtkUIManager *ui_manager;
-GtkAccelGroup *shortcuts;
-GtkActionGroup *action_group;
-GtkWidget *display = NULL;
-
-GtkWidget *Text;
-GtkTextBuffer *buffer;
-GtkTextIter iter;
+static GtkWidget *scrolled_window;
+static GtkWidget *popup_menu;
+static GtkAccelGroup *shortcuts;
 
 static GtkBuilder *builder;
+
+/* Exported variables */
+GtkWidget *display = NULL;
+GtkWidget *Fenetre;
 
 /* Variables for hexadecimal display */
 static guint bytes_per_line = 16;
@@ -105,21 +101,19 @@ static guint total_bytes;
 static gboolean show_index = FALSE;
 
 /* Local functions prototype */
-void signals_send_break_callback(GtkAction *action, gpointer data);
-void signals_toggle_DTR_callback(GtkAction *action, gpointer data);
-void signals_toggle_RTS_callback(GtkAction *action, gpointer data);
-void help_about_callback(GtkAction *action, gpointer data);
-gboolean Envoie_car(GtkWidget *, GdkEventKey *, gpointer);
-gboolean control_signals_read(void);
-void CR_LF_auto_toggled_callback(GtkAction *action, gpointer data);
-void initialize_hexadecimal_display(void);
-gboolean Send_Hexadecimal(GtkWidget *, GdkEventKey *, gpointer);
-gboolean pop_message(void);
+static void signals_send_break_callback(GtkAction *action, gpointer data);
+static void signals_toggle_DTR_callback(GtkAction *action, gpointer data);
+static void signals_toggle_RTS_callback(GtkAction *action, gpointer data);
+static void help_about_callback(GtkAction *action, gpointer data);
+static gboolean control_signals_read(void);
+static void initialize_hexadecimal_display(void);
+static gboolean Send_Hexadecimal(GtkWidget *, GdkEventKey *, gpointer);
+static gboolean pop_message(void);
 static void Got_Input(VteTerminal *, gchar *, guint, gpointer);
-void edit_copy_callback(GtkAction *action, gpointer data);
-void update_copy_sensivity(VteTerminal *terminal, gpointer data);
-void edit_paste_callback(GtkAction *action, gpointer data);
-void edit_select_all_callback(GtkAction *action, gpointer data);
+static void edit_copy_callback(GtkAction *action, gpointer data);
+static void update_copy_sensivity(VteTerminal *terminal, gpointer data);
+static void edit_paste_callback(GtkAction *action, gpointer data);
+static void edit_select_all_callback(GtkAction *action, gpointer data);
 
 static void on_quit (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_clear_buffer (GSimpleAction *action, GVariant *parameter, gpointer user_data);
@@ -545,15 +539,6 @@ static void Got_Input(VteTerminal *widget, gchar *text, guint length, gpointer p
 {
   send_serial(text, length);
 }
-
-gboolean Envoie_car(GtkWidget *widget, GdkEventKey *event, gpointer pointer)
-{
-  if(g_utf8_validate(event->string, 1, NULL))
-    send_serial(event->string, 1);
-
-  return FALSE;
-}
-
 
 void help_about_callback(GtkAction *action, gpointer data)
 {

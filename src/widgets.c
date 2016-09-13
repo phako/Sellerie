@@ -87,6 +87,8 @@ static GtkWidget *StatusBar;
 static GtkWidget *signals[6];
 static GtkWidget *Hex_Box;
 static GtkWidget *scrolled_window;
+static GtkWidget *overlay;
+static GtkWidget *refresh;
 static GtkWidget *popup_menu;
 static GtkAccelGroup *shortcuts;
 
@@ -222,14 +224,20 @@ static void on_serial_port_status_changed (GObject *object,
             g_warning (_("Serial port went to error. Reason unknown."));
             show_message (error->message, MSG_ERR);
         }
+        gtk_widget_set_sensitive (display, FALSE);
+        gtk_widget_show_all (overlay);
     }
     else if (status == GT_SERIAL_PORT_STATE_OFFLINE)
     {
         g_debug ("Serial port went offline");
+        gtk_widget_set_sensitive (display, FALSE);
+        gtk_widget_show_all (overlay);
     }
     else if (status == GT_SERIAL_PORT_STATE_ONLINE)
     {
         g_debug ("Serial port online");
+        gtk_widget_set_sensitive (display, TRUE);
+        gtk_widget_hide (refresh);
     }
 
     message = gt_serial_port_to_string (serial_port);
@@ -382,6 +390,19 @@ void create_main_window(void)
               FALSE, FALSE, 0);
   }
 
+  /* Reconnect button if port goes offline */
+  overlay = gtk_overlay_new ();
+  refresh = gtk_button_new_from_icon_name ("view-refresh-symbolic",
+                                           GTK_ICON_SIZE_DIALOG);
+  gtk_overlay_add_overlay (GTK_OVERLAY (overlay), refresh);
+  gtk_widget_set_halign (refresh, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign (refresh, GTK_ALIGN_CENTER);
+  g_signal_connect_swapped (G_OBJECT (refresh), "clicked",
+                            G_CALLBACK (gt_serial_port_config),
+                            serial_port);
+  gtk_widget_set_tooltip_text (refresh,
+                               _("Click to retry serial connection"));
+
   /* create vte window */
   display = vte_terminal_new();
 
@@ -406,7 +427,8 @@ void create_main_window(void)
 
   gtk_container_add(GTK_CONTAINER(scrolled_window), GTK_WIDGET(display));
 
-  gtk_box_pack_start(GTK_BOX(main_vbox), scrolled_window, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(main_vbox), overlay, TRUE, TRUE, 0);
+  gtk_container_add (GTK_CONTAINER (overlay), scrolled_window);
 
   g_signal_connect(G_OBJECT(display), "button-press-event",
                    G_CALLBACK(terminal_button_press_callback), NULL);

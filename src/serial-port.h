@@ -13,6 +13,13 @@ G_DECLARE_FINAL_TYPE (GtSerialPort, gt_serial_port, GT, SERIAL_PORT, GObject)
 
 typedef struct _GtSerialPort GtSerialPort;
 
+enum _GtSerialPortState {
+    GT_SERIAL_PORT_STATE_ONLINE,
+    GT_SERIAL_PORT_STATE_OFFLINE,
+    GT_SERIAL_PORT_STATE_ERROR
+};
+typedef enum _GtSerialPortState GtSerialPortState;
+
 GtSerialPort *gt_serial_port_new (void);
 
 int gt_serial_port_send_chars (GtSerialPort *, char *, int);
@@ -26,6 +33,8 @@ void gt_serial_port_send_brk (GtSerialPort *);
 void gt_serial_port_set_custom_speed (GtSerialPort *, int);
 gchar *gt_serial_port_to_string (GtSerialPort *);
 gint gt_serial_port_get_fd (GtSerialPort *);
+GError *gt_serial_port_get_last_error (GtSerialPort *self);
+GtSerialPortState gt_serial_port_get_status (GtSerialPort *self);
 
 #define BUFFER_RECEPTION 8192
 #define BUFFER_EMISSION 4096

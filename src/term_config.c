@@ -349,11 +349,6 @@ gint Lis_Config(GtkBuilder *builder)
 
     gt_serial_port_config (serial_port);
 
-    message = gt_serial_port_to_string (serial_port);
-    gt_main_window_set_status (message);
-    Set_window_title(message);
-    g_free(message);
-
     return FALSE;
 }
 
@@ -642,7 +637,7 @@ void load_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Selectio
 {
     GtkTreeIter iter;
     GtkTreeModel *Modele;
-    gchar *txt, *message;
+    gchar *txt;
 
     if(response_id == GTK_RESPONSE_ACCEPT)
     {
@@ -653,11 +648,6 @@ void load_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Selectio
 	    Verify_configuration();
         gt_serial_port_config (serial_port);
 	    add_shortcuts();
-
-	    message = gt_serial_port_to_string (serial_port);
-        gt_main_window_set_status (message);
-	    Set_window_title(message);
-	    g_free(message);
 	}
     }
 }

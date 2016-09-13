@@ -37,7 +37,6 @@ GtSerialPort *serial_port;
 
 int main(int argc, char *argv[])
 {
-  gchar *message;
   char *config_file;
 
   serial_port = gt_serial_port_new ();
@@ -62,11 +61,6 @@ int main(int argc, char *argv[])
     }
 
   gt_serial_port_config (serial_port);
-
-  message = gt_serial_port_to_string (serial_port);
-  Set_window_title(message);
-  gt_main_window_set_status (message);
-  g_free(message);
 
   add_shortcuts();
 

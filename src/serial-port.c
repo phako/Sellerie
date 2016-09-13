@@ -55,6 +55,29 @@
 
 #define P_LOCK "/var/lock/lockdev"  /* lock file location */
 
+/* GType for GtSerialPortState enum */
+#define GT_SERIAL_PORT_STATE_TYPE (gt_serial_port_state_get_type ())
+static GType
+gt_serial_port_state_get_type (void)
+{
+    static GType gt_serial_port_state_type = 0;
+
+    if (gt_serial_port_state_type == 0)
+    {
+        static GEnumValue state_types[] = {
+            { GT_SERIAL_PORT_STATE_ONLINE, "Serial port is online", "online" },
+            { GT_SERIAL_PORT_STATE_OFFLINE, "Serial port is offline", "offline" },
+            { GT_SERIAL_PORT_STATE_ERROR, "Serial port is in error state (implies offline)", "error" },
+            { 0, NULL, NULL },
+        };
+
+        gt_serial_port_state_type = g_enum_register_static ("GtSerialPortState",
+                                                            state_types);
+    }
+
+    return gt_serial_port_state_type;
+}
+
 typedef struct {
     struct termios termios_save;
     int serial_port_fd;
@@ -63,6 +86,9 @@ typedef struct {
     guint callback_handler_err;
     gboolean callback_activated;
     char lockfile[128];
+
+    GtSerialPortState state;
+    GError *last_error;
 } GtSerialPortPrivate;
 
 struct _GtSerialPort {
@@ -75,14 +101,28 @@ struct _GtSerialPortClass {
 
 G_DEFINE_TYPE_WITH_PRIVATE (GtSerialPort, gt_serial_port, G_TYPE_OBJECT)
 
+enum GtSerialPortProperties {
+    PROP_STATUS = 1,
+    PROP_ERROR,
+    N_PROPERTIES
+};
+
+static GParamSpec *gt_serial_port_properties[N_PROPERTIES] = { NULL, };
 
 extern struct configuration_port config;
 
 /* Local functions prototype */
-static gint gt_serial_port_lock (GtSerialPort *, char *);
+static gboolean gt_serial_port_lock (GtSerialPort *, char *, GError **);
 static void gt_serial_port_unlock (GtSerialPort *);
 static void gt_serial_port_close (GtSerialPort *);
 static gboolean Lis_port(GIOChannel *src, GIOCondition cond, gpointer data);
+static void gt_serial_port_set_status (GtSerialPort *self,
+                                       GtSerialPortState state,
+                                       GError *error);
+
+/* GObject overrides */
+static void gt_serial_port_set_property (GObject *, guint, const GValue *, GParamSpec *pspec);
+static void gt_serial_port_get_property (GObject *, guint, GValue *, GParamSpec *pspec);
 
 gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
 {
@@ -129,6 +169,9 @@ gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
 static gboolean io_err(GIOChannel* src, GIOCondition cond, gpointer data)
 {
     gt_serial_port_close (GT_SERIAL_PORT (data));
+    gt_serial_port_set_status (GT_SERIAL_PORT (data),
+                               GT_SERIAL_PORT_STATE_OFFLINE,
+                               NULL);
 
     return TRUE;
 }
@@ -174,7 +217,7 @@ gboolean gt_serial_port_config (GtSerialPort *self)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     struct termios termios_p;
-    gchar *msg = NULL;
+    GError *error = NULL;
 
     gt_serial_port_close (self);
     gt_serial_port_unlock (self);
@@ -182,20 +225,20 @@ gboolean gt_serial_port_config (GtSerialPort *self)
     priv->serial_port_fd = open (config.port, O_RDWR | O_NOCTTY | O_NDELAY);
     if(priv->serial_port_fd == -1)
     {
-        msg = g_strdup_printf(_("Cannot open %s: %s\n"),
-                              config.port, strerror_utf8(errno));
-        show_message(msg, MSG_ERR);
-        g_free(msg);
+        error = g_error_new (G_IO_ERROR,
+                             g_io_error_from_errno (errno),
+                             _("Cannot open %s: %s"),
+                             config.port,
+                             g_strerror (errno));
+        gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_ERROR, error);
 
         return FALSE;
     }
 
-    if(gt_serial_port_lock (self, config.port) == -1)
+    if(!gt_serial_port_lock (self, config.port, &error))
     {
         gt_serial_port_close (self);
-        msg = g_strdup_printf(_("Cannot open create lockfile\n"));
-        show_message(msg, MSG_ERR);
-        g_free(msg);
+        gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_ERROR, error);
 
         return FALSE;
     }
@@ -241,10 +284,11 @@ gboolean gt_serial_port_config (GtSerialPort *self)
         gt_serial_port_set_custom_speed (self, config.vitesse);
 	    termios_p.c_cflag |= B38400;
 #else
-        Ferme_Port();
-        msg = g_strdup_printf(_("Arbitrary baud rates not supported"));
-        show_message(msg, MSG_ERR);
-        g_free(msg);
+        gt_serial_port_close (self);
+        error = g_error_new_literal (G_IO_ERROR,
+                                     G_IO_ERROR_FAILED,
+                                     _("Arbitrary baud rates not supported"));
+        gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_ERROR, error);
         return FALSE;
 #endif
     }
@@ -316,6 +360,7 @@ gboolean gt_serial_port_config (GtSerialPort *self)
     priv->callback_activated = TRUE;
 
     Set_local_echo(config.echo);
+    gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_ONLINE, NULL);
 
     return TRUE;
 }
@@ -330,22 +375,24 @@ void gt_serial_port_set_crlfauto(GtSerialPort *self, gboolean crlfauto)
     config.crlfauto = crlfauto;
 }
 
-void gt_serial_port_close (GtSerialPort *self)
+void
+gt_serial_port_close (GtSerialPort *self)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     if(priv->serial_port_fd != -1)
     {
-	if(priv->callback_activated == TRUE)
-	{
-	    g_source_remove(priv->callback_handler_in);
-	    g_source_remove(priv->callback_handler_err);
-	    priv->callback_activated = FALSE;
-	}
-	tcsetattr(priv->serial_port_fd, TCSANOW, &(priv->termios_save));
-	tcflush(priv->serial_port_fd, TCOFLUSH);
-	tcflush(priv->serial_port_fd, TCIFLUSH);
-	close(priv->serial_port_fd);
-	priv->serial_port_fd = -1;
+        if(priv->callback_activated == TRUE)
+        {
+            g_source_remove(priv->callback_handler_in);
+            g_source_remove(priv->callback_handler_err);
+            priv->callback_activated = FALSE;
+        }
+        tcsetattr(priv->serial_port_fd, TCSANOW, &(priv->termios_save));
+        tcflush(priv->serial_port_fd, TCOFLUSH);
+        tcflush(priv->serial_port_fd, TCIFLUSH);
+        close(priv->serial_port_fd);
+        priv->serial_port_fd = -1;
+        gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_OFFLINE, NULL);
     }
 }
 
@@ -391,34 +438,40 @@ int gt_serial_port_read_signals (GtSerialPort *self)
     static int stat = 0;
     int stat_read;
 
-  if ( config.flux==3 )
-  {
-    //reset RTS (default = receive)
-    gt_serial_port_set_signals (self, 1);
-  }
+    if ( config.flux==3 )
+    {
+        //reset RTS (default = receive)
+        gt_serial_port_set_signals (self, 1);
+    }
 
     if (priv->serial_port_fd != -1)
     {
-	if(ioctl(priv->serial_port_fd, TIOCMGET, &stat_read) == -1)
-	{
+        if(ioctl(priv->serial_port_fd, TIOCMGET, &stat_read) == -1)
+        {
             /* Ignore EINVAL, as some serial ports
-	       genuinely lack these lines */
-	    /* Thanks to Elie De Brauwer on ubuntu launchpad */
-	    if (errno != EINVAL)
-	    {
-		i18n_perror(_("Control signals read"));
-        gt_serial_port_close (self);
-	    }
+               genuinely lack these lines */
+            /* Thanks to Elie De Brauwer on ubuntu launchpad */
+            if (errno != EINVAL)
+            {
+                GError *error = NULL;
 
-	    return -2;
-	}
+                gt_serial_port_close (self);
+                error = g_error_new (G_IO_ERROR,
+                                     g_io_error_from_errno (errno),
+                                     _("Control signals read failed: %s"),
+                                     g_strerror (errno));
+                gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_ERROR, error);
+            }
 
-	if(stat_read == stat)
-	    return -1;
+            return -2;
+        }
 
-	stat = stat_read;
+        if(stat_read == stat)
+            return -1;
 
-	return stat;
+        stat = stat_read;
+
+        return stat;
     }
     return -1;
 }
@@ -449,7 +502,7 @@ static char *mbasename(char *s, char *res, int reslen)
     return res;
 }
 
-gint gt_serial_port_lock (GtSerialPort *self, char *port)
+gboolean gt_serial_port_lock (GtSerialPort *self, char *port, GError **error)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     char buf[128];
@@ -468,66 +521,84 @@ gint gt_serial_port_lock (GtSerialPort *self, char *port)
 
     /* First see if the lock file directory is present. */
     if(P_LOCK[0] && stat(P_LOCK, &stt) == 0)
-	snprintf(priv->lockfile, sizeof(priv->lockfile), "%s/LCK..%s", P_LOCK, mbasename(port, buf, sizeof(buf)));
+    {
+        mbasename (port, buf, sizeof (buf));
+        snprintf(priv->lockfile, sizeof(priv->lockfile), "%s/LCK..%s", P_LOCK, buf);
+    }
     else
-	priv->lockfile[0] = 0;
+        priv->lockfile[0] = 0;
 
     if(priv->lockfile[0] && (fd = open(priv->lockfile, O_RDONLY)) >= 0)
     {
-	n = read(fd, buf, 127);
-	close(fd);
-	if(n > 0)
-	{
-	    pid = -1;
-	    if(n == 4)
-		/* Kermit-style lockfile. */
-		pid = *(int *)buf;
-	    else {
-		/* Ascii lockfile. */
-		buf[n] = 0;
-		sscanf(buf, "%d", &pid);
-	    }
-	    if(pid > 0 && kill((pid_t)pid, 0) < 0 && errno == ESRCH)
-	    {
-		i18n_fprintf(stderr, _("Lockfile is stale. Overriding it..\n"));
-		sleep(1);
-		unlink(priv->lockfile);
-	    }
-	    else
-		n = 0;
+        n = read(fd, buf, 127);
+        close(fd);
+        if(n > 0)
+        {
+            pid = -1;
+            if(n == 4)
+                /* Kermit-style lockfile. */
+                pid = *(int *)buf;
+            else {
+                /* Ascii lockfile. */
+                buf[n] = 0;
+                sscanf(buf, "%d", &pid);
+            }
+            if(pid > 0 && kill((pid_t)pid, 0) < 0 && errno == ESRCH)
+            {
+                i18n_fprintf(stderr, _("Lockfile is stale. Overriding it..\n"));
+                sleep(1);
+                unlink(priv->lockfile);
+            }
+            else
+                n = 0;
         }
 
-	if(n == 0)
-	{
-	    i18n_fprintf(stderr, _("Device %s is locked.\n"), port);
-	    priv->lockfile[0] = 0;
-	    return -1;
-	}
+        if(n == 0)
+        {
+            g_propagate_error (error,
+                               g_error_new (G_IO_ERROR,
+                                            G_IO_ERROR_FAILED,
+                                            _("Device %s is locked."),
+                                            port));
+            i18n_fprintf(stderr, _("Device %s is locked.\n"), port);
+            priv->lockfile[0] = 0;
+
+            return FALSE;
+        }
     }
 
     if(priv->lockfile[0])
     {
-	/* Create lockfile compatible with UUCP-1.2 */
-	mask = umask(022);
-	if((fd = open(priv->lockfile, O_WRONLY | O_CREAT | O_EXCL, 0666)) < 0)
-	{
-	    i18n_fprintf(stderr, _("Cannot create lockfile. Sorry.\n"));
-	    priv->lockfile[0] = 0;
-	    return -1;
-        }
-	(void)umask(mask);
-	res = chown(priv->lockfile, real_uid, real_gid);
-      if (res < 0)
-        i18n_fprintf(stderr, "Fail");
+        /* Create lockfile compatible with UUCP-1.2 */
+        mask = umask(022);
+        if((fd = open(priv->lockfile, O_WRONLY | O_CREAT | O_EXCL, 0666)) < 0)
+        {
+            GError *inner_error = NULL;
 
-	snprintf(buf, sizeof(buf), "%10ld gtkterm %.20s\n", (long)getpid(), username);
-	res = write(fd, buf, strlen(buf));
-      if (res < 0)
-        i18n_fprintf(stderr, "Fail");
-	close(fd);
+            inner_error = g_error_new (G_IO_ERROR,
+                                       g_io_error_from_errno (errno),
+                                       _("Cannot create lockfile: %s"),
+                                       g_strerror (errno));
+
+            g_propagate_error (error, inner_error);
+            i18n_fprintf(stderr, _("Cannot create lockfile. Sorry.\n"));
+            priv->lockfile[0] = 0;
+
+            return FALSE;
+        }
+        (void)umask(mask);
+        res = chown(priv->lockfile, real_uid, real_gid);
+        if (res < 0)
+            i18n_fprintf(stderr, "Fail");
+
+        snprintf(buf, sizeof(buf), "%10ld gtkterm %.20s\n", (long)getpid(), username);
+        res = write(fd, buf, strlen(buf));
+        if (res < 0)
+            i18n_fprintf(stderr, "Fail");
+        close(fd);
     }
 
-    return 0;
+    return TRUE;
 }
 
 void gt_serial_port_unlock (GtSerialPort *self)
@@ -618,9 +689,49 @@ int gt_serial_port_get_fd (GtSerialPort *self)
     return priv->serial_port_fd;
 }
 
+static void gt_serial_port_set_status (GtSerialPort *self,
+                                       GtSerialPortState status,
+                                       GError *error)
+{
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    if (priv->last_error != NULL)
+    {
+        g_error_free (priv->last_error);
+    }
+
+    priv->last_error = error;
+
+    if (priv->state != status)
+    {
+        priv->state = status;
+    }
+
+    g_object_notify (G_OBJECT (self), "status");
+}
+
 static void
 gt_serial_port_class_init (GtSerialPortClass *klass)
 {
+    GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+    object_class->set_property = gt_serial_port_set_property;
+    object_class->get_property = gt_serial_port_get_property;
+
+    gt_serial_port_properties[PROP_STATUS] =
+        g_param_spec_enum ("status", "status", "status",
+                           GT_SERIAL_PORT_STATE_TYPE,
+                           GT_SERIAL_PORT_STATE_OFFLINE,
+                           G_PARAM_STATIC_STRINGS |
+                           G_PARAM_READABLE);
+
+    gt_serial_port_properties[PROP_ERROR] =
+        g_param_spec_pointer ("error", "error", "error",
+                              G_PARAM_STATIC_STRINGS |
+                              G_PARAM_READABLE);
+    g_object_class_install_properties (object_class,
+                                       N_PROPERTIES,
+                                       gt_serial_port_properties);
 }
 
 static void
@@ -629,10 +740,58 @@ gt_serial_port_init (GtSerialPort *self)
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
 
     priv->serial_port_fd = -1;
+    priv->state = GT_SERIAL_PORT_STATE_OFFLINE;
+}
+
+static void
+gt_serial_port_set_property (GObject *object,
+                             guint property_id,
+                             const GValue *value,
+                             GParamSpec *pspec)
+{
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+}
+
+static void
+gt_serial_port_get_property (GObject *object,
+                             guint property_id,
+                             GValue *value,
+                             GParamSpec *pspec)
+{
+    GtSerialPort *self = GT_SERIAL_PORT (object);
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    switch (property_id) {
+        case PROP_STATUS:
+            g_value_set_enum (value, priv->state);
+            break;
+        case PROP_ERROR:
+            g_value_set_pointer (value, priv->last_error);
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+            break;
+    };
 }
 
 GtSerialPort *
 gt_serial_port_new (void)
 {
     return GT_SERIAL_PORT (g_object_new (GT_TYPE_SERIAL_PORT, NULL));
+}
+
+GError *
+gt_serial_port_get_last_error (GtSerialPort *self)
+{
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    return priv->last_error;
+}
+
+GtSerialPortState
+gt_serial_port_get_status (GtSerialPort *self)
+{
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    return priv->state;
 }

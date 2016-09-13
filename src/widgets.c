@@ -202,6 +202,42 @@ static GSimpleAction *find_action (const char *action)
                                                         action));
 }
 
+static void on_serial_port_status_changed (GObject *object,
+                                           GParamSpec *pspec,
+                                           gpointer user_data)
+{
+    GError *error = gt_serial_port_get_last_error (GT_SERIAL_PORT (object));
+    GtSerialPortState status = gt_serial_port_get_status (GT_SERIAL_PORT (object));
+    char *message = NULL;
+
+    if (status == GT_SERIAL_PORT_STATE_ERROR)
+    {
+        if (error != NULL)
+        {
+            g_warning (_("Serial port went to error: %s"), error->message);
+            show_message (error->message, MSG_ERR);
+        }
+        else
+        {
+            g_warning (_("Serial port went to error. Reason unknown."));
+            show_message (error->message, MSG_ERR);
+        }
+    }
+    else if (status == GT_SERIAL_PORT_STATE_OFFLINE)
+    {
+        g_debug ("Serial port went offline");
+    }
+    else if (status == GT_SERIAL_PORT_STATE_ONLINE)
+    {
+        g_debug ("Serial port online");
+    }
+
+    message = gt_serial_port_to_string (serial_port);
+    gt_main_window_set_status (message);
+    Set_window_title(message);
+    g_free(message);
+}
+
 void set_view(guint type)
 {
   GActionGroup *group;
@@ -313,6 +349,10 @@ void create_main_window(void)
   GtkWidget *main_vbox, *label;
   GtkWidget *hex_send_entry;
   GActionGroup *group;
+
+  g_signal_connect (G_OBJECT (serial_port), "notify::status",
+                    G_CALLBACK (on_serial_port_status_changed),
+                    Fenetre);
 
   group = G_ACTION_GROUP (g_simple_action_group_new ());
   g_action_map_add_action_entries (G_ACTION_MAP (group),

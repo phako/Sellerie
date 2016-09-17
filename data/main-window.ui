@@ -200,6 +200,12 @@
   <menu id='popup-menu'>
     <section>
       <item>
+        <attribute name="label" translatable="yes">_Reconnect</attribute>
+        <attribute name="action">main.reconnect</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
         <attribute name="label" translatable="yes">_Copy</attribute>
         <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;c</attribute>
         <attribute name="action">main.copy</attribute>

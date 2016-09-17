@@ -139,6 +139,7 @@ static void on_signals_send_break (GSimpleAction *action, GVariant *parameter, g
 static void on_signals_send_dtr (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_signals_send_rts (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_about (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_reconnect (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_action_radio (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_crlf_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
@@ -189,7 +190,10 @@ const GActionEntry menu_actions[] = {
     {"signals.send-rts", on_signals_send_rts },
 
     /* Help menu */
-    {"about", on_about }
+    {"about", on_about },
+
+    /* Misc actions */
+    { "reconnect", on_reconnect }
 };
 
 static GSimpleAction *find_action (const char *action)
@@ -913,6 +917,11 @@ void on_signals_send_rts (GSimpleAction *action, GVariant *parameter, gpointer u
 void on_about (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
     help_about_callback (NULL, NULL);
+}
+
+void on_reconnect (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    gt_serial_port_config (serial_port);
 }
 
 void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user_data) {

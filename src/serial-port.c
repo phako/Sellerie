@@ -240,6 +240,7 @@ gt_serial_port_connect (GtSerialPort *self)
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     struct termios termios_p;
     GError *error = NULL;
+    GIOChannel *channel = NULL;
 
     priv->serial_port_fd = open (priv->config.port,
                                  O_RDWR | O_NOCTTY | O_NDELAY);
@@ -369,17 +370,21 @@ gt_serial_port_connect (GtSerialPort *self)
     tcflush(priv->serial_port_fd, TCOFLUSH);
     tcflush(priv->serial_port_fd, TCIFLUSH);
 
-    priv->callback_handler_in = g_io_add_watch_full(g_io_channel_unix_new(priv->serial_port_fd),
-					   10,
-					   G_IO_IN,
-					   (GIOFunc)Lis_port,
-					   self, NULL);
+    channel = g_io_channel_unix_new (priv->serial_port_fd);
+    priv->callback_handler_in = g_io_add_watch_full (channel,
+                                                     10,
+                                                     G_IO_IN,
+                                                     (GIOFunc)
+                                                     Lis_port,
+                                                     self,
+                                                     NULL);
 
-    priv->callback_handler_err = g_io_add_watch_full(g_io_channel_unix_new(priv->serial_port_fd),
-					   10,
-					   G_IO_ERR,
-					   (GIOFunc)io_err,
-					   self, NULL);
+    channel = g_io_channel_unix_new (priv->serial_port_fd);
+    priv->callback_handler_err = g_io_add_watch_full (channel,
+                                                      10,
+                                                      G_IO_ERR,
+                                                      (GIOFunc)io_err,
+                                                      self, NULL);
 
     priv->callback_activated = TRUE;
 

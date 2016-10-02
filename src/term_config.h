@@ -46,6 +46,7 @@ struct configuration_port {
   gboolean echo;               // echo local
   gboolean crlfauto;         // line feed auto
 };
+typedef struct configuration_port GtSerialPortConfiguration;
 
 
 #define DEFAULT_FONT "Monospace, 12"

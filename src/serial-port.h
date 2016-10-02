@@ -1,6 +1,8 @@
 #ifndef SERIAL_PORT_H
 #define SERIAL_PORT_H
 
+#include "term_config.h"
+
 #include <glib.h>
 #include <gio/gio.h>
 #include <glib-object.h>
@@ -23,7 +25,7 @@ typedef enum _GtSerialPortState GtSerialPortState;
 GtSerialPort *gt_serial_port_new (void);
 
 int gt_serial_port_send_chars (GtSerialPort *, char *, int);
-gboolean gt_serial_port_config (GtSerialPort *);
+gboolean gt_serial_port_config (GtSerialPort *, GtSerialPortConfiguration *config);
 void gt_serial_port_set_signals (GtSerialPort *, guint);
 int gt_serial_port_read_signals (GtSerialPort *);
 void gt_serial_port_close_and_unlock (GtSerialPort *);
@@ -35,6 +37,8 @@ gchar *gt_serial_port_to_string (GtSerialPort *);
 gint gt_serial_port_get_fd (GtSerialPort *);
 GError *gt_serial_port_get_last_error (GtSerialPort *self);
 GtSerialPortState gt_serial_port_get_status (GtSerialPort *self);
+gboolean gt_serial_port_reconnect (GtSerialPort *);
+gboolean gt_serial_port_connect (GtSerialPort *self);
 
 #define BUFFER_RECEPTION 8192
 #define BUFFER_EMISSION 4096

@@ -347,7 +347,7 @@ gint Lis_Config(GtkBuilder *builder)
     else
         config.car = -1;
 
-    gt_serial_port_config (serial_port);
+    gt_serial_port_config (serial_port, &config);
 
     return FALSE;
 }
@@ -646,7 +646,7 @@ void load_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Selectio
 	    gtk_tree_model_get(GTK_TREE_MODEL(Modele), &iter, 0, (gint *)&txt, -1);
 	    Load_configuration_from_file(txt);
 	    Verify_configuration();
-        gt_serial_port_config (serial_port);
+        gt_serial_port_config (serial_port, &config);
 	    add_shortcuts();
 	}
     }

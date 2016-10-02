@@ -921,7 +921,7 @@ void on_about (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 
 void on_reconnect (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    gt_serial_port_config (serial_port);
+    gt_serial_port_reconnect (serial_port);
 }
 
 void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user_data) {

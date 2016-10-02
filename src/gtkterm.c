@@ -34,6 +34,7 @@
 #include <glib/gi18n.h>
 
 GtSerialPort *serial_port;
+extern struct configuration_port config;
 
 int main(int argc, char *argv[])
 {
@@ -60,7 +61,7 @@ int main(int argc, char *argv[])
       exit(1);
     }
 
-  gt_serial_port_config (serial_port);
+  gt_serial_port_config (serial_port, &config);
 
   add_shortcuts();
 

@@ -114,16 +114,27 @@ static GParamSpec *gt_serial_port_properties[N_PROPERTIES] = { NULL, };
 static gboolean gt_serial_port_lock (GtSerialPort *, char *, GError **);
 static void gt_serial_port_unlock (GtSerialPort *);
 static void gt_serial_port_close (GtSerialPort *);
-static gboolean Lis_port(GIOChannel *src, GIOCondition cond, gpointer data);
+static gboolean gt_serial_port_on_channel_read (GIOChannel *,
+                                                GIOCondition,
+                                                gpointer);
+static gboolean gt_serial_port_on_channel_error (GIOChannel *,
+                                                 GIOCondition,
+                                                 gpointer);
 static void gt_serial_port_set_status (GtSerialPort *self,
                                        GtSerialPortState state,
                                        GError *error);
+static gboolean
+gt_serial_port_termios_from_config (GtSerialPort *self,
+                                    struct termios *xtermios_p,
+                                    GError **error);
 
 /* GObject overrides */
 static void gt_serial_port_set_property (GObject *, guint, const GValue *, GParamSpec *pspec);
 static void gt_serial_port_get_property (GObject *, guint, GValue *, GParamSpec *pspec);
 
-gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
+/* Implementations */
+gboolean
+gt_serial_port_on_channel_read (GIOChannel* src, GIOCondition cond, gpointer data)
 {
     GtSerialPort *self = GT_SERIAL_PORT (data);
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
@@ -133,7 +144,7 @@ gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
 
     bytes_read = BUFFER_RECEPTION;
 
-    while(bytes_read == BUFFER_RECEPTION)
+    while (bytes_read == BUFFER_RECEPTION)
     {
         bytes_read = read (priv->serial_port_fd, c, BUFFER_RECEPTION);
         if(bytes_read > 0)
@@ -165,7 +176,9 @@ gboolean Lis_port(GIOChannel* src, GIOCondition cond, gpointer data)
     return TRUE;
 }
 
-static gboolean io_err(GIOChannel* src, GIOCondition cond, gpointer data)
+static gboolean gt_serial_port_on_channel_error (GIOChannel* src,
+                                                 GIOCondition cond,
+                                                 gpointer data)
 {
     gt_serial_port_close (GT_SERIAL_PORT (data));
     gt_serial_port_set_status (GT_SERIAL_PORT (data),
@@ -174,6 +187,77 @@ static gboolean io_err(GIOChannel* src, GIOCondition cond, gpointer data)
 
     return TRUE;
 }
+
+static gboolean
+gt_serial_port_termios_from_config (GtSerialPort *self,
+                                    struct termios *termios_p,
+                                    GError **error)
+{
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    switch (priv->config.vitesse)
+    {
+    case 300: termios_p->c_cflag = B300; break;
+    case 600: termios_p->c_cflag = B600; break;
+    case 1200: termios_p->c_cflag = B1200; break;
+    case 2400: termios_p->c_cflag = B2400; break;
+    case 4800: termios_p->c_cflag = B4800; break;
+    case 9600: termios_p->c_cflag = B9600; break;
+    case 19200: termios_p->c_cflag = B19200; break;
+    case 38400: termios_p->c_cflag = B38400; break;
+    case 57600: termios_p->c_cflag = B57600; break;
+    case 115200:termios_p->c_cflag = B115200; break;
+
+    default:
+#ifdef HAVE_LINUX_SERIAL_H
+        gt_serial_port_set_custom_speed (self, priv->config.vitesse);
+        termios_p->c_cflag |= B38400;
+#else
+        g_propagate_error (error,
+                           g_error_new_literal (G_IO_ERROR,
+                                                G_IO_ERROR_FAILED,
+                                                _("Arbitrary baud rates not supported"));
+        return FALSE;
+#endif
+    }
+
+    switch (priv->config.bits)
+    {
+    case 5: termios_p->c_cflag |= CS5; break;
+    case 6: termios_p->c_cflag |= CS6; break;
+    case 7: termios_p->c_cflag |= CS7; break;
+    case 8: termios_p->c_cflag |= CS8; break;
+    default: g_assert_not_reached();
+    }
+
+    switch (priv->config.parite)
+    {
+    case 1: termios_p->c_cflag |= PARODD | PARENB; break;
+    case 2: termios_p->c_cflag |= PARENB; break;
+    default: break;
+    }
+
+    if (priv->config.stops == 2)
+        termios_p->c_cflag |= CSTOPB;
+
+    termios_p->c_cflag |= CREAD;
+    termios_p->c_iflag = IGNPAR | IGNBRK;
+
+    switch(priv->config.flux)
+    {
+    case 1: termios_p->c_iflag |= IXON | IXOFF; break;
+    case 2: termios_p->c_cflag |= CRTSCTS; break;
+    default: termios_p->c_cflag |= CLOCAL; break;
+    }
+
+    termios_p->c_oflag = 0;
+    termios_p->c_lflag = 0;
+    termios_p->c_cc[VTIME] = 0;
+    termios_p->c_cc[VMIN] = 1;
+
+    return TRUE;
+}
+
 
 int gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
 {
@@ -264,118 +348,24 @@ gt_serial_port_connect (GtSerialPort *self)
         return FALSE;
     }
 
-    tcgetattr(priv->serial_port_fd, &termios_p);
-    memcpy(&(priv->termios_save), &termios_p, sizeof(struct termios));
+    tcgetattr (priv->serial_port_fd, &termios_p);
+    memcpy (&(priv->termios_save), &termios_p, sizeof (struct termios));
 
-    switch (priv->config.vitesse)
+    if (!gt_serial_port_termios_from_config (self, &termios_p, &error))
     {
-	case 300:
-	    termios_p.c_cflag = B300;
-	    break;
-	case 600:
-	    termios_p.c_cflag = B600;
-	    break;
-	case 1200:
-	    termios_p.c_cflag = B1200;
-	    break;
-	case 2400:
-	    termios_p.c_cflag = B2400;
-	    break;
-	case 4800:
-	    termios_p.c_cflag = B4800;
-	    break;
-	case 9600:
-	    termios_p.c_cflag = B9600;
-	    break;
-	case 19200:
-	    termios_p.c_cflag = B19200;
-	    break;
-	case 38400:
-	    termios_p.c_cflag = B38400;
-	    break;
-	case 57600:
-	    termios_p.c_cflag = B57600;
-	    break;
-	case 115200:
-	    termios_p.c_cflag = B115200;
-	    break;
-
-	default:
-#ifdef HAVE_LINUX_SERIAL_H
-        gt_serial_port_set_custom_speed (self, priv->config.vitesse);
-	    termios_p.c_cflag |= B38400;
-#else
         gt_serial_port_close (self);
-        error = g_error_new_literal (G_IO_ERROR,
-                                     G_IO_ERROR_FAILED,
-                                     _("Arbitrary baud rates not supported"));
         gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_ERROR, error);
-        return FALSE;
-#endif
     }
 
-    switch (priv->config.bits)
-    {
-    case 5:
-        termios_p.c_cflag |= CS5;
-        break;
-    case 6:
-        termios_p.c_cflag |= CS6;
-        break;
-    case 7:
-        termios_p.c_cflag |= CS7;
-        break;
-    case 8:
-        termios_p.c_cflag |= CS8;
-        break;
-    default:
-        g_assert_not_reached();
-    }
-
-    switch (priv->config.parite)
-    {
-    case 1:
-        termios_p.c_cflag |= PARODD | PARENB;
-        break;
-    case 2:
-        termios_p.c_cflag |= PARENB;
-        break;
-    default:
-        break;
-    }
-
-    if (priv->config.stops == 2)
-        termios_p.c_cflag |= CSTOPB;
-
-    termios_p.c_cflag |= CREAD;
-    termios_p.c_iflag = IGNPAR | IGNBRK;
-
-    switch(priv->config.flux)
-    {
-	case 1:
-	    termios_p.c_iflag |= IXON | IXOFF;
-	    break;
-	case 2:
-	    termios_p.c_cflag |= CRTSCTS;
-	    break;
-	default:
-	    termios_p.c_cflag |= CLOCAL;
-	    break;
-    }
-    termios_p.c_oflag = 0;
-    termios_p.c_lflag = 0;
-    termios_p.c_cc[VTIME] = 0;
-    termios_p.c_cc[VMIN] = 1;
-    tcsetattr(priv->serial_port_fd, TCSANOW, &termios_p);
-    tcflush(priv->serial_port_fd, TCOFLUSH);
-    tcflush(priv->serial_port_fd, TCIFLUSH);
+    tcsetattr (priv->serial_port_fd, TCSANOW, &termios_p);
+    tcflush (priv->serial_port_fd, TCOFLUSH);
+    tcflush (priv->serial_port_fd, TCIFLUSH);
 
     channel = g_io_channel_unix_new (priv->serial_port_fd);
     priv->callback_handler_in = g_io_add_watch_full (channel,
                                                      10,
                                                      G_IO_IN,
-                                                     (GIOFunc)
-                                                     Lis_port,
+                                                     gt_serial_port_on_channel_read,
                                                      self,
                                                      NULL);
 
@@ -383,7 +373,7 @@ gt_serial_port_connect (GtSerialPort *self)
     priv->callback_handler_err = g_io_add_watch_full (channel,
                                                       10,
                                                       G_IO_ERR,
-                                                      (GIOFunc)io_err,
+                                                      gt_serial_port_on_channel_error,
                                                       self, NULL);
 
     priv->callback_activated = TRUE;

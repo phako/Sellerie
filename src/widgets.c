@@ -284,7 +284,7 @@ void Set_local_echo(gboolean echo)
 
   group = gtk_widget_get_action_group (Fenetre, "main");
   action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group),
-                            "config.logal-echo"));
+                            "config.local-echo"));
 
   echo_on = echo;
 

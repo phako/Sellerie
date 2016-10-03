@@ -432,6 +432,12 @@ gt_serial_port_close (GtSerialPort *self)
         priv->serial_port_fd = -1;
         gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_OFFLINE, NULL);
     }
+
+    if (priv->status_timeout != 0)
+    {
+        g_source_remove (priv->status_timeout);
+        priv->status_timeout = 0;
+    }
 }
 
 void gt_serial_port_set_signals(GtSerialPort *self, guint param)
@@ -828,6 +834,8 @@ gt_serial_port_on_control_signals_read (gpointer data)
 
     control_flags = gt_serial_port_read_signals (self);
     if (control_flags < 0) {
+        priv->status_timeout = 0;
+
         return FALSE;
     }
 

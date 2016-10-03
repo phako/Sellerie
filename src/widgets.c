@@ -926,12 +926,14 @@ void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user
 }
 
 void on_local_echo_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
-    gt_serial_port_set_local_echo (serial_port, g_variant_get_boolean (parameter));
+    config.echo = g_variant_get_boolean (parameter);
+    gt_serial_port_set_local_echo (serial_port, config.echo);
     g_simple_action_set_state (action, parameter);
 }
 
 void on_crlf_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
     crlfauto_on = g_variant_get_boolean (parameter);
+    config.crlfauto_on = crlfauto_on;
     gt_serial_port_set_crlfauto (serial_port, crlfauto_on);
     g_simple_action_set_state (action, parameter);
 }

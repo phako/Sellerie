@@ -397,16 +397,12 @@ gt_serial_port_connect (GtSerialPort *self)
     return TRUE;
 }
 
-/* Ugly... */
-extern GtSerialPortConfiguration config;
-
 void gt_serial_port_set_local_echo (GtSerialPort *self, gboolean echo)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
 
     /* Double book-keeping for now */
     priv->config.echo = echo;
-    config.echo = echo;
 }
 
 void gt_serial_port_set_crlfauto(GtSerialPort *self, gboolean crlfauto)
@@ -415,7 +411,6 @@ void gt_serial_port_set_crlfauto(GtSerialPort *self, gboolean crlfauto)
 
     /* Double book-keeping for now */
     priv->config.crlfauto = crlfauto;
-    config.crlfauto = crlfauto;
 }
 
 void

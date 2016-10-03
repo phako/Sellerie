@@ -18,7 +18,7 @@
         </item>
         <item>
           <attribute name="label" translatable="yes">_Save RAW file</attribute>
-          <attribute name="action">main.clear</attribute>
+          <attribute name="action">main.save-file</attribute>
         </item>
       </section>
       <section>

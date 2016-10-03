@@ -755,6 +755,7 @@ gt_serial_port_class_init (GtSerialPortClass *klass)
 
     object_class->set_property = gt_serial_port_set_property;
     object_class->get_property = gt_serial_port_get_property;
+    object_class->finalize = gt_serial_port_finalize;
 
     gt_serial_port_properties[PROP_STATUS] =
         g_param_spec_enum ("status", "status", "status",
@@ -822,6 +823,15 @@ gt_serial_port_get_property (GObject *object,
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
             break;
     };
+}
+
+static void
+gt_serial_port_finalize (GObject *object)
+{
+    GtSerialPort *self = GT_SERIAL_PORT (object);
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    g_clear_error (&priv->last_error);
 }
 
 

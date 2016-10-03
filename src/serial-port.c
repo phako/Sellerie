@@ -833,16 +833,16 @@ gt_serial_port_on_control_signals_read (gpointer data)
     int control_flags = 0;
 
     control_flags = gt_serial_port_read_signals (self);
-    if (control_flags < 0) {
+    if (control_flags < 0)
+    {
         priv->status_timeout = 0;
 
         return FALSE;
     }
 
-    if (control_flags != priv->control_flags) {
+    if (control_flags != priv->control_flags)
+    {
         priv->control_flags = control_flags;
-
-        g_print ("Got flags %08x\n", control_flags);
 
         g_object_notify (G_OBJECT (self), "control");
     }

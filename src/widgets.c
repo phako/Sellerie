@@ -925,6 +925,8 @@ void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user
     g_variant_unref (state);
 }
 
+extern GtSerialPortConfiguration config;
+
 void on_local_echo_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
     config.echo = g_variant_get_boolean (parameter);
     gt_serial_port_set_local_echo (serial_port, config.echo);

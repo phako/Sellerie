@@ -107,7 +107,7 @@ static void signals_send_break_callback(GtkAction *action, gpointer data);
 static void signals_toggle_DTR_callback(GtkAction *action, gpointer data);
 static void signals_toggle_RTS_callback(GtkAction *action, gpointer data);
 static void help_about_callback(GtkAction *action, gpointer data);
-static gboolean control_signals_read(void);
+static void on_serial_port_signals_changed (int stat);
 static void initialize_hexadecimal_display(void);
 static gboolean Send_Hexadecimal(GtkWidget *, GdkEventKey *, gpointer);
 static gboolean pop_message(void);
@@ -468,8 +468,10 @@ void create_main_window(void)
   signals[5] = label;
 
   g_signal_connect_after(GTK_WIDGET(display), "commit", G_CALLBACK(Got_Input), NULL);
-
-  g_timeout_add(POLL_DELAY, (GSourceFunc)control_signals_read, NULL);
+  g_signal_connect (G_OBJECT (serial_port),
+                    "notify::control",
+                    G_CALLBACK (on_serial_port_signals_changed),
+                    NULL);
 
   gtk_window_set_default_size(GTK_WINDOW(Fenetre), 750, 550);
   gtk_widget_show_all(Fenetre);
@@ -608,7 +610,7 @@ void help_about_callback(GtkAction *action, gpointer data)
   g_object_unref (logo);
 }
 
-static void show_control_signals(int stat)
+static void on_serial_port_signals_changed (int stat)
 {
   if(stat & TIOCM_RI)
     gtk_widget_set_sensitive(GTK_WIDGET(signals[0]), TRUE);
@@ -650,17 +652,6 @@ void signals_toggle_DTR_callback(GtkAction *action, gpointer data)
 void signals_toggle_RTS_callback(GtkAction *action, gpointer data)
 {
   gt_serial_port_set_signals (serial_port, 1);
-}
-
-gboolean control_signals_read(void)
-{
-  int state;
-
-  state = gt_serial_port_read_signals (serial_port);
-  if(state >= 0)
-    show_control_signals(state);
-
-  return TRUE;
 }
 
 void gt_main_window_set_status (const char *msg)

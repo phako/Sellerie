@@ -36,7 +36,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
-#include <signal.h>
 #include <string.h>
 #include <errno.h>
 #include <pwd.h>
@@ -52,6 +51,8 @@
 #include <gtk/gtk.h>
 #include <glib.h>
 #include <glib/gi18n.h>
+
+#define GT_SERIAL_PORT_CONTROL_POLL_DELAY 100 /* in ms (for control signals) */
 
 #define P_LOCK "/var/lock/lockdev"  /* lock file location */
 
@@ -90,6 +91,8 @@ typedef struct {
 
     GtSerialPortState state;
     GError *last_error;
+    int control_flags;
+    guint status_timeout;
 } GtSerialPortPrivate;
 
 struct _GtSerialPort {
@@ -105,6 +108,7 @@ G_DEFINE_TYPE_WITH_PRIVATE (GtSerialPort, gt_serial_port, G_TYPE_OBJECT)
 enum GtSerialPortProperties {
     PROP_STATUS = 1,
     PROP_ERROR,
+    PROP_CONTROL,
     N_PROPERTIES
 };
 
@@ -127,6 +131,11 @@ static gboolean
 gt_serial_port_termios_from_config (GtSerialPort *self,
                                     struct termios *xtermios_p,
                                     GError **error);
+static gboolean
+gt_serial_port_on_control_signals_read (gpointer);
+
+static int
+gt_serial_port_read_signals (GtSerialPort *self);
 
 /* GObject overrides */
 static void gt_serial_port_set_property (GObject *, guint, const GValue *, GParamSpec *pspec);
@@ -381,6 +390,10 @@ gt_serial_port_connect (GtSerialPort *self)
     Set_local_echo(priv->config.echo);
     gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_ONLINE, NULL);
 
+    priv->status_timeout = g_timeout_add (GT_SERIAL_PORT_CONTROL_POLL_DELAY,
+                                          gt_serial_port_on_control_signals_read,
+                                          self);
+
     return TRUE;
 }
 
@@ -462,10 +475,10 @@ void gt_serial_port_set_signals(GtSerialPort *self, guint param)
     }
 }
 
-int gt_serial_port_read_signals (GtSerialPort *self)
+static int
+gt_serial_port_read_signals (GtSerialPort *self)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
-    static int stat = 0;
     int stat_read;
 
     if (priv->config.flux == 3)
@@ -496,12 +509,7 @@ int gt_serial_port_read_signals (GtSerialPort *self)
             return -2;
         }
 
-        if(stat_read == stat)
-            return -1;
-
-        stat = stat_read;
-
-        return stat;
+        return stat_read;
     }
     return -1;
 }
@@ -758,6 +766,15 @@ gt_serial_port_class_init (GtSerialPortClass *klass)
         g_param_spec_pointer ("error", "error", "error",
                               G_PARAM_STATIC_STRINGS |
                               G_PARAM_READABLE);
+
+    gt_serial_port_properties[PROP_CONTROL] =
+        g_param_spec_int ("control", "control", "control",
+                          0,
+                          G_MAXINT,
+                          0,
+                          G_PARAM_STATIC_STRINGS |
+                          G_PARAM_READABLE);
+
     g_object_class_install_properties (object_class,
                                        N_PROPERTIES,
                                        gt_serial_port_properties);
@@ -797,10 +814,37 @@ gt_serial_port_get_property (GObject *object,
         case PROP_ERROR:
             g_value_set_pointer (value, priv->last_error);
             break;
+        case PROP_CONTROL:
+            g_value_set_int (value, priv->control_flags);
+            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
             break;
     };
+}
+
+
+static gboolean
+gt_serial_port_on_control_signals_read (gpointer data)
+{
+    GtSerialPort *self = GT_SERIAL_PORT (data);
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+    int control_flags = 0;
+
+    control_flags = gt_serial_port_read_signals (self);
+    if (control_flags < 0) {
+        return FALSE;
+    }
+
+    if (control_flags != priv->control_flags) {
+        priv->control_flags = control_flags;
+
+        g_print ("Got flags %08x\n", control_flags);
+
+        g_object_notify (G_OBJECT (self), "control");
+    }
+
+    return TRUE;
 }
 
 GtSerialPort *

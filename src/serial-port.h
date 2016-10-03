@@ -27,7 +27,6 @@ GtSerialPort *gt_serial_port_new (void);
 int gt_serial_port_send_chars (GtSerialPort *, char *, int);
 gboolean gt_serial_port_config (GtSerialPort *, GtSerialPortConfiguration *config);
 void gt_serial_port_set_signals (GtSerialPort *, guint);
-int gt_serial_port_read_signals (GtSerialPort *);
 void gt_serial_port_close_and_unlock (GtSerialPort *);
 void gt_serial_port_set_local_echo (GtSerialPort *, gboolean);
 void gt_serial_port_set_crlfauto (GtSerialPort *, gboolean);
@@ -43,7 +42,6 @@ gboolean gt_serial_port_connect (GtSerialPort *self);
 #define BUFFER_RECEPTION 8192
 #define BUFFER_EMISSION 4096
 #define LINE_FEED 0x0A
-#define POLL_DELAY 100               /* in ms (for control signals) */
 
 G_END_DECLS
 

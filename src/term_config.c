@@ -330,7 +330,7 @@ gint Lis_Config(GtkBuilder *builder)
     message = (char *)gtk_combo_box_get_active_id(GTK_COMBO_BOX(widget));
     config.parite = atoi (message);
 
-    widget = gtk_builder_get_object (builder, "spin-bits");
+    widget = gtk_builder_get_object (builder, "spin-stopbits");
     config.stops = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON (widget));
 
     widget = gtk_builder_get_object (builder, "combo-flow");

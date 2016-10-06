@@ -2,6 +2,7 @@
 #define SERIAL_PORT_H
 
 #include "term_config.h"
+#include "buffer.h"
 
 #include <glib.h>
 #include <gio/gio.h>
@@ -24,6 +25,7 @@ typedef enum _GtSerialPortState GtSerialPortState;
 
 GtSerialPort *gt_serial_port_new (void);
 
+void gt_serial_port_set_buffer (GtSerialPort *, GtBuffer *);
 int gt_serial_port_send_chars (GtSerialPort *, char *, int);
 gboolean gt_serial_port_config (GtSerialPort *, GtSerialPortConfiguration *config);
 void gt_serial_port_set_signals (GtSerialPort *, guint);

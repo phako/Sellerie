@@ -79,6 +79,7 @@
 #include <vte/vte.h>
 
 extern GtSerialPort *serial_port;
+extern GtBuffer *buffer;
 
 typedef enum _GtSerialSignalsWidgets {
     SIGNAL_RING,
@@ -280,36 +281,36 @@ static void on_serial_port_status_changed (GObject *object,
 
 void set_view(guint type)
 {
-  GActionGroup *group;
-  GSimpleAction *show_index_action;
-  GSimpleAction *action;
+    GActionGroup *group;
+    GSimpleAction *show_index_action;
+    GSimpleAction *action;
 
-  group = gtk_widget_get_action_group (Fenetre, "main");
-  action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group), "view.hex-width"));
+    group = gtk_widget_get_action_group (Fenetre, "main");
+    action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group), "view.hex-width"));
 
-  show_index_action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group),
-              "view.index"));
+    show_index_action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group),
+                "view.index"));
 
-  clear_display();
-  set_clear_func(clear_display);
-  switch(type)
+    clear_display();
+    gt_buffer_set_clear_func (buffer, clear_display);
+    switch(type)
     {
-    case ASCII_VIEW:
-      g_simple_action_set_enabled (show_index_action, FALSE);
-      g_simple_action_set_enabled (action, FALSE);
-      total_bytes = 0;
-      set_display_func(put_text);
-      break;
-    case HEXADECIMAL_VIEW:
-      g_simple_action_set_enabled (show_index_action, TRUE);
-      g_simple_action_set_enabled (action, TRUE);
-      total_bytes = 0;
-      set_display_func(put_hexadecimal);
-      break;
-    default:
-      set_display_func(NULL);
+        case ASCII_VIEW:
+            g_simple_action_set_enabled (show_index_action, FALSE);
+            g_simple_action_set_enabled (action, FALSE);
+            total_bytes = 0;
+            gt_buffer_set_display_func (buffer, put_text);
+            break;
+        case HEXADECIMAL_VIEW:
+            g_simple_action_set_enabled (show_index_action, TRUE);
+            g_simple_action_set_enabled (action, TRUE);
+            total_bytes = 0;
+            gt_buffer_set_display_func (buffer, put_hexadecimal);
+            break;
+        default:
+            gt_buffer_unset_display_func (buffer);
     }
-  write_buffer();
+    gt_buffer_write (buffer);
 }
 
 void Set_local_echo(gboolean echo)
@@ -589,18 +590,18 @@ void put_text(gchar *string, guint size)
     vte_terminal_feed(VTE_TERMINAL(display), string, size);
 }
 
-gint send_serial(gchar *string, gint len)
+gint send_serial (gchar *string, gint len)
 {
-  gint bytes_written;
+    gint bytes_written;
 
-  bytes_written = gt_serial_port_send_chars (serial_port, string, len);
-  if(bytes_written > 0)
+    bytes_written = gt_serial_port_send_chars (serial_port, string, len);
+    if(bytes_written > 0)
     {
-      if(echo_on)
-	  put_chars(string, bytes_written, crlfauto_on);
+        if (echo_on)
+            gt_buffer_put_chars (buffer, string, bytes_written, crlfauto_on);
     }
 
-  return bytes_written;
+    return bytes_written;
 }
 
 
@@ -819,7 +820,7 @@ void on_quit (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 
 void on_clear_buffer (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    clear_buffer ();
+    gt_buffer_clear (buffer);
 }
 
 void on_send_raw_file (GSimpleAction *action, GVariant *parameter, gpointer user_data)

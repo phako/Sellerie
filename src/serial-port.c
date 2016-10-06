@@ -93,6 +93,7 @@ typedef struct {
     GError *last_error;
     int control_flags;
     guint status_timeout;
+    GtBuffer *buffer;
 } GtSerialPortPrivate;
 
 struct _GtSerialPort {
@@ -141,6 +142,7 @@ gt_serial_port_read_signals (GtSerialPort *self);
 static void gt_serial_port_set_property (GObject *, guint, const GValue *, GParamSpec *pspec);
 static void gt_serial_port_get_property (GObject *, guint, GValue *, GParamSpec *pspec);
 static void gt_serial_port_finalize (GObject *object);
+static void gt_serial_port_dispose (GObject *object);
 
 /* Implementations */
 gboolean
@@ -159,7 +161,7 @@ gt_serial_port_on_channel_read (GIOChannel* src, GIOCondition cond, gpointer dat
         bytes_read = read (priv->serial_port_fd, c, BUFFER_RECEPTION);
         if(bytes_read > 0)
         {
-            put_chars (c, bytes_read, priv->config.crlfauto);
+            gt_buffer_put_chars (priv->buffer, c, bytes_read, priv->config.crlfauto);
 
             if (priv->config.car != -1 && gt_file_get_waiting_for_char () == TRUE)
             {
@@ -764,6 +766,7 @@ gt_serial_port_class_init (GtSerialPortClass *klass)
 
     object_class->set_property = gt_serial_port_set_property;
     object_class->get_property = gt_serial_port_get_property;
+    object_class->dispose = gt_serial_port_dispose;
     object_class->finalize = gt_serial_port_finalize;
 
     gt_serial_port_properties[PROP_STATUS] =
@@ -843,6 +846,14 @@ gt_serial_port_finalize (GObject *object)
     g_clear_error (&priv->last_error);
 }
 
+static void
+gt_serial_port_dispose (GObject *object)
+{
+    GtSerialPort *self = GT_SERIAL_PORT (object);
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    g_clear_object (&priv->buffer);
+}
 
 static gboolean
 gt_serial_port_on_control_signals_read (gpointer data)
@@ -873,6 +884,14 @@ GtSerialPort *
 gt_serial_port_new (void)
 {
     return GT_SERIAL_PORT (g_object_new (GT_TYPE_SERIAL_PORT, NULL));
+}
+
+void
+gt_serial_port_set_buffer (GtSerialPort *self, GtBuffer *buffer)
+{
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    priv->buffer = g_object_ref (buffer);
 }
 
 GError *

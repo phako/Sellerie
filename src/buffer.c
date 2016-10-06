@@ -35,175 +35,228 @@
 
 #define BUFFER_SIZE (128 * 1024)
 
-static char *buffer = NULL;
-static char *current_buffer;
-static unsigned int pointer;
-static int cr_received = 0;
-char overlapped;
+typedef struct {
+    char *buffer;
+    gboolean cr_received;
+    unsigned int pointer;
+    char *current_buffer;
+    gboolean overlapped;
+    GtBufferFunc write_func;
+    GtBufferClearFunc clear_func;
+} GtBufferPrivate;
 
-void (*write_func)(char *, unsigned int) = NULL;
-void (*clear_func)(void) = NULL;
+struct _GtBuffer {
+    GObject parent_instance;
+};
 
-void create_buffer(void)
+struct _GtBufferClass {
+    GObjectClass parent_class;
+};
+
+G_DEFINE_TYPE_WITH_PRIVATE (GtBuffer, gt_buffer, G_TYPE_OBJECT)
+
+/* GObject overrides */
+static void
+gt_buffer_finalize (GObject *object);
+
+static void
+gt_buffer_class_init (GtBufferClass *klass)
 {
-  if(buffer == NULL)
-    {
-      buffer = malloc(BUFFER_SIZE);
-      clear_buffer();
-    }
-  return;
+    GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+    object_class->finalize = gt_buffer_finalize;
 }
 
-void delete_buffer(void)
+static void
+gt_buffer_init (GtBuffer *self)
 {
-  if(buffer != NULL)
-    free(buffer);
-  return;
+    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
+    priv->buffer = g_malloc0 (BUFFER_SIZE);
+    priv->current_buffer = priv->buffer;
 }
 
-void put_chars(char *chars, unsigned int size, gboolean crlf_auto)
+static void
+gt_buffer_finalize (GObject *object)
 {
-    char *characters;
+    GtBuffer *self = GT_BUFFER (object);
+    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
+
+    g_clear_pointer (&priv->buffer, g_free);
+}
+
+GtBuffer *
+gt_buffer_new (void)
+{
+    return GT_BUFFER (g_object_new (GT_TYPE_BUFFER, NULL));
+}
+
+void
+gt_buffer_put_chars (GtBuffer *self,
+                     char *chars,
+                     unsigned int size,
+                     gboolean crlf_auto)
+{
+    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
+    char *characters = NULL;
+
+    g_return_if_fail (self != NULL);
  
     /* If the auto CR LF mode on, read the buffer to add \r before \n */ 
-    if(crlf_auto)
+    if (crlf_auto)
     {
-	/* BUFFER_RECEPTION*2 for worst case scenario, all \n or \r chars */
-	char out_buffer[BUFFER_RECEPTION*2];
-	unsigned int i, out_size = 0;
-      
-	for (i=0; i<size; i++)
+        /* BUFFER_RECEPTION*2 for worst case scenario, all \n or \r chars */
+        char out_buffer[BUFFER_RECEPTION*2];
+        unsigned int i, out_size = 0;
+
+        for (i = 0; i < size; i++)
         {
-	    if (chars[i] == '\r')
+            if (chars[i] == '\r')
             {
-		/* If the previous character was a CR too, insert a newline */
-		if (cr_received)
+                /* If the previous character was a CR too, insert a newline */
+                if (priv->cr_received)
                 {
-		    out_buffer[out_size] = '\n';
-		    out_size++;
+                    out_buffer[out_size] = '\n';
+                    out_size++;
                 }
-		cr_received = 1;
+                priv->cr_received = TRUE;
             }
-	    else
+            else
             {
-		if (chars[i] == '\n')
+                if (chars[i] == '\n')
                 {
-		    /* If we get a newline without a CR first, insert a CR */
-		    if (!cr_received)
+                    /* If we get a newline without a CR first, insert a CR */
+                    if (!priv->cr_received)
                     {
-			out_buffer[out_size] = '\r';
-			out_size++;
+                        out_buffer[out_size] = '\r';
+                        out_size++;
                     }
                 }
-		else
+                else
                 {
-		    /* If we receive a normal char, and the previous one was a
-		       CR insert a newline */
-		    if (cr_received)
+                    /* If we receive a normal char, and the previous one was a
+                       CR insert a newline */
+                    if (priv->cr_received)
                     {
-			out_buffer[out_size] = '\n';
-			out_size++;
+                        out_buffer[out_size] = '\n';
+                        out_size++;
                     }
                 }
-		cr_received = 0;
+                priv->cr_received = FALSE;
             }
-	    out_buffer[out_size] = chars[i];
-	    out_size++;
+            out_buffer[out_size] = chars[i];
+            out_size++;
         }
-	chars = out_buffer;
-	size = out_size;
+
+        chars = out_buffer;
+        size = out_size;
     }
 
-    if(buffer == NULL)
+    if (size > BUFFER_SIZE)
     {
-	i18n_printf(_("ERROR : Buffer is not initialized !\n"));
-	return;
-    }
-   
-    if(size > BUFFER_SIZE)
-    {
-	characters = chars + (size - BUFFER_SIZE);
-	size = BUFFER_SIZE;
-    }
-    else
-	characters = chars;
- 
-    if((size + pointer) >= BUFFER_SIZE)
-    {
-	memcpy(current_buffer, characters, BUFFER_SIZE - pointer);
-	chars = characters + BUFFER_SIZE - pointer;
-	pointer = size - (BUFFER_SIZE - pointer);
-	memcpy(buffer, chars, pointer);
-	current_buffer = buffer + pointer;
-	overlapped = 1;
+        characters = chars + (size - BUFFER_SIZE);
+        size = BUFFER_SIZE;
     }
     else
     {
-	memcpy(current_buffer, characters, size);
-	pointer += size;
-	current_buffer += size;
+        characters = chars;
     }
-   
-    if(write_func != NULL)
-	write_func(characters, size);
-}
 
-void write_buffer(void)
-{
-  if(write_func == NULL)
-    return;
-
-  if(overlapped == 0)
-    write_func(buffer, pointer);
-  else
+    if ((size + priv->pointer) >= BUFFER_SIZE)
     {
-      write_func(current_buffer, BUFFER_SIZE - pointer);
-      write_func(buffer, pointer);
+        memcpy (priv->current_buffer, characters, BUFFER_SIZE - priv->pointer);
+        chars = characters + BUFFER_SIZE - priv->pointer;
+        priv->pointer = size - (BUFFER_SIZE - priv->pointer);
+        memcpy (priv->buffer, chars, priv->pointer);
+        priv->current_buffer = priv->buffer + priv->pointer;
+        priv->overlapped = TRUE;
     }
+    else
+    {
+        memcpy (priv->current_buffer, characters, size);
+        priv->pointer += size;
+        priv->current_buffer += size;
+    }
+
+    if (priv->write_func != NULL)
+        priv->write_func (characters, size);
 }
 
-void write_buffer_with_func(void (*func)(char *, unsigned int))
+void
+gt_buffer_clear (GtBuffer *self)
 {
-  void (*write_func_backup)(char *, unsigned int);
+    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
 
-  write_func_backup = write_func;
-  write_func = func;
-  write_buffer();
-  write_func = write_func_backup;
+    if (priv->clear_func != NULL)
+    {
+        priv->clear_func ();
+    }
+
+    priv->overlapped = FALSE;
+    memset (priv->buffer, 0, BUFFER_SIZE);
+    priv->current_buffer = priv->buffer;
+    priv->pointer = 0;
+    priv->cr_received = FALSE;
 }
 
-void clear_buffer(void)
+void
+gt_buffer_write (GtBuffer *self)
 {
-  if(clear_func != NULL)
-    clear_func();
+    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
 
-  if(buffer == NULL)
-    return;
+    if (priv->write_func == NULL)
+    {
+        return;
+    }
 
-  overlapped = 0;
-  memset(buffer, 0, BUFFER_SIZE);
-  current_buffer = buffer;
-  pointer = 0;
-  cr_received = 0;
+    /* Write the second half of the ringbuffer first (contains start of data) */
+    if (priv->overlapped)
+    {
+        priv->write_func (priv->current_buffer, BUFFER_SIZE - priv->pointer);
+    }
+    priv->write_func (priv->buffer, priv->pointer);
 }
 
-void set_clear_func(void (*func)(void))
+void
+gt_buffer_write_with_func (GtBuffer *self, GtBufferFunc write_func)
 {
-  clear_func = func;
+    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
+    GtBufferFunc old_write_func;
+
+    old_write_func = priv->write_func;
+    priv->write_func = write_func;
+    gt_buffer_write (self);
+    priv->write_func = old_write_func;
 }
 
-void unset_clear_func(void (*func)(void))
+void
+gt_buffer_set_display_func (GtBuffer *self, GtBufferFunc write_func)
 {
-  clear_func = NULL;
+    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
+
+    priv->write_func = write_func;
 }
 
-void set_display_func(void (*func)(char *, unsigned int))
+void
+gt_buffer_unset_display_func (GtBuffer *self)
 {
-  write_func = func;
+    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
+
+    priv->write_func = NULL;
 }
 
-void unset_display_func(void (*func)(char *, unsigned int))
+void
+gt_buffer_set_clear_func (GtBuffer *self, GtBufferClearFunc clear_func)
 {
-  write_func = NULL;
+    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
+
+    priv->clear_func = clear_func;
+}
+
+void
+gt_buffer_unset_clear_func (GtBuffer *self)
+{
+    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
+
+    priv->clear_func = NULL;
 }
 

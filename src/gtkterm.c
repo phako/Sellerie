@@ -35,12 +35,16 @@
 
 GtSerialPort *serial_port;
 extern struct configuration_port config;
+GtBuffer *buffer;
 
 int main(int argc, char *argv[])
 {
   char *config_file;
 
+  buffer = gt_buffer_new ();
   serial_port = gt_serial_port_new ();
+  gt_serial_port_set_buffer (serial_port, buffer);
+  g_object_unref (G_OBJECT (buffer));
 
   config_file = g_strdup_printf("%s/.gtktermrc", getenv("HOME"));
   gt_config_set_file_path (config_file);
@@ -52,15 +56,13 @@ int main(int argc, char *argv[])
 
   gtk_init(&argc, &argv);
 
-  create_buffer();
 
   create_main_window();
 
-  if(read_command_line(argc, argv) < 0)
-    {
-      delete_buffer();
-      exit(1);
-    }
+  if (read_command_line(argc, argv) < 0)
+  {
+      exit (EXIT_FAILURE);
+  }
 
   gt_serial_port_config (serial_port, &config);
 
@@ -70,10 +72,8 @@ int main(int argc, char *argv[])
 
   gtk_main();
 
-  delete_buffer();
-
   gt_serial_port_close_and_unlock (serial_port);
   g_object_unref (serial_port);
 
-  return 0;
+  return EXIT_SUCCESS;
 }

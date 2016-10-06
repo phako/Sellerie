@@ -339,7 +339,7 @@ void save_raw_file(GtkWindow *parent)
 		{
 			fic_defaut = g_strdup(fileName);
 
-			write_buffer_with_func(write_file);
+			gt_buffer_write_with_func (NULL, write_file);
 
 			fclose(Fic);
 		}

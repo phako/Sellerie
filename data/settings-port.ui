@@ -39,34 +39,34 @@
     </columns>
     <data>
       <row>
-        <col id="0" translatable="yes">300</col>
+        <col id="0">300</col>
       </row>
       <row>
-        <col id="0" translatable="yes">600</col>
+        <col id="0">600</col>
       </row>
       <row>
-        <col id="0" translatable="yes">1200</col>
+        <col id="0">1200</col>
       </row>
       <row>
-        <col id="0" translatable="yes">2400</col>
+        <col id="0">2400</col>
       </row>
       <row>
-        <col id="0" translatable="yes">4800</col>
+        <col id="0">4800</col>
       </row>
       <row>
-        <col id="0" translatable="yes">9600</col>
+        <col id="0">9600</col>
       </row>
       <row>
-        <col id="0" translatable="yes">19200</col>
+        <col id="0">19200</col>
       </row>
       <row>
-        <col id="0" translatable="yes">38400</col>
+        <col id="0">38400</col>
       </row>
       <row>
-        <col id="0" translatable="yes">57600</col>
+        <col id="0">57600</col>
       </row>
       <row>
-        <col id="0" translatable="yes">115200</col>
+        <col id="0">115200</col>
       </row>
     </data>
   </object>
@@ -191,7 +191,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="hexpand">True</property>
-                    <property name="text" translatable="yes">8</property>
+                    <property name="text">8</property>
                     <property name="input_purpose">digits</property>
                     <property name="adjustment">adjustment1</property>
                     <property name="numeric">True</property>
@@ -219,7 +219,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="hexpand">True</property>
-                    <property name="text" translatable="yes">1</property>
+                    <property name="text">1</property>
                     <property name="adjustment">adjustment2</property>
                     <property name="numeric">True</property>
                     <property name="value">1</property>

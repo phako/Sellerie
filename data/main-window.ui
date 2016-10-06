@@ -149,27 +149,27 @@
           <attribute name="label" translatable="yes">Hexadecimal _chars</attribute>
           <section>
             <item>
-              <attribute name="label" translatable="yes">_8</attribute>
+              <attribute name="label" translatable="no">_8</attribute>
               <attribute name="action">main.view.hex-width</attribute>
               <attribute name="target">8</attribute>
             </item>
             <item>
-              <attribute name="label" translatable="yes">1_0</attribute>
+              <attribute name="label" translatable="no">1_0</attribute>
               <attribute name="action">main.view.hex-width</attribute>
               <attribute name="target">0</attribute>
             </item>
             <item>
-              <attribute name="label" translatable="yes">_16</attribute>
+              <attribute name="label" translatable="no">_16</attribute>
               <attribute name="action">main.view.hex-width</attribute>
               <attribute name="target">16</attribute>
             </item>
             <item>
-              <attribute name="label" translatable="yes">_24</attribute>
+              <attribute name="label" translatable="no">_24</attribute>
               <attribute name="action">main.view.hex-width</attribute>
               <attribute name="target">24</attribute>
             </item>
             <item>
-              <attribute name="label" translatable="yes">_32</attribute>
+              <attribute name="label" translatable="no">_32</attribute>
               <attribute name="action">main.view.hex-width</attribute>
               <attribute name="target">32</attribute>
             </item>

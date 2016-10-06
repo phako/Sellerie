@@ -727,7 +727,7 @@ gboolean Send_Hexadecimal(GtkWidget *widget, GdkEventKey *event, gpointer pointe
     text = (gchar *)gtk_entry_get_text(GTK_ENTRY(widget));
 
     if(strlen(text) == 0){
-        message = g_strdup_printf(_("0 byte(s) sent!"));
+        message = g_strdup_printf(_("Nothing sent."));
         Put_temp_message(message, 1500);
         gtk_entry_set_text(GTK_ENTRY(widget), "");
         g_free(message);
@@ -750,7 +750,7 @@ gboolean Send_Hexadecimal(GtkWidget *widget, GdkEventKey *event, gpointer pointe
     send_serial(buff, i);
     g_free(buff);
 
-    message = g_strdup_printf(_("%d byte(s) sent!"), i);
+    message = g_strdup_printf(ngettext("%d byte sent.", "%d bytes sent.", i), i);
     Put_temp_message(message, 2000);
     gtk_entry_set_text(GTK_ENTRY(widget), "");
     g_strfreev(tokens);

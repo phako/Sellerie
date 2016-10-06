@@ -108,7 +108,7 @@ void send_raw_file(GtkWindow *parent)
 			GtkWidget *Bouton_annuler, *Box;
 
 			fic_defaut = g_strdup(fileName);
-			msg = g_strdup_printf(_("%s : transfer in progress..."), fileName);
+			msg = g_strdup_printf(_("%s : transfer in progress…"), fileName);
             gt_main_window_push_status (msg);
 
 			car_written = 0;
@@ -126,7 +126,7 @@ void send_raw_file(GtkWindow *parent)
 
 			gtk_box_pack_start(GTK_BOX(Box), ProgressBar, FALSE, FALSE, 5);
 
-			Bouton_annuler = gtk_button_new_with_label(_("Cancel"));
+			Bouton_annuler = gtk_button_new_with_label(_("_Cancel"));
 			g_signal_connect(GTK_WIDGET(Bouton_annuler), "clicked", G_CALLBACK(close_all), NULL);
             gtk_dialog_add_action_widget (GTK_DIALOG (Window), Bouton_annuler, GTK_RESPONSE_CANCEL);
 

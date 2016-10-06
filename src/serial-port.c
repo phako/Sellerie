@@ -593,7 +593,7 @@ gboolean gt_serial_port_lock (GtSerialPort *self, char *port, GError **error)
             }
             if(pid > 0 && kill((pid_t)pid, 0) < 0 && errno == ESRCH)
             {
-                i18n_fprintf(stderr, _("Lockfile is stale. Overriding it..\n"));
+                i18n_fprintf(stderr, _("Lockfile is stale. Overriding it…\n"));
                 sleep(1);
                 unlink(priv->lockfile);
             }

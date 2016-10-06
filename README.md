@@ -1,7 +1,7 @@
 # GTKTerm: A GTK+ serial port terminal
 
-Original code &copy; Julien Schmitt <http://www.jls-info.com/julien/linux>
-Improvements by Zach Davis <https://fedorahosted.org/gtkterm/>
+ * Original code &copy; Julien Schmitt <http://www.jls-info.com/julien/linux>
+ * Improvements by Zach Davis <https://fedorahosted.org/gtkterm/>
 
 ## License
 
@@ -72,7 +72,7 @@ And to install:
 
 If you wish to install Gtkterm someplace other than the default directory, use:
 
-   ./configure --prefix=/install/directory
+    ./configure --prefix=/install/directory
 
 Then build and install as usual.
 

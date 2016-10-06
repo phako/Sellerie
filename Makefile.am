@@ -16,3 +16,6 @@ GITIGNOREFILES = \
 	**/*.sw* \
 	build-aux \
 	config.h.in
+
+@GENERATE_CHANGELOG_RULES@
+dist-hook: dist-ChangeLog

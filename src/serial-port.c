@@ -477,6 +477,14 @@ void gt_serial_port_set_signals(GtSerialPort *self, guint param)
     }
 }
 
+guint
+gt_serial_port_get_signals (GtSerialPort *self)
+{
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    return priv->control_flags;
+}
+
 static int
 gt_serial_port_read_signals (GtSerialPort *self)
 {

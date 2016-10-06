@@ -80,11 +80,40 @@
 
 extern GtSerialPort *serial_port;
 
+typedef enum _GtSerialSignalsWidgets {
+    SIGNAL_RING,
+    SIGNAL_DSR,
+    SIGNAL_CD,
+    SIGNAL_CTS,
+    SIGNAL_RTS,
+    SIGNAL_DTR,
+    SIGNAL_COUNT
+} GtSerialSignalsWidgets;
+
+static guint signal_flags[] = {
+    TIOCM_RI,
+    TIOCM_DSR,
+    TIOCM_CD,
+    TIOCM_CTS,
+    TIOCM_RTS,
+    TIOCM_DTR
+};
+
+static char const *signal_names[] = {
+    "RI",
+    "DSR",
+    "CD",
+    "CTS",
+    "RTS",
+    "DTR",
+    NULL
+};
+
 static guint id;
 static gboolean echo_on;
 static gboolean crlfauto_on;
 static GtkWidget *StatusBar;
-static GtkWidget *signals[6];
+static GtkWidget *signals[SIGNAL_COUNT];
 static GtkWidget *Hex_Box;
 static GtkWidget *scrolled_window;
 static GtkWidget *popup_menu;
@@ -107,7 +136,9 @@ static void signals_send_break_callback(GtkAction *action, gpointer data);
 static void signals_toggle_DTR_callback(GtkAction *action, gpointer data);
 static void signals_toggle_RTS_callback(GtkAction *action, gpointer data);
 static void help_about_callback(GtkAction *action, gpointer data);
-static void on_serial_port_signals_changed (int stat);
+static void on_serial_port_signals_changed (GObject *object,
+                                            GParamSpec *pspec,
+                                            gpointer user_data);
 static void initialize_hexadecimal_display(void);
 static gboolean Send_Hexadecimal(GtkWidget *, GdkEventKey *, gpointer);
 static gboolean pop_message(void);
@@ -289,6 +320,7 @@ void Set_local_echo(gboolean echo)
   echo_on = echo;
 
   value = g_variant_new_boolean (echo);
+  g_variant_ref_sink (value);
 
   if(action)
       g_simple_action_set_state (action, value);
@@ -353,10 +385,16 @@ void create_main_window(void)
   GtkWidget *main_vbox, *label;
   GtkWidget *hex_send_entry;
   GActionGroup *group;
+  int i = 0;
 
   g_signal_connect (G_OBJECT (serial_port), "notify::status",
                     G_CALLBACK (on_serial_port_status_changed),
                     Fenetre);
+
+  g_signal_connect (G_OBJECT (serial_port),
+                    "notify::control",
+                    G_CALLBACK (on_serial_port_signals_changed),
+                    NULL);
 
   group = G_ACTION_GROUP (g_simple_action_group_new ());
   g_action_map_add_action_entries (G_ACTION_MAP (group),
@@ -442,36 +480,15 @@ void create_main_window(void)
   gtk_box_pack_start(GTK_BOX(main_vbox), StatusBar, FALSE, FALSE, 0);
   id = gtk_statusbar_get_context_id(GTK_STATUSBAR(StatusBar), "Messages");
 
-  label = gtk_label_new("RI");
-  gtk_box_pack_end(GTK_BOX(StatusBar), label, FALSE, TRUE, 5);
-  gtk_widget_set_sensitive(GTK_WIDGET(label), FALSE);
-  signals[0] = label;
-
-  label = gtk_label_new("DSR");
-  gtk_box_pack_end(GTK_BOX(StatusBar), label, FALSE, TRUE, 5);
-  signals[1] = label;
-
-  label = gtk_label_new("CD");
-  gtk_box_pack_end(GTK_BOX(StatusBar), label, FALSE, TRUE, 5);
-  signals[2] = label;
-
-  label = gtk_label_new("CTS");
-  gtk_box_pack_end(GTK_BOX(StatusBar), label, FALSE, TRUE, 5);
-  signals[3] = label;
-
-  label = gtk_label_new("RTS");
-  gtk_box_pack_end(GTK_BOX(StatusBar), label, FALSE, TRUE, 5);
-  signals[4] = label;
-
-  label = gtk_label_new("DTR");
-  gtk_box_pack_end(GTK_BOX(StatusBar), label, FALSE, TRUE, 5);
-  signals[5] = label;
+  /* Set up serial signal indicators */
+  for  (i = 0; i < SIGNAL_COUNT; i++) {
+      label = gtk_label_new (signal_names[i]);
+      gtk_box_pack_end(GTK_BOX(StatusBar), label, FALSE, TRUE, 5);
+      gtk_widget_set_sensitive(GTK_WIDGET(label), FALSE);
+      signals[i] = label;
+  }
 
   g_signal_connect_after(GTK_WIDGET(display), "commit", G_CALLBACK(Got_Input), NULL);
-  g_signal_connect (G_OBJECT (serial_port),
-                    "notify::control",
-                    G_CALLBACK (on_serial_port_signals_changed),
-                    NULL);
 
   gtk_window_set_default_size(GTK_WINDOW(Fenetre), 750, 550);
   gtk_widget_show_all(Fenetre);
@@ -610,32 +627,19 @@ void help_about_callback(GtkAction *action, gpointer data)
   g_object_unref (logo);
 }
 
-static void on_serial_port_signals_changed (int stat)
+static void on_serial_port_signals_changed (GObject *object,
+                                            GParamSpec *pspec,
+                                            gpointer user_data)
 {
-  if(stat & TIOCM_RI)
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[0]), TRUE);
-  else
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[0]), FALSE);
-  if(stat & TIOCM_DSR)
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[1]), TRUE);
-  else
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[1]), FALSE);
-  if(stat & TIOCM_CD)
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[2]), TRUE);
-  else
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[2]), FALSE);
-  if(stat & TIOCM_CTS)
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[3]), TRUE);
-  else
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[3]), FALSE);
-  if(stat & TIOCM_RTS)
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[4]), TRUE);
-  else
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[4]), FALSE);
-  if(stat & TIOCM_DTR)
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[5]), TRUE);
-  else
-    gtk_widget_set_sensitive(GTK_WIDGET(signals[5]), FALSE);
+    guint port_signals = 0;
+    int i = 0;
+
+    port_signals = gt_serial_port_get_signals (GT_SERIAL_PORT (object));
+
+    for (i = 0; i < SIGNAL_COUNT; i++) {
+        gboolean active = (port_signals & signal_flags[i]) != 0;
+        gtk_widget_set_sensitive (signals[i], active);
+    }
 }
 
 void signals_send_break_callback(GtkAction *action, gpointer data)

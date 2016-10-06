@@ -118,6 +118,7 @@ static GtkWidget *Hex_Box;
 static GtkWidget *scrolled_window;
 static GtkWidget *popup_menu;
 static GtkAccelGroup *shortcuts;
+static GtkWidget *menu_bar;
 
 static GtkBuilder *builder;
 
@@ -178,6 +179,7 @@ static void on_view_ascii_hex_change_state (GSimpleAction *action, GVariant *par
 static void on_view_index_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_view_send_hex_change_state  (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_view_hex_width_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_menubar_visibility_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 
 const GActionEntry menu_actions[] = {
     /* File menu */
@@ -224,7 +226,8 @@ const GActionEntry menu_actions[] = {
     {"about", on_about },
 
     /* Misc actions */
-    { "reconnect", on_reconnect }
+    { "reconnect", on_reconnect },
+    { "menubar-visibility", on_action_toggle, NULL, "true", on_menubar_visibility_change_state }
 };
 
 static GSimpleAction *find_action (const char *action)
@@ -385,6 +388,7 @@ void create_main_window(void)
   GtkWidget *main_vbox, *label;
   GtkWidget *hex_send_entry;
   GActionGroup *group;
+  GMenuModel *menu_model = NULL;
   int i = 0;
 
   g_signal_connect (G_OBJECT (serial_port), "notify::status",
@@ -417,12 +421,10 @@ void create_main_window(void)
 
   main_vbox = GTK_WIDGET (gtk_builder_get_object (builder, "box-main"));
 
-  {
-      gtk_box_pack_start (GTK_BOX (main_vbox),
-              gtk_menu_bar_new_from_model (
-                  G_MENU_MODEL (gtk_builder_get_object (builder, "window-menu"))),
-              FALSE, FALSE, 0);
-  }
+  /* Create main menu bar */
+  menu_model = G_MENU_MODEL (gtk_builder_get_object (builder, "window-menu"));
+  menu_bar = gtk_menu_bar_new_from_model (menu_model);
+  gtk_box_pack_start (GTK_BOX (main_vbox), menu_bar, FALSE, FALSE, 0);
 
   /* create vte window */
   display = vte_terminal_new();
@@ -951,15 +953,18 @@ void on_view_index_change_state (GSimpleAction *action, GVariant *parameter, gpo
 }
 
 void on_view_send_hex_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
-    gboolean show_hex_view = g_variant_get_boolean (parameter);
-    if (show_hex_view) {
-        gtk_widget_show (GTK_WIDGET (Hex_Box));
-    } else {
-        gtk_widget_hide (GTK_WIDGET (Hex_Box));
-    }
+    gtk_widget_set_visible (Hex_Box, g_variant_get_boolean (parameter));
 
     g_simple_action_set_state (action, parameter);
 }
+
+void on_menubar_visibility_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    gtk_widget_set_visible (menu_bar, g_variant_get_boolean (parameter));
+
+    g_simple_action_set_state (action, parameter);
+}
+
 
 void on_action_radio (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
     g_action_change_state (G_ACTION (action), parameter);

@@ -200,6 +200,10 @@
   <menu id='popup-menu'>
     <section>
       <item>
+        <attribute name="label" translatable="yes">_Show menubar</attribute>
+        <attribute name="action">main.menubar-visibility</attribute>
+      </item>
+      <item>
         <attribute name="label" translatable="yes">_Reconnect</attribute>
         <attribute name="action">main.reconnect</attribute>
       </item>

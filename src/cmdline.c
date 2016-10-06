@@ -100,6 +100,7 @@ static gboolean on_flow_parse (const gchar *name,
 }
 
 static char *default_file = NULL;
+static char *config_port = NULL;
 
 static GOptionEntry entries[] = {
     { "config", 'c', 0, G_OPTION_ARG_CALLBACK, on_config_parse, N_("Load configuration FILE"), "FILE", },
@@ -108,7 +109,7 @@ static GOptionEntry entries[] = {
     { "stopbits", 't', 0, G_OPTION_ARG_INT, &config.stops, N_("Number of STOPBITS (default 1)"), "STOPBITS" },
     { "bits", 'b', 0, G_OPTION_ARG_INT, &config.bits, N_("Number of BITS (default 8)"), "BITS" },
     { "file", 'f', 0, G_OPTION_ARG_FILENAME, &default_file, N_("Default FILE to send (default none)"), "FILE" },
-    { "port", 'p', 0, G_OPTION_ARG_STRING, &config.port, N_("Serial port DEVICE (default /dev/ttyS0)"), "DEVICE" },
+    { "port", 'p', 0, G_OPTION_ARG_STRING, &config_port, N_("Serial port DEVICE (default /dev/ttyS0)"), "DEVICE" },
     { "flow", 'w', 0, G_OPTION_ARG_CALLBACK, on_flow_parse, N_("FLOW control (Xon|RTS|RS485, default none)"), "FLOW" },
     { "delay", 'd', 0, G_OPTION_ARG_INT, &config.delai, N_("End of line DELAY in ms (default none)"), "DELAY" },
     { "char", 'r', 0, G_OPTION_ARG_INT, &config.car, N_("Wait for special CHARACTER at end of line (default none)"), "CHARACTER" },
@@ -134,6 +135,7 @@ int read_command_line (int argc, char **argv)
     if (default_file != NULL) {
       gt_file_set_default (default_file);
     }
+    strncpy (config.port, config_port, sizeof (config.port));
     Verify_configuration();
     result = 0;
   }

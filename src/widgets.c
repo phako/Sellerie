@@ -112,7 +112,7 @@ static char const *signal_names[] = {
 static guint id;
 static gboolean echo_on;
 static gboolean crlfauto_on;
-static GtkWidget *StatusBar;
+static GtkWidget *status_bar;
 static GtkWidget *signals[SIGNAL_COUNT];
 static GtkWidget *Hex_Box;
 static GtkWidget *scrolled_window;
@@ -180,6 +180,7 @@ static void on_view_index_change_state (GSimpleAction *action, GVariant *paramet
 static void on_view_send_hex_change_state  (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_view_hex_width_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_menubar_visibility_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void on_statusbar_visibility_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 
 const GActionEntry menu_actions[] = {
     /* File menu */
@@ -227,7 +228,8 @@ const GActionEntry menu_actions[] = {
 
     /* Misc actions */
     { "reconnect", on_reconnect },
-    { "menubar-visibility", on_action_toggle, NULL, "true", on_menubar_visibility_change_state }
+    { "menubar-visibility", on_action_toggle, NULL, "true", on_menubar_visibility_change_state },
+    { "statusbar-visibility", on_action_toggle, NULL, "true", on_statusbar_visibility_change_state }
 };
 
 static GSimpleAction *find_action (const char *action)
@@ -478,14 +480,14 @@ void create_main_window(void)
   gtk_box_pack_start(GTK_BOX(main_vbox), Hex_Box, FALSE, TRUE, 2);
 
   /* status bar */
-  StatusBar = gtk_statusbar_new();
-  gtk_box_pack_start(GTK_BOX(main_vbox), StatusBar, FALSE, FALSE, 0);
-  id = gtk_statusbar_get_context_id(GTK_STATUSBAR(StatusBar), "Messages");
+  status_bar = gtk_statusbar_new();
+  gtk_box_pack_start(GTK_BOX(main_vbox), status_bar, FALSE, FALSE, 0);
+  id = gtk_statusbar_get_context_id(GTK_STATUSBAR(status_bar), "Messages");
 
   /* Set up serial signal indicators */
   for  (i = 0; i < SIGNAL_COUNT; i++) {
       label = gtk_label_new (signal_names[i]);
-      gtk_box_pack_end(GTK_BOX(StatusBar), label, FALSE, TRUE, 5);
+      gtk_box_pack_end(GTK_BOX(status_bar), label, FALSE, TRUE, 5);
       gtk_widget_set_sensitive(GTK_WIDGET(label), FALSE);
       signals[i] = label;
   }
@@ -668,12 +670,12 @@ void gt_main_window_set_status (const char *msg)
 
 void gt_main_window_push_status (const char *msg)
 {
-    gtk_statusbar_push (GTK_STATUSBAR (StatusBar), id, msg);
+    gtk_statusbar_push (GTK_STATUSBAR (status_bar), id, msg);
 }
 
 void gt_main_window_pop_status (void)
 {
-    gtk_statusbar_pop (GTK_STATUSBAR (StatusBar), id);
+    gtk_statusbar_pop (GTK_STATUSBAR (status_bar), id);
 }
 
 void gt_main_window_add_shortcut (guint key, GdkModifierType mod, GClosure *closure)
@@ -763,13 +765,13 @@ gboolean Send_Hexadecimal(GtkWidget *widget, GdkEventKey *event, gpointer pointe
 void Put_temp_message(const gchar *text, gint time)
 {
   /* time in ms */
-  gtk_statusbar_push(GTK_STATUSBAR(StatusBar), id, text);
+  gtk_statusbar_push(GTK_STATUSBAR(status_bar), id, text);
   g_timeout_add(time, (GSourceFunc)pop_message, NULL);
 }
 
 gboolean pop_message(void)
 {
-  gtk_statusbar_pop(GTK_STATUSBAR(StatusBar), id);
+  gtk_statusbar_pop(GTK_STATUSBAR(status_bar), id);
 
   return FALSE;
 }
@@ -965,6 +967,12 @@ void on_menubar_visibility_change_state (GSimpleAction *action, GVariant *parame
     g_simple_action_set_state (action, parameter);
 }
 
+void on_statusbar_visibility_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    gtk_widget_set_visible (status_bar, g_variant_get_boolean (parameter));
+
+    g_simple_action_set_state (action, parameter);
+}
 
 void on_action_radio (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
     g_action_change_state (G_ACTION (action), parameter);

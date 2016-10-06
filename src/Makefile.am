@@ -40,7 +40,6 @@ gtkterm_SOURCES = \
     macros.h \
     i18n.c \
     i18n.h \
-    auto_config.h \
     logging.c \
     logging.h  \
 	serial-port.c \

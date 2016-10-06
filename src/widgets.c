@@ -935,7 +935,7 @@ void on_local_echo_change_state (GSimpleAction *action, GVariant *parameter, gpo
 
 void on_crlf_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
     crlfauto_on = g_variant_get_boolean (parameter);
-    config.crlfauto_on = crlfauto_on;
+    config.crlfauto = crlfauto_on;
     gt_serial_port_set_crlfauto (serial_port, crlfauto_on);
     g_simple_action_set_state (action, parameter);
 }

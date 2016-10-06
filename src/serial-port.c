@@ -140,6 +140,7 @@ gt_serial_port_read_signals (GtSerialPort *self);
 /* GObject overrides */
 static void gt_serial_port_set_property (GObject *, guint, const GValue *, GParamSpec *pspec);
 static void gt_serial_port_get_property (GObject *, guint, GValue *, GParamSpec *pspec);
+static void gt_serial_port_finalize (GObject *object);
 
 /* Implementations */
 gboolean

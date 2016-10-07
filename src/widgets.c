@@ -253,16 +253,21 @@ static void on_serial_port_status_changed (GObject *object,
 
     if (status == GT_SERIAL_PORT_STATE_ERROR)
     {
+        char *msg = NULL;
         if (error != NULL)
         {
-            g_warning (_("Serial port went to error: %s"), error->message);
-            show_message (error->message, MSG_ERR);
+            msg = g_strdup_printf (_("Serial port went to error: %s"),
+                                   error->message);
         }
         else
         {
-            g_warning (_("Serial port went to error. Reason unknown."));
-            show_message (error->message, MSG_ERR);
+            msg = g_strdup (_("Serial port went to error. Reason unknown."));
         }
+
+        g_warning ("%s", msg);
+        show_message (msg, MSG_ERR);
+
+        g_free (msg);
     }
     else if (status == GT_SERIAL_PORT_STATE_OFFLINE)
     {

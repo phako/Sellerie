@@ -620,7 +620,7 @@ void help_about_callback(GtkAction *action, gpointer data)
   const gchar *authors[] = {"Julien Schimtt", "Zach Davis", "Jens Georg", NULL};
   GdkPixbuf *logo = NULL;
 
-  logo = gdk_pixbuf_new_from_resource_at_scale ("/org/jensge/GtkTerm/Serial-port.svg",
+  logo = gdk_pixbuf_new_from_resource_at_scale ("/org/jensge/GtkTerm/org.jensge.GtkTerm.svg",
                                                 128, 128, TRUE, NULL);
 
   gtk_show_about_dialog(GTK_WINDOW(Fenetre),

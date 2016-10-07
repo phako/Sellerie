@@ -11,7 +11,7 @@ dist_noinst_DATA = \
 	$(top_srcdir)/data/org.jensge.GtkTerm.gresource.xml \
 	$(top_srcdir)/data/macros.ui \
 	$(top_srcdir)/data/main-window.ui \
-	$(top_srcdir)/data/Serial-port.svg \
+	$(top_srcdir)/data/org.jensge.GtkTerm.svg \
 	$(top_srcdir)/data/settings-port.ui \
 	$(top_srcdir)/data/settings-window.ui
 

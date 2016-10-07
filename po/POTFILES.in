@@ -2,6 +2,7 @@
 # Copyright (C) 1995 Free Software Foundation, Inc.
 
 # Package source files
+org.jensge.GtkTerm.desktop.in
 data/settings-port.ui
 data/settings-window.ui
 data/macros.ui

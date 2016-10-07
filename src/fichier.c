@@ -337,9 +337,12 @@ void save_raw_file(GtkWindow *parent)
 		}
 		else
 		{
-			fic_defaut = g_strdup(fileName);
+            GtBuffer *buffer = NULL;
 
-			gt_buffer_write_with_func (NULL, write_file);
+			fic_defaut = g_strdup(fileName);
+            buffer = gt_serial_port_get_buffer (serial_port);
+
+			gt_buffer_write_with_func (buffer, write_file);
 
 			fclose(Fic);
 		}

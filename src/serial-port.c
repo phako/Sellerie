@@ -909,3 +909,11 @@ gt_serial_port_get_status (GtSerialPort *self)
 
     return priv->state;
 }
+
+GtBuffer *
+gt_serial_port_get_buffer (GtSerialPort *self)
+{
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    return priv->buffer;
+}

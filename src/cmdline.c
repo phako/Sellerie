@@ -135,7 +135,11 @@ int read_command_line (int argc, char **argv)
     if (default_file != NULL) {
       gt_file_set_default (default_file);
     }
-    strncpy (config.port, config_port, sizeof (config.port));
+
+    if (config_port != NULL)
+    {
+        strncpy (config.port, config_port, sizeof (config.port));
+    }
     Verify_configuration();
     result = 0;
   }

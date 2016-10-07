@@ -84,7 +84,9 @@ typedef struct {
     struct termios termios_save;
     int serial_port_fd;
 
+    GIOChannel *in_channel;
     guint callback_handler_in;
+    GIOChannel *err_channel;
     guint callback_handler_err;
     gboolean callback_activated;
     char lockfile[128];
@@ -336,7 +338,6 @@ gt_serial_port_connect (GtSerialPort *self)
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     struct termios termios_p;
     GError *error = NULL;
-    GIOChannel *channel = NULL;
 
     priv->serial_port_fd = open (priv->config.port,
                                  O_RDWR | O_NOCTTY | O_NDELAY);
@@ -373,16 +374,16 @@ gt_serial_port_connect (GtSerialPort *self)
     tcflush (priv->serial_port_fd, TCOFLUSH);
     tcflush (priv->serial_port_fd, TCIFLUSH);
 
-    channel = g_io_channel_unix_new (priv->serial_port_fd);
-    priv->callback_handler_in = g_io_add_watch_full (channel,
+    priv->in_channel = g_io_channel_unix_new (priv->serial_port_fd);
+    priv->callback_handler_in = g_io_add_watch_full (priv->in_channel,
                                                      10,
                                                      G_IO_IN,
                                                      gt_serial_port_on_channel_read,
                                                      self,
                                                      NULL);
 
-    channel = g_io_channel_unix_new (priv->serial_port_fd);
-    priv->callback_handler_err = g_io_add_watch_full (channel,
+    priv->err_channel = g_io_channel_unix_new (priv->serial_port_fd);
+    priv->callback_handler_err = g_io_add_watch_full (priv->err_channel,
                                                       10,
                                                       G_IO_ERR,
                                                       gt_serial_port_on_channel_error,
@@ -428,6 +429,8 @@ gt_serial_port_close (GtSerialPort *self)
             g_source_remove(priv->callback_handler_err);
             priv->callback_activated = FALSE;
         }
+        g_clear_pointer (&priv->in_channel, g_io_channel_unref);
+        g_clear_pointer (&priv->err_channel, g_io_channel_unref);
         tcsetattr(priv->serial_port_fd, TCSANOW, &(priv->termios_save));
         tcflush(priv->serial_port_fd, TCOFLUSH);
         tcflush(priv->serial_port_fd, TCIFLUSH);

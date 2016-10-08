@@ -21,9 +21,10 @@ AX_CHECK_ENABLE_DEBUG
 AX_COMPILER_FLAGS([WARN_CFLAGS], [WARN_LDFLAGS])
 
 AC_PROG_CC
-AC_CHECK_HEADERS_ONCE([linux/serial.h])
 
 # Linux is required for arbitrary baud rates
+AC_CHECK_HEADERS_ONCE([linux/serial.h])
+
 # Dependencies
 PKG_CHECK_MODULES([gtk], [gtk+-3.0 >= 3.0.0])
 PKG_CHECK_MODULES([vte], [vte-2.91 >= 0.28.0])

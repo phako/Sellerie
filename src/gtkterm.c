@@ -23,7 +23,6 @@
 #include "serial-port.h"
 #include "term_config.h"
 #include "cmdline.h"
-#include "parsecfg.h"
 #include "buffer.h"
 #include "macros.h"
 
@@ -34,7 +33,6 @@
 #include <glib/gi18n.h>
 
 GtSerialPort *serial_port;
-extern struct configuration_port config;
 GtBuffer *buffer;
 
 int main(int argc, char *argv[])
@@ -64,7 +62,7 @@ int main(int argc, char *argv[])
       exit (EXIT_FAILURE);
   }
 
-  gt_serial_port_config (serial_port, &config);
+  gt_serial_port_config (serial_port, gt_config_get ());
 
   add_shortcuts();
 

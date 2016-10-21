@@ -217,7 +217,7 @@ const GActionEntry menu_actions[] = {
     {"view.ascii-hex", on_action_radio, "s", "'ascii'", on_view_ascii_hex_change_state },
     {"view.index", on_action_toggle, NULL, "false", on_view_index_change_state },
     {"view.send-hex", on_action_toggle, NULL, "false", on_view_send_hex_change_state },
-    {"view.hex-width", on_action_radio, "s", "'8'", on_view_hex_width_change_state },
+    {"view.hex-width", on_action_radio, "y", "8", on_view_hex_width_change_state },
 
     /* Signals menu */
     {"signals.send-break", on_signals_send_break },
@@ -947,18 +947,21 @@ void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user
     g_variant_unref (state);
 }
 
-extern GtSerialPortConfiguration config;
 
 void on_local_echo_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    GtSerialPortConfiguration *config = gt_config_get ();
     echo_on = g_variant_get_boolean (parameter);
-    config.echo = echo_on;
-    gt_serial_port_set_local_echo (serial_port, config.echo);
+
+    gt_config_set_echo (config, echo_on);
+    gt_serial_port_set_local_echo (serial_port, echo_on);
     g_simple_action_set_state (action, parameter);
 }
 
 void on_crlf_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    GtSerialPortConfiguration *config = gt_config_get ();
     crlfauto_on = g_variant_get_boolean (parameter);
-    config.crlfauto = crlfauto_on;
+
+    gt_config_set_auto_crlf (config, crlfauto_on);
     gt_serial_port_set_crlfauto (serial_port, crlfauto_on);
     g_simple_action_set_state (action, parameter);
 }

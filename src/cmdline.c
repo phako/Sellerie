@@ -29,32 +29,32 @@
 #include <glib/gi18n.h>
 #include <glib.h>
 
-extern struct configuration_port config;
-
 static gboolean on_parity_parse (const gchar *name,
                                  const gchar *value,
                                  gpointer data,
                                  GError **error)
 {
-  if (g_str_equal (value, "odd")) {
-    config.parite = 1;
+    GtSerialPortConfiguration *config = (GtSerialPortConfiguration *) data;
 
-    return TRUE;
-  }
+    if (g_str_equal (value, "odd")) {
+        gt_config_set_serial_parity (config, GT_SERIAL_PARITY_ODD);
 
-  if (g_str_equal (value, "even")) {
-    config.parite = 2;
+        return TRUE;
+    }
 
-    return TRUE;
-  }
+    if (g_str_equal (value, "even")) {
+        gt_config_set_serial_parity (config, GT_SERIAL_PARITY_EVEN);
 
-  g_set_error (error,
-               G_OPTION_ERROR,
-               G_OPTION_ERROR_FAILED,
-               "Invalid parity value (even, odd): %s",
-               value);
+        return TRUE;
+    }
 
-  return FALSE;
+    g_set_error (error,
+            G_OPTION_ERROR,
+            G_OPTION_ERROR_FAILED,
+            _("Invalid parity value (even, odd): %s"),
+            value);
+
+    return FALSE;
 }
 
 static gboolean on_config_parse (const gchar *name,
@@ -62,9 +62,9 @@ static gboolean on_config_parse (const gchar *name,
                                  gpointer data,
                                  GError **error)
 {
-  Load_configuration_from_file (value);
+    gt_config_load_profile (value);
 
-  return TRUE;
+    return TRUE;
 }
 
 static gboolean on_flow_parse (const gchar *name,
@@ -72,50 +72,60 @@ static gboolean on_flow_parse (const gchar *name,
                                gpointer data,
                                GError **error)
 {
-  if (g_str_equal (value, "RTS")) {
-    config.flux = 1;
+    GtSerialPortConfiguration *config = (GtSerialPortConfiguration *) data;
 
-    return TRUE;
-  }
+    if (g_str_equal (value, "RTS")) {
+        gt_config_set_serial_flow (config, GT_SERIAL_FLOW_RTS);
 
-  if (g_str_equal (value, "Xon")) {
-    config.flux = 2;
+        return TRUE;
+    }
 
-    return TRUE;
-  }
+    if (g_str_equal (value, "Xon")) {
+        gt_config_set_serial_flow (config, GT_SERIAL_FLOW_XON);
 
-  if (g_str_equal (value, "RS485")) {
-    config.flux = 3;
+        return TRUE;
+    }
 
-    return TRUE;
-  }
+    if (g_str_equal (value, "RS485")) {
+        gt_config_set_serial_flow (config, GT_SERIAL_FLOW_RS485);
 
-  g_set_error (error,
-               G_OPTION_ERROR,
-               G_OPTION_ERROR_FAILED,
-               "Invalid flow value (Xon, RTS, RS485): %s",
-               value);
+        return TRUE;
+    }
 
-  return FALSE;
+    g_set_error (error,
+            G_OPTION_ERROR,
+            G_OPTION_ERROR_FAILED,
+            _("Invalid flow value (Xon, RTS, RS485): %s"),
+            value);
+
+    return FALSE;
 }
 
 static char *default_file = NULL;
 static char *config_port = NULL;
+static int config_speed = -1;
+static int config_stops = -1;
+static int config_bits = -1;
+static int config_delay = -1;
+static int config_waitchar = -1;
+static gboolean config_echo = FALSE;
+static int config_rs485_rts_b4tx = -1;
+static int config_rs485_rts_tx = -1;
 
 static GOptionEntry entries[] = {
     { "config", 'c', 0, G_OPTION_ARG_CALLBACK, on_config_parse, N_("Load configuration FILE"), "FILE", },
-    { "speed", 's', 0, G_OPTION_ARG_INT, &config.vitesse, N_("Serial port SPEED (default 9600)"), "SPEED"},
+    { "speed", 's', 0, G_OPTION_ARG_INT, &config_speed, N_("Serial port SPEED (default 9600)"), "SPEED"},
     { "parity", 'a', 0, G_OPTION_ARG_CALLBACK, on_parity_parse, N_("Serial port PARITY (even|odd, default none)"), "PARITY" },
-    { "stopbits", 't', 0, G_OPTION_ARG_INT, &config.stops, N_("Number of STOPBITS (default 1)"), "STOPBITS" },
-    { "bits", 'b', 0, G_OPTION_ARG_INT, &config.bits, N_("Number of BITS (default 8)"), "BITS" },
+    { "stopbits", 't', 0, G_OPTION_ARG_INT, &config_stops, N_("Number of STOPBITS (default 1)"), "STOPBITS" },
+    { "bits", 'b', 0, G_OPTION_ARG_INT, &config_bits, N_("Number of BITS (default 8)"), "BITS" },
     { "file", 'f', 0, G_OPTION_ARG_FILENAME, &default_file, N_("Default FILE to send (default none)"), "FILE" },
     { "port", 'p', 0, G_OPTION_ARG_STRING, &config_port, N_("Serial port DEVICE (default /dev/ttyS0)"), "DEVICE" },
     { "flow", 'w', 0, G_OPTION_ARG_CALLBACK, on_flow_parse, N_("FLOW control (Xon|RTS|RS485, default none)"), "FLOW" },
-    { "delay", 'd', 0, G_OPTION_ARG_INT, &config.delai, N_("End of line DELAY in ms (default none)"), "DELAY" },
-    { "char", 'r', 0, G_OPTION_ARG_INT, &config.car, N_("Wait for special CHARACTER at end of line (default none)"), "CHARACTER" },
-    { "echo", 'e', 0, G_OPTION_ARG_NONE, &config.echo, N_("Switch on local echo"), NULL },
-    { "rts_time_before", 'x', 0, G_OPTION_ARG_INT, &config.rs485_rts_time_before_transmit, N_("For RS485, TIME in ms before transmit with RTS on"), "TIME" },
-    { "rts_time_after", 'y', 0, G_OPTION_ARG_INT, &config.rs485_rts_time_after_transmit, N_("For RS485, TIME in ms after transmit with RTS on"), "TIME" },
+    { "delay", 'd', 0, G_OPTION_ARG_INT, &config_delay, N_("End of line DELAY in ms (default none)"), "DELAY" },
+    { "char", 'r', 0, G_OPTION_ARG_INT, &config_waitchar, N_("Wait for special CHARACTER at end of line (default none)"), "CHARACTER" },
+    { "echo", 'e', 0, G_OPTION_ARG_NONE, &config_echo, N_("Switch on local echo"), NULL },
+    { "rts_time_before", 'x', 0, G_OPTION_ARG_INT, &config_rs485_rts_b4tx, N_("For RS485, TIME in ms before transmit with RTS on"), "TIME" },
+    { "rts_time_after", 'y', 0, G_OPTION_ARG_INT, &config_rs485_rts_tx, N_("For RS485, TIME in ms after transmit with RTS on"), "TIME" },
     { NULL }
 };
 
@@ -123,12 +133,17 @@ int read_command_line (int argc, char **argv)
 {
   GError *error = NULL;
   GOptionContext *context = NULL;
+  GOptionGroup *group = NULL;
   int result = -1;
 
   Check_configuration_file();
 
+  group = g_option_group_new ("default", "gtkterm", "gtkterm", gt_config_get (), NULL);
+  g_option_group_set_translation_domain (group, GETTEXT_PACKAGE);
+  g_option_group_add_entries (group, entries);
+
   context = g_option_context_new ("- GTK+ serial console");
-  g_option_context_add_main_entries (context, entries, GETTEXT_PACKAGE);
+  g_option_context_set_main_group (context, group);
   if (!g_option_context_parse (context, &argc, &argv, &error)) {
     g_warning ("Failed to parse commandline options: %s", error->message);
   } else {
@@ -138,13 +153,15 @@ int read_command_line (int argc, char **argv)
 
     if (config_port != NULL)
     {
-        strncpy (config.port, config_port, sizeof (config.port));
+        gt_config_set_port (gt_config_get (), config_port);
     }
-    Verify_configuration();
+    gt_config_validate ();
     result = 0;
   }
 
   g_option_context_free (context);
+  g_option_group_unref (group);
+  g_free (config_port);
 
   return result;
 }

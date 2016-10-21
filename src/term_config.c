@@ -55,6 +55,26 @@
 #endif
 
 #define DEVICE_NUMBERS_TO_CHECK 12
+#define DEFAULT_FONT "Monospace, 12"
+#define DEFAULT_SCROLLBACK 200
+
+#define DEFAULT_PORT "/dev/ttyS0"
+#define DEFAULT_SPEED 9600
+#define DEFAULT_PARITY 0
+#define DEFAULT_BITS 8
+#define DEFAULT_STOP 1
+#define DEFAULT_FLOW 0
+#define DEFAULT_DELAY 0
+#define DEFAULT_CHAR -1
+#define DEFAULT_DELAY_RS485 30
+#define DEFAULT_ECHO FALSE
+
+void check_text_input(GtkEditable *editable,
+		       gchar       *new_text,
+		       gint         new_text_length,
+		       gint        *position,
+		       gpointer     user_data);
+
 
 extern GtSerialPort *serial_port;
 
@@ -65,6 +85,21 @@ static const gchar *devices_to_check[] = {
     "/dev/ttyACM%d",
     "/dev/usb/tts/%d",
     NULL
+};
+
+struct configuration_port {
+  gchar port[1024];
+  gint vitesse;                // 300 - 600 - 1200 - ... - 115200
+  gint bits;                   // 5 - 6 - 7 - 8
+  gint stops;                  // 1 - 2
+  GtSerialParity parite;                 // 0 : None, 1 : Odd, 2 : Even
+  GtSerialFlow flux;                   // 0 : None, 1 : Xon/Xoff, 2 : RTS/CTS, 3 : RS485halfduplex
+  gint delai;                  // end of char delay: in ms
+  gint rs485_rts_time_before_transmit;
+  gint rs485_rts_time_after_transmit;
+  gchar car;             // caractere à attendre
+  gboolean echo;               // echo local
+  gboolean crlfauto;         // line feed auto
 };
 
 /* Configuration file variables */
@@ -145,7 +180,7 @@ static GtkWidget *Entry;
 
 static void read_font_button(GtkFontButton *fontButton);
 static gint Grise_Degrise(GtkWidget *bouton, gpointer pointeur);
-static void Hard_default_configuration(void);
+static void gt_config_default(void);
 static void Copy_configuration(int);
 static void Select_config(gchar *, void *);
 static void Save_config_file(void);
@@ -641,9 +676,9 @@ void load_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Selectio
 	if(gtk_tree_selection_get_selected(Selection_Liste, &Modele, &iter))
 	{
 	    gtk_tree_model_get(GTK_TREE_MODEL(Modele), &iter, 0, (gint *)&txt, -1);
-	    Load_configuration_from_file(txt);
-	    Verify_configuration();
-        gt_serial_port_config (serial_port, &config);
+        gt_config_load_profile (txt);
+        gt_config_validate ();
+        gt_serial_port_config (serial_port, gt_config_get ());
 	    add_shortcuts();
 	}
     }
@@ -666,7 +701,7 @@ void delete_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Select
     }
 }
 
-gint Load_configuration_from_file(const gchar *config_name)
+gint gt_config_load_profile (const gchar *config_name)
 {
     int max, i, j, size;
     size_t k;
@@ -678,158 +713,158 @@ gint Load_configuration_from_file(const gchar *config_name)
     max = cfgParse(config_file, cfg, CFG_INI);
 
     if(max == -1)
-	return -1;
+        return -1;
 
     else
     {
-	for(i = 0; i < max; i++)
-	{
-	    if(!strcmp(config_name, cfgSectionNumberToName(i)))
-	    {
-		Hard_default_configuration();
+        for(i = 0; i < max; i++)
+        {
+            if(!strcmp(config_name, cfgSectionNumberToName(i)))
+            {
+                gt_config_default ();
 
-		if(port[i] != NULL)
-		    strcpy(config.port, port[i]);
-		if(speed[i] != 0)
-		    config.vitesse = speed[i];
-		if(bits[i] != 0)
-		    config.bits = bits[i];
-		if(stopbits[i] != 0)
-		    config.stops = stopbits[i];
-		if(parity[i] != NULL)
-		{
-		    if(!g_ascii_strcasecmp(parity[i], "none"))
-			config.parite = 0;
-		    else if(!g_ascii_strcasecmp(parity[i], "odd"))
-			config.parite = 1;
-		    else if(!g_ascii_strcasecmp(parity[i], "even"))
-			config.parite = 2;
-		}
-		if(flow[i] != NULL)
-		{
-		    if(!g_ascii_strcasecmp(flow[i], "none"))
-			config.flux = 0;
-		    else if(!g_ascii_strcasecmp(flow[i], "xon"))
-			config.flux = 1;
-		    else if(!g_ascii_strcasecmp(flow[i], "rts"))
-			config.flux = 2;
-		    else if(!g_ascii_strcasecmp(flow[i], "rs485"))
-			config.flux = 3;
-		}
+                if(port[i] != NULL)
+                    strcpy(config.port, port[i]);
+                if(speed[i] != 0)
+                    config.vitesse = speed[i];
+                if(bits[i] != 0)
+                    config.bits = bits[i];
+                if(stopbits[i] != 0)
+                    config.stops = stopbits[i];
+                if(parity[i] != NULL)
+                {
+                    if(!g_ascii_strcasecmp(parity[i], "none"))
+                        config.parite = 0;
+                    else if(!g_ascii_strcasecmp(parity[i], "odd"))
+                        config.parite = 1;
+                    else if(!g_ascii_strcasecmp(parity[i], "even"))
+                        config.parite = 2;
+                }
+                if(flow[i] != NULL)
+                {
+                    if(!g_ascii_strcasecmp(flow[i], "none"))
+                        config.flux = 0;
+                    else if(!g_ascii_strcasecmp(flow[i], "xon"))
+                        config.flux = 1;
+                    else if(!g_ascii_strcasecmp(flow[i], "rts"))
+                        config.flux = 2;
+                    else if(!g_ascii_strcasecmp(flow[i], "rs485"))
+                        config.flux = 3;
+                }
 
-		config.delai = wait_delay[i];
+                config.delai = wait_delay[i];
 
-		if(wait_char[i] != 0)
-		    config.car = (signed char)wait_char[i];
-		else
-		    config.car = -1;
+                if(wait_char[i] != 0)
+                    config.car = (signed char)wait_char[i];
+                else
+                    config.car = -1;
 
-		config.rs485_rts_time_before_transmit = rts_time_before_tx[i];
-		config.rs485_rts_time_after_transmit = rts_time_after_tx[i];
+                config.rs485_rts_time_before_transmit = rts_time_before_tx[i];
+                config.rs485_rts_time_after_transmit = rts_time_after_tx[i];
 
-		if(echo[i] != -1)
-		    config.echo = (gboolean)echo[i];
-		else
-		    config.echo = FALSE;
+                if(echo[i] != -1)
+                    config.echo = (gboolean)echo[i];
+                else
+                    config.echo = FALSE;
 
-		if(crlfauto[i] != -1)
-		    config.crlfauto = (gboolean)crlfauto[i];
-		else
-		    config.crlfauto = FALSE;
+                if(crlfauto[i] != -1)
+                    config.crlfauto = (gboolean)crlfauto[i];
+                else
+                    config.crlfauto = FALSE;
 
-        g_clear_pointer (&term_conf.font, pango_font_description_free);
-        term_conf.font = pango_font_description_from_string (font[i]);
+                g_clear_pointer (&term_conf.font, pango_font_description_free);
+                term_conf.font = pango_font_description_from_string (font[i]);
 
-		t = macro_list[i];
-		size = 0;
-		if(t != NULL)
-		{
-		    size++;
-		    while(t->next != NULL)
-		    {
-			t = t->next;
-			size++;
-		    }
-		}
+                t = macro_list[i];
+                size = 0;
+                if(t != NULL)
+                {
+                    size++;
+                    while(t->next != NULL)
+                    {
+                        t = t->next;
+                        size++;
+                    }
+                }
 
-		if(size != 0)
-		{
-		    t = macro_list[i];
-		    macros = g_malloc(size * sizeof(macro_t));
-		    if(macros == NULL)
-		    {
-			perror("malloc");
-			return -1;
-		    }
-		    for(j = 0; j < size; j++)
-		    {
-			for(k = 0; k < (strlen(t->str) - 1); k++)
-			{
-			    if((t->str[k] == ':') && (t->str[k + 1] == ':'))
-				break;
-			}
-			macros[j].shortcut = g_strndup(t->str, k);
-			str = &(t->str[k + 2]);
-			macros[j].action = g_strdup(str);
+                if(size != 0)
+                {
+                    t = macro_list[i];
+                    macros = g_malloc(size * sizeof(macro_t));
+                    if(macros == NULL)
+                    {
+                        perror("malloc");
+                        return -1;
+                    }
+                    for(j = 0; j < size; j++)
+                    {
+                        for(k = 0; k < (strlen(t->str) - 1); k++)
+                        {
+                            if((t->str[k] == ':') && (t->str[k + 1] == ':'))
+                                break;
+                        }
+                        macros[j].shortcut = g_strndup(t->str, k);
+                        str = &(t->str[k + 2]);
+                        macros[j].action = g_strdup(str);
 
-			t = t->next;
-		    }
-		}
+                        t = t->next;
+                    }
+                }
 
-		remove_shortcuts();
-		create_shortcuts(macros, size);
-		g_free(macros);
+                remove_shortcuts();
+                create_shortcuts(macros, size);
+                g_free(macros);
 
-		if(rows[i] != 0)
-		    term_conf.rows = rows[i];
+                if(rows[i] != 0)
+                    term_conf.rows = rows[i];
 
-		if(columns[i] != 0)
-		    term_conf.columns = columns[i];
+                if(columns[i] != 0)
+                    term_conf.columns = columns[i];
 
-		if(scrollback[i] != 0)
-		    term_conf.scrollback = scrollback[i];
+                if(scrollback[i] != 0)
+                    term_conf.scrollback = scrollback[i];
 
-		if(visual_bell[i] != -1)
-		    term_conf.visual_bell = (gboolean)visual_bell[i];
-		else
-		    term_conf.visual_bell = FALSE;
+                if(visual_bell[i] != -1)
+                    term_conf.visual_bell = (gboolean)visual_bell[i];
+                else
+                    term_conf.visual_bell = FALSE;
 
-		term_conf.foreground_color.red = (double) foreground_red[i] / G_MAXUINT16;
-		term_conf.foreground_color.green = (double) foreground_green[i] / G_MAXUINT16;
-		term_conf.foreground_color.blue = (double) foreground_blue[i] / G_MAXUINT16;
+                term_conf.foreground_color.red = (double) foreground_red[i] / G_MAXUINT16;
+                term_conf.foreground_color.green = (double) foreground_green[i] / G_MAXUINT16;
+                term_conf.foreground_color.blue = (double) foreground_blue[i] / G_MAXUINT16;
 
-		term_conf.background_color.red = (double) background_red[i] / G_MAXUINT16;
-		term_conf.background_color.green = (double) background_green[i] / G_MAXUINT16;
-		term_conf.background_color.blue = (double) background_blue[i] / G_MAXUINT16;
+                term_conf.background_color.red = (double) background_red[i] / G_MAXUINT16;
+                term_conf.background_color.green = (double) background_green[i] / G_MAXUINT16;
+                term_conf.background_color.blue = (double) background_blue[i] / G_MAXUINT16;
 
-		/* rows and columns are empty when the conf is autogenerate in the
-		   first save; so set term to default */
-		if(rows[i] == 0 || columns[i] == 0)
-		{
-		    term_conf.rows = 80;
-		    term_conf.columns = 25;
-		    term_conf.scrollback = DEFAULT_SCROLLBACK;
-		    term_conf.visual_bell = FALSE;
+                /* rows and columns are empty when the conf is autogenerate in the
+                   first save; so set term to default */
+                if(rows[i] == 0 || columns[i] == 0)
+                {
+                    term_conf.rows = 80;
+                    term_conf.columns = 25;
+                    term_conf.scrollback = DEFAULT_SCROLLBACK;
+                    term_conf.visual_bell = FALSE;
 
-		    term_conf.foreground_color.red = 43253;
-		    term_conf.foreground_color.green = 43253;
-		    term_conf.foreground_color.blue = 43253;
+                    term_conf.foreground_color.red = 43253;
+                    term_conf.foreground_color.green = 43253;
+                    term_conf.foreground_color.blue = 43253;
 
-		    term_conf.background_color.red = 0;
-		    term_conf.background_color.green = 0;
-		    term_conf.background_color.blue = 0;
-		}
+                    term_conf.background_color.red = 0;
+                    term_conf.background_color.green = 0;
+                    term_conf.background_color.blue = 0;
+                }
 
-		i = max + 1;
-	    }
-	}
-	if(i == max)
-	{
-	    string = g_strdup_printf(_("No section \"%s\" in configuration file\n"), config_name);
-	    show_message(string, MSG_ERR);
-	    g_free(string);
-	    return -1;
-	}
+                i = max + 1;
+            }
+        }
+        if(i == max)
+        {
+            string = g_strdup_printf(_("No section \"%s\" in configuration file\n"), config_name);
+            show_message(string, MSG_ERR);
+            g_free(string);
+            return -1;
+        }
     }
 
     vte_terminal_set_font (VTE_TERMINAL(display), term_conf.font);
@@ -843,7 +878,7 @@ gint Load_configuration_from_file(const gchar *config_name)
     return 0;
 }
 
-void Verify_configuration(void)
+void gt_config_validate (void)
 {
     gchar *string = NULL;
 
@@ -905,12 +940,12 @@ gint Check_configuration_file(void)
     /* is configuration file present ? */
     if(stat(config_file, &my_stat) == 0)
     {
-	/* If bad configuration file, fallback to _hardcoded_ defaults! */
-	if(Load_configuration_from_file("default") == -1)
-	{
-	    Hard_default_configuration();
-	    return -1;
-	}
+        /* If bad configuration file, fallback to _hardcoded_ defaults! */
+        if(gt_config_load_profile ("default") == -1)
+        {
+            gt_config_default ();
+            return -1;
+        }
     }
 
     /* if not, create it, with the [default] section */
@@ -919,7 +954,7 @@ gint Check_configuration_file(void)
 	string = g_strdup_printf(_("Configuration file (%s) with\n[default] configuration has been created.\n"), config_file);
 	show_message(string, MSG_WRN);
 	cfgAllocForNewSection(cfg, "default");
-	Hard_default_configuration();
+    gt_config_default ();
 	Copy_configuration(0);
 	cfgDump(config_file, cfg, CFG_INI, 1);
 	g_free(string);
@@ -927,7 +962,7 @@ gint Check_configuration_file(void)
     return 0;
 }
 
-void Hard_default_configuration(void)
+void gt_config_default (void)
 {
     strcpy(config.port, DEFAULT_PORT);
     config.vitesse = DEFAULT_SPEED;
@@ -1318,4 +1353,94 @@ void gt_config_set_file_path (const char *path)
 {
     g_free (config_file);
     config_file = g_strdup (path);
+}
+
+GtSerialPortConfiguration *gt_config_get (void)
+{
+    return &config;
+}
+
+int gt_config_get_delay (GtSerialPortConfiguration *self)
+{
+    return self->delai;
+}
+
+int gt_config_get_wait_char (GtSerialPortConfiguration *self)
+{
+    return self->car;
+}
+
+void gt_config_set_echo (GtSerialPortConfiguration *self, gboolean _echo)
+{
+    self->echo = _echo;
+}
+
+gboolean gt_config_get_echo (GtSerialPortConfiguration *self)
+{
+    return self->echo;
+}
+
+void gt_config_set_auto_crlf (GtSerialPortConfiguration *self, gboolean autocrlf)
+{
+    self->crlfauto = autocrlf;
+}
+
+gboolean gt_config_get_auto_crlf (GtSerialPortConfiguration *self)
+{
+    return self->crlfauto;
+}
+
+void gt_config_set_serial_parity (GtSerialPortConfiguration *self, GtSerialParity _parity)
+{
+    self->parite = _parity;
+}
+
+void gt_config_set_serial_flow (GtSerialPortConfiguration *self, GtSerialFlow _flow)
+{
+    self->flux = _flow;
+}
+
+GtSerialFlow gt_config_get_serial_flow (GtSerialPortConfiguration *self)
+{
+    return self->flux;
+}
+
+void gt_config_set_port (GtSerialPortConfiguration *self, const char *_port)
+{
+    strncpy (self->port, _port, sizeof (self->port));
+}
+
+const char *gt_config_get_port (GtSerialPortConfiguration *self)
+{
+    return self->port;
+}
+
+int gt_config_get_serial_speed (GtSerialPortConfiguration *self)
+{
+    return self->vitesse;
+}
+
+int gt_config_get_serial_bits (GtSerialPortConfiguration *self)
+{
+    return self->bits;
+}
+
+GtSerialParity gt_config_get_serial_parity (GtSerialPortConfiguration *self)
+{
+    return self->parite;
+}
+
+int gt_config_get_serial_stop_bits (GtSerialPortConfiguration *self)
+{
+    return self->stops;
+}
+
+int gt_config_get_rs485_before_tx_time (GtSerialPortConfiguration *self)
+{
+    return self->rs485_rts_time_before_transmit;
+}
+
+int gt_config_get_rs485_after_tx_time (GtSerialPortConfiguration *self)
+{
+    return self->rs485_rts_time_after_transmit;
 }

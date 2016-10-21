@@ -11,9 +11,21 @@
 /*      - Header file -                                                */
 /*                                                                     */
 /***********************************************************************/
+#ifndef TERM_CONFIG_H
+#define TERM_CONFIG_H
 
-#ifndef TERM_CONFIG_H_
-#define TERM_CONFIG_H_
+typedef enum {
+    GT_SERIAL_PARITY_NONE,
+    GT_SERIAL_PARITY_ODD,
+    GT_SERIAL_PARITY_EVEN
+} GtSerialParity;
+
+typedef enum {
+    GT_SERIAL_FLOW_NONE,
+    GT_SERIAL_FLOW_XON,
+    GT_SERIAL_FLOW_RTS,
+    GT_SERIAL_FLOW_RS485
+} GtSerialFlow;
 
 #include <gtk/gtk.h>
 
@@ -23,47 +35,38 @@ void Config_Terminal(GtkAction *action, gpointer data);
 void select_config_callback(GtkAction *action, gpointer data);
 void save_config_callback(GtkAction *action, gpointer data);
 void delete_config_callback(GtkAction *action, gpointer data);
-void Verify_configuration(void);
-gint Load_configuration_from_file(const gchar *);
 gint Check_configuration_file(void);
-void check_text_input(GtkEditable *editable,
-		       gchar       *new_text,
-		       gint         new_text_length,
-		       gint        *position,
-		       gpointer     user_data);
-
-struct configuration_port {
-  gchar port[1024];
-  gint vitesse;                // 300 - 600 - 1200 - ... - 115200
-  gint bits;                   // 5 - 6 - 7 - 8
-  gint stops;                  // 1 - 2
-  gint parite;                 // 0 : None, 1 : Odd, 2 : Even
-  gint flux;                   // 0 : None, 1 : Xon/Xoff, 2 : RTS/CTS, 3 : RS485halfduplex
-  gint delai;                  // end of char delay: in ms
-  gint rs485_rts_time_before_transmit;
-  gint rs485_rts_time_after_transmit;
-  gchar car;             // caractere à attendre
-  gboolean echo;               // echo local
-  gboolean crlfauto;         // line feed auto
-};
 typedef struct configuration_port GtSerialPortConfiguration;
-
-
-#define DEFAULT_FONT "Monospace, 12"
-#define DEFAULT_SCROLLBACK 200
-
-#define DEFAULT_PORT "/dev/ttyS0"
-#define DEFAULT_SPEED 9600
-#define DEFAULT_PARITY 0
-#define DEFAULT_BITS 8
-#define DEFAULT_STOP 1
-#define DEFAULT_FLOW 0
-#define DEFAULT_DELAY 0
-#define DEFAULT_CHAR -1
-#define DEFAULT_DELAY_RS485 30
-#define DEFAULT_ECHO FALSE
 
 const char *gt_config_get_file_path (void);
 void gt_config_set_file_path (const char *path);
+int gt_config_load_profile (const char *);
+void gt_config_validate (void);
 
+GtSerialPortConfiguration *gt_config_get (void);
+
+int gt_config_get_delay (GtSerialPortConfiguration *config);
+int gt_config_get_wait_char (GtSerialPortConfiguration *config);
+
+void gt_config_set_echo (GtSerialPortConfiguration *config, gboolean echo);
+gboolean gt_config_get_echo (GtSerialPortConfiguration *config);
+
+void gt_config_set_auto_crlf (GtSerialPortConfiguration *config, gboolean crlf);
+gboolean gt_config_get_auto_crlf (GtSerialPortConfiguration *config);
+
+void gt_config_set_serial_parity (GtSerialPortConfiguration *config, GtSerialParity parity);
+GtSerialParity gt_config_get_serial_parity (GtSerialPortConfiguration *config);
+
+void gt_config_set_serial_flow (GtSerialPortConfiguration *config, GtSerialFlow flow);
+GtSerialFlow gt_config_get_serial_flow (GtSerialPortConfiguration *config);
+
+void gt_config_set_port (GtSerialPortConfiguration *config, const char *port);
+const char *gt_config_get_port (GtSerialPortConfiguration *config);
+void gt_config_set_serial_speed (GtSerialPortConfiguration *config, int speed);
+int gt_config_get_serial_speed (GtSerialPortConfiguration *config);
+int gt_config_get_serial_bits (GtSerialPortConfiguration *config);
+int gt_config_get_serial_stop_bits (GtSerialPortConfiguration *);
+
+int gt_config_get_rs485_before_tx_time (GtSerialPortConfiguration *);
+int gt_config_get_rs485_after_tx_time (GtSerialPortConfiguration *);
 #endif

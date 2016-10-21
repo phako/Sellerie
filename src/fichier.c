@@ -69,8 +69,6 @@ static gboolean timer(gpointer pointer);
 static void remove_input(void);
 static void write_file(char *, unsigned int);
 
-extern struct configuration_port config;
-
 void send_raw_file(GtkWindow *parent)
 {
 	GtkWidget *file_select;
@@ -158,6 +156,7 @@ static gboolean on_serial_io_ready (GIOChannel *source,
     static gint bytes_to_write;
     gint bytes_written;
     gchar *car;
+    GtSerialPortConfiguration *config;
 
     if (condition == G_IO_ERR) {
         str = g_strdup_printf (_("Error sending file\n"));
@@ -191,8 +190,10 @@ static gboolean on_serial_io_ready (GIOChannel *source,
     }
 
 	car = current_buffer;
+    config = gt_config_get ();
 
-	if(config.delai != 0 || config.car != -1)
+	if(gt_config_get_delay (config) != 0 ||
+       gt_config_get_wait_char (config) != -1)
 	{
 	    /* search for next LF */
 	    bytes_to_write = current_buffer_position;
@@ -224,13 +225,13 @@ static gboolean on_serial_io_ready (GIOChannel *source,
 
 	gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(ProgressBar), (gfloat)car_written/(gfloat)nb_car );
 
-	if(config.delai != 0 && *car == LINE_FEED)
+	if(gt_config_get_delay (config) != 0 && *car == LINE_FEED)
 	{
 	    remove_input();
-	    g_timeout_add(config.delai, (GSourceFunc)timer, NULL);
+	    g_timeout_add(gt_config_get_delay (config), (GSourceFunc)timer, NULL);
 	    waiting_for_timer = TRUE;
 	}
-	else if(config.car != -1 && *car == LINE_FEED)
+	else if(gt_config_get_wait_char (config) != -1 && *car == LINE_FEED)
 	{
 	    remove_input();
 	    waiting_for_char = TRUE;

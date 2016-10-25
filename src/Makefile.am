@@ -52,6 +52,6 @@ CLEANFILES = *~
 MOSTLYCLEANFILES = resource.c
 
 
-AM_CPPFLAGS = -DLOCALEDIR="\"$(localedir)\""
+AM_CPPFLAGS = -DLOCALEDIR="\"$(localedir)\"" -DG_LOG_DOMAIN="\"GtLazarus\""
 
 -include $(top_srcdir)/git.mk

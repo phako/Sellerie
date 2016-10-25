@@ -219,7 +219,7 @@ void Config_Port_Fenetre(GtkWindow *parent)
     g_list_free_full (device_list, g_free);
 
     /* Set values on first page */
-    if (config.port != NULL && config.port[0] != '\0') {
+    if (config.port[0] != '\0') {
         entry = gtk_bin_get_child (GTK_BIN (combo));
 
         gtk_entry_set_text (GTK_ENTRY (entry), config.port);

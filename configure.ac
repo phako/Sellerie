@@ -39,6 +39,9 @@ AM_GNU_GETTEXT([external])
 # GLib Resource compiler
 AC_SUBST([GLIB_COMPILE_RESOURCES], [`$PKG_CONFIG --variable glib_compile_resources gio-2.0`])
 
+# GSettings
+GLIB_GSETTINGS
+
 AC_CONFIG_FILES([
     Makefile
     src/Makefile

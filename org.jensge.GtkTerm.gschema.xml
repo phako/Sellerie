@@ -1,0 +1,104 @@
+<schemalist gettext-domain="gtkterm">
+    <schema id="org.jensge.GtkTerm" path="/org/jensge/GtkTerm/">
+        <key name="profiles" type="as">
+            <default>['149e7525-24af-448f-a3a7-1b32d0930486']</default>
+        </key>
+        <key name="default" type="s">
+            <default>'149e7525-24af-448f-a3a7-1b32d0930486'</default>
+        </key>
+    </schema>
+
+    <schema id="org.jensge.GtkTerm.Profile">
+        <key name="name" type="s">
+            <default l10n="messages" context="visible-name">'Unnamed'</default>
+            <summary>Human-readable name of the profile</summary>
+            <description>Human-readable name of the profile.</description>
+        </key>
+        <key name="port" type="s">
+            <default>'/dev/ttyS0'</default>
+            <summary>Path to serial port</summary>
+            <description>Path to serial port</description>
+        </key>
+        <key name="speed" type="i">
+            <default>115200</default>
+            <summary>Transmission bitrate</summary>
+            <description>Transmission bitrate</description>
+        </key>
+        <key name="bits" type="i">
+            <default>8</default>
+            <summary>Number of data bits</summary>
+            <description>Number of data bits</description>
+        </key>
+        <key name="stopbits" type="i">
+            <default>1</default>
+            <summary>Number of stop bits</summary>
+            <description>Number of stop bits</description>
+        </key>
+        <key name="parity" enum="org.jensge.GtkTerm.GtSerialParity">
+            <default>'none'</default>
+            <summary>Serial transmission parity</summary>
+            <description>Serial transmission parity</description>
+        </key>
+        <key name="flow" enum="org.jensge.GtkTerm.GtSerialFlow">
+            <default>'none'</default>
+            <summary>Serial transmission flow control</summary>
+            <description>Serial transmission flow control</description>
+        </key>
+        <key name="wait-delay" type="i">
+            <default>0</default>
+            <summary>End-of-line transfer delay</summary>
+            <description>End-of-line transfer delay</description>
+        </key>
+        <key name="wait-character" type="i">
+            <default>-1</default>
+            <summary>End-of-line character to apply the delay after</summary>
+            <description>End-of-line character to apply the delay after</description>
+        </key>
+        <key name="rs485-pre-tx-rts-delay" type="i">
+            <default>30</default>
+            <summary>Time in ms before transmit with RTS on</summary>
+            <description>Time in ms before transmit with RTS on</description>
+        </key>
+        <key name="rs485-post-tx-rts-delay" type="i">
+            <default>30</default>
+            <summary>Time in ms after transmit with RTS on</summary>
+            <description>Time in ms after transmit with RTS on</description>
+        </key>
+        <key name="local-echo" type="b">
+            <default>false</default>
+            <summary>Duplicate local characters</summary>
+            <description>Duplicate local characters</description>
+        </key>
+        <key name="crlf-auto" type="b">
+            <default>false</default>
+            <summary>Convert single CR and LF to CRLF</summary>
+            <description>Convert single CR and LF to CRLF</description>
+        </key>
+        <key name="font" type="s">
+            <default>'Monospace 11'</default>
+            <summary>Font to use in terminal</summary>
+            <description>Font to use in terminal</description>
+        </key>
+        <key name="scrollback-size" type="i">
+            <default>200</default>
+            <summary>Number of lines in scroll-back buffer</summary>
+            <description>Number of lines in scroll-back buffer</description>
+        </key>
+        <key name="foreground-color" type="s">
+            <default>'#a9a9a9'</default>
+            <summary>Foreground color of the terminal</summary>
+            <description>Foreground color of the terminal</description>
+        </key>
+        <key name="background-color" type="s">
+            <default>'#000'</default>
+            <summary>Background color of the terminal</summary>
+            <description>Background color of the terminal</description>
+        </key>
+   </schema>
+
+   <schema id="org.jensge.GtkTerm.DefaultProfile"
+            extends="org.jensge.GtkTerm.Profile"
+            path="/org/jensge/GtkTerm/149e7525-24af-448f-a3a7-1b32d0930486/">
+        <override name="name">'default'</override>
+    </schema>
+</schemalist>

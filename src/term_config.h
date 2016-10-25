@@ -14,6 +14,8 @@
 #ifndef TERM_CONFIG_H
 #define TERM_CONFIG_H
 
+#include <gtk/gtk.h>
+
 typedef enum {
     GT_SERIAL_PARITY_NONE,
     GT_SERIAL_PARITY_ODD,
@@ -26,8 +28,6 @@ typedef enum {
     GT_SERIAL_FLOW_RTS,
     GT_SERIAL_FLOW_RS485
 } GtSerialFlow;
-
-#include <gtk/gtk.h>
 
 void Config_Port_Fenetre(GtkWindow *parent);
 gint Lis_Config(GtkBuilder *builder);

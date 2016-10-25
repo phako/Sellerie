@@ -52,6 +52,6 @@ CLEANFILES = *~
 MOSTLYCLEANFILES = resource.c
 
 
-AM_CPPFLAGS = -DLOCALEDIR=\""$(localedir)"\"
+AM_CPPFLAGS = -DLOCALEDIR="\"$(localedir)\""
 
 -include $(top_srcdir)/git.mk

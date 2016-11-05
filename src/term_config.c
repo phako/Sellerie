@@ -33,7 +33,6 @@
 #include "serial-port.h"
 #include "term_config.h"
 #include "widgets.h"
-#include "parsecfg.h"
 #include "macros.h"
 #include "i18n.h"
 
@@ -69,6 +68,11 @@
 #define DEFAULT_DELAY_RS485 30
 #define DEFAULT_ECHO FALSE
 
+#define GT_SETTINGS_DEFAULT_ID "149e7525-24af-448f-a3a7-1b32d0930486"
+#define GT_SETTINGS_PROFILE_SCHEMA "org.jensge.GtkTerm.Profile"
+#define GT_SETTINGS_SCHEMA "org.jensge.GtkTerm"
+#define GT_SETTINGS_PROFILE_TEMPLATE "/org/jensge/GtkTerm/profiles/%s/"
+
 void check_text_input(GtkEditable *editable,
 		       gchar       *new_text,
 		       gint         new_text_length,
@@ -103,6 +107,7 @@ struct configuration_port {
 };
 
 /* Configuration file variables */
+#if 0
 static gchar **port;
 static gint *speed;
 static gint *bits;
@@ -115,7 +120,6 @@ static gint *rts_time_before_tx;
 static gint *rts_time_after_tx;
 static gint *echo;
 static gint *crlfauto;
-static cfgList **macro_list = NULL;
 static gchar **font;
 
 static gint *show_cursor;
@@ -129,36 +133,7 @@ static gint *foreground_green;
 static gint *background_red;
 static gint *background_blue;
 static gint *background_green;
-
-
-static cfgStruct cfg[] = {
-    {"port", CFG_STRING, &port},
-    {"speed", CFG_INT, &speed},
-    {"bits", CFG_INT, &bits},
-    {"stopbits", CFG_INT, &stopbits},
-    {"parity", CFG_STRING, &parity},
-    {"flow", CFG_STRING, &flow},
-    {"wait_delay", CFG_INT, &wait_delay},
-    {"wait_char", CFG_INT, &wait_char},
-    {"rs485_rts_time_before_tx", CFG_INT, &rts_time_before_tx},
-    {"rs485_rts_time_after_tx", CFG_INT, &rts_time_after_tx},
-    {"echo", CFG_BOOL, &echo},
-    {"crlfauto", CFG_BOOL, &crlfauto},
-    {"font", CFG_STRING, &font},
-    {"macros", CFG_STRING_LIST, &macro_list},
-    {"term_show_cursor", CFG_BOOL, &show_cursor},
-    {"term_rows", CFG_INT, &rows},
-    {"term_columns", CFG_INT, &columns},
-    {"term_scrollback", CFG_INT, &scrollback},
-    {"term_visual_bell", CFG_BOOL, &visual_bell},
-    {"term_foreground_red", CFG_INT, &foreground_red},
-    {"term_foreground_blue", CFG_INT, &foreground_blue},
-    {"term_foreground_green", CFG_INT, &foreground_green},
-    {"term_background_red", CFG_INT, &background_red},
-    {"term_background_blue", CFG_INT, &background_blue},
-    {"term_background_green", CFG_INT, &background_green},
-    {NULL, CFG_END, NULL}
-};
+#endif
 
 static gchar *config_file = NULL;
 
@@ -180,16 +155,16 @@ static GtkWidget *Entry;
 
 static void read_font_button(GtkFontButton *fontButton);
 static gint Grise_Degrise(GtkWidget *bouton, gpointer pointeur);
-static void gt_config_default(void);
-static void Copy_configuration(int);
+//static void gt_config_default(void);
+//static void Copy_configuration(int);
 static void Select_config(gchar *, void *);
 static void Save_config_file(void);
 static void load_config(GtkDialog *, gint, GtkTreeSelection *);
 static void delete_config(GtkDialog *, gint, GtkTreeSelection *);
 static void save_config(GtkDialog *, gint, GtkWidget *);
-static void really_save_config(GtkDialog *, gint, gpointer);
-static gint remove_section(gchar *, gchar *);
-static void Selec_couleur(GdkRGBA *, gfloat, gfloat, gfloat);
+//static void really_save_config(GtkDialog *, gint, gpointer);
+//static gint remove_section(gchar *, gchar *);
+//static void Selec_couleur(GdkRGBA *, gfloat, gfloat, gfloat);
 static void config_fg_color(GtkWidget *button, gpointer data);
 static void config_bg_color(GtkWidget *button, gpointer data);
 static void scrollback_set(GtkSpinButton *spin_button, gpointer data);
@@ -437,96 +412,100 @@ void Select_config(gchar *title, void *callback)
 {
     GtkWidget *dialog;
     GtkWidget *content_area;
-    gint i, max;
+    gint max;
 
-    GtkWidget *Frame, *Scroll, *Liste, *Label;
-    gchar *texte_label;
+    GtkWidget *scrolled, *tree_view, *label;
+    char *label_text;
 
-    GtkListStore *Modele_Liste;
-    GtkTreeIter iter_Liste;
+    GtkListStore *list_model;
+    GtkTreeIter tree_iter;
     GtkCellRenderer *renderer;
-    GtkTreeViewColumn *Colonne;
-    GtkTreeSelection *Selection_Liste;
-
-    enum
-    {
-	N_texte,
-	N_COLONNES
-    };
+    GtkTreeViewColumn *column;
+    GtkTreeSelection *tree_selection;
+    GSettings *settings;
+    GVariant *value;
+    GVariantIter *iter;
+    char *profile;
 
     /* Parse the config file */
-
-    max = cfgParse(config_file, cfg, CFG_INI);
+    settings = g_settings_new ("org.jensge.GtkTerm");
+    value = g_settings_get_value (settings, "profiles");
+    iter = g_variant_iter_new (value);
+    max = g_variant_iter_n_children (iter);
 
     if(max == -1)
     {
-	show_message(_("Cannot read configuration file!\n"), MSG_ERR);
-	return;
+        show_message(_("Cannot read configuration file!\n"), MSG_ERR);
+        return;
     }
 
-    else
+    dialog = gtk_dialog_new_with_buttons (_("Configurations"),
+                                          NULL,
+                                          GTK_DIALOG_DESTROY_WITH_PARENT,
+                                          _("_Cancel"),
+                                          GTK_RESPONSE_NONE,
+                                          _("_OK"),
+                                          GTK_RESPONSE_ACCEPT,
+                                          NULL);
+
+    content_area = gtk_dialog_get_content_area (GTK_DIALOG(dialog));
+
+    list_model = gtk_list_store_new (1, G_TYPE_STRING);
+
+    tree_view = gtk_tree_view_new_with_model (GTK_TREE_MODEL (list_model));
+    gtk_tree_view_set_search_column (GTK_TREE_VIEW (tree_view), 0);
+
+    tree_selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (tree_view));
+    gtk_tree_selection_set_mode (tree_selection, GTK_SELECTION_SINGLE);
+
+    scrolled = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scrolled),
+                                    GTK_POLICY_AUTOMATIC,
+                                    GTK_POLICY_AUTOMATIC);
+    gtk_container_add (GTK_CONTAINER (scrolled), tree_view);
+
+    renderer = gtk_cell_renderer_text_new ();
+
+    column = gtk_tree_view_column_new_with_attributes(_("Configurations"),
+                                                      renderer,
+                                                      "text",
+                                                      0,
+                                                      NULL);
+    gtk_tree_view_column_set_sort_column_id (column, 0);
+
+    label = gtk_label_new ("");
+    label_text = g_strdup_printf ("<span weight=\"bold\" style=\"italic\">%s</span>",
+                                  _("Configurations"));
+    gtk_label_set_markup (GTK_LABEL (label), label_text);
+    g_free (label_text);
+    gtk_tree_view_column_set_widget (GTK_TREE_VIEW_COLUMN (column), label);
+    gtk_widget_show(label);
+
+    gtk_tree_view_column_set_alignment (GTK_TREE_VIEW_COLUMN (column), 0.5f);
+    gtk_tree_view_column_set_resizable(GTK_TREE_VIEW_COLUMN (column), FALSE);
+    gtk_tree_view_append_column(GTK_TREE_VIEW (tree_view), column);
+
+
+    while (g_variant_iter_loop (iter, "s", &profile))
     {
-	gchar *Titre[]= {_("Configurations")};
-
-	dialog = gtk_dialog_new_with_buttons (title,
-					      NULL,
-					      GTK_DIALOG_DESTROY_WITH_PARENT,
-                          _("_Cancel"),
-					      GTK_RESPONSE_NONE,
-                          _("_OK"),
-					      GTK_RESPONSE_ACCEPT,
-					      NULL);
-
-	content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-
-	Modele_Liste = gtk_list_store_new(N_COLONNES, G_TYPE_STRING);
-
-	Liste = gtk_tree_view_new_with_model(GTK_TREE_MODEL(Modele_Liste));
-	gtk_tree_view_set_search_column(GTK_TREE_VIEW(Liste), N_texte);
-
-	Selection_Liste = gtk_tree_view_get_selection(GTK_TREE_VIEW(Liste));
-	gtk_tree_selection_set_mode(Selection_Liste, GTK_SELECTION_SINGLE);
-
-	Frame = gtk_frame_new(NULL);
-
-	Scroll = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(Scroll), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-	gtk_container_add(GTK_CONTAINER(Frame), Scroll);
-	gtk_container_add(GTK_CONTAINER(Scroll), Liste);
-
-	renderer = gtk_cell_renderer_text_new();
-
-	g_object_set(G_OBJECT(renderer), "xalign", (gfloat)0.5, NULL);
-	Colonne = gtk_tree_view_column_new_with_attributes(Titre[0], renderer, "text", 0, NULL);
-	gtk_tree_view_column_set_sort_column_id(Colonne, 0);
-
-	Label=gtk_label_new("");
-	texte_label = g_strdup_printf("<span weight=\"bold\" style=\"italic\">%s</span>", Titre[0]);
-	gtk_label_set_markup(GTK_LABEL(Label), texte_label);
-	g_free(texte_label);
-	gtk_tree_view_column_set_widget(GTK_TREE_VIEW_COLUMN(Colonne), Label);
-	gtk_widget_show(Label);
-
-	gtk_tree_view_column_set_alignment(GTK_TREE_VIEW_COLUMN(Colonne), 0.5f);
-	gtk_tree_view_column_set_resizable(GTK_TREE_VIEW_COLUMN(Colonne), FALSE);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(Liste), Colonne);
-
-
-	for(i = 0; i < max; i++)
-	{
-	    gtk_list_store_append(Modele_Liste, &iter_Liste);
-	    gtk_list_store_set(Modele_Liste, &iter_Liste, N_texte, cfgSectionNumberToName(i), -1);
-	}
-
-	gtk_widget_set_size_request(GTK_WIDGET(dialog), 200, 200);
-
-	g_signal_connect(GTK_WIDGET(dialog), "response", G_CALLBACK (callback), GTK_TREE_SELECTION(Selection_Liste));
-	g_signal_connect_swapped(GTK_WIDGET(dialog), "response", G_CALLBACK(gtk_widget_destroy), GTK_WIDGET(dialog));
-
-	gtk_box_pack_start (GTK_BOX (content_area), Frame, TRUE, TRUE, 0);
-
-	gtk_widget_show_all (dialog);
+        gtk_list_store_append (list_model, &tree_iter);
+        gtk_list_store_set (list_model, &tree_iter, 0, profile, -1);
     }
+
+    gtk_widget_set_size_request (GTK_WIDGET(dialog), 200, 200);
+
+    g_signal_connect (GTK_WIDGET (dialog),
+                      "response",
+                      G_CALLBACK (callback),
+                      GTK_TREE_SELECTION (tree_selection));
+    g_signal_connect_swapped (GTK_WIDGET (dialog),
+                              "response",
+                              G_CALLBACK (gtk_widget_destroy),
+                              GTK_WIDGET (dialog));
+
+    gtk_box_pack_start (GTK_BOX (content_area), scrolled, TRUE, TRUE, 0);
+
+    gtk_widget_show_all (dialog);
 }
 
 void Save_config_file(void)
@@ -566,6 +545,7 @@ void Save_config_file(void)
     gtk_widget_show_all (dialog);
 }
 
+#if 0
 void really_save_config(GtkDialog *dialog, gint response_id, gpointer data)
 {
     int max, cfg_num, i;
@@ -618,9 +598,11 @@ void really_save_config(GtkDialog *dialog, gint response_id, gpointer data)
     else
 	Save_config_file();
 }
+#endif
 
 void save_config(GtkDialog *dialog, gint response_id, GtkWidget *edit)
 {
+#if 0
 	int max, i;
 	const gchar *config_name;
 
@@ -663,29 +645,33 @@ void save_config(GtkDialog *dialog, gint response_id, GtkWidget *edit)
 		if(i == max) /* Section does not exist */
 			really_save_config(NULL, GTK_RESPONSE_ACCEPT, (gpointer)config_name);
 	}
+#endif
 }
 
 void load_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Selection_Liste)
 {
+#if 0
     GtkTreeIter iter;
     GtkTreeModel *Modele;
     gchar *txt;
 
     if(response_id == GTK_RESPONSE_ACCEPT)
     {
-	if(gtk_tree_selection_get_selected(Selection_Liste, &Modele, &iter))
-	{
-	    gtk_tree_model_get(GTK_TREE_MODEL(Modele), &iter, 0, (gint *)&txt, -1);
-        gt_config_load_profile (txt);
-        gt_config_validate ();
-        gt_serial_port_config (serial_port, gt_config_get ());
-	    add_shortcuts();
-	}
+        if(gtk_tree_selection_get_selected(Selection_Liste, &Modele, &iter))
+        {
+            gtk_tree_model_get(GTK_TREE_MODEL(Modele), &iter, 0, (gint *)&txt, -1);
+            gt_config_load_profile (txt);
+            gt_config_validate ();
+            gt_serial_port_config (serial_port, gt_config_get ());
+            add_shortcuts();
+        }
     }
+#endif
 }
 
 void delete_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Selection_Liste)
 {
+#if 0
     GtkTreeIter iter;
     GtkTreeModel *Modele;
     gchar *txt;
@@ -699,10 +685,12 @@ void delete_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Select
 		show_message(_("Cannot delete section!"), MSG_ERR);
 	}
     }
+#endif
 }
 
 gint gt_config_load_profile (const gchar *config_name)
 {
+#if 0
     int max, i, j, size;
     size_t k;
     gchar *string = NULL;
@@ -876,6 +864,8 @@ gint gt_config_load_profile (const gchar *config_name)
     gtk_widget_queue_draw(display);
 
     return 0;
+#endif
+    return 0;
 }
 
 void gt_config_validate (void)
@@ -934,34 +924,9 @@ void gt_config_validate (void)
 
 gint Check_configuration_file(void)
 {
-    struct stat my_stat;
-    gchar *string = NULL;
-
-    /* is configuration file present ? */
-    if(stat(config_file, &my_stat) == 0)
-    {
-        /* If bad configuration file, fallback to _hardcoded_ defaults! */
-        if(gt_config_load_profile ("default") == -1)
-        {
-            gt_config_default ();
-            return -1;
-        }
-    }
-
-    /* if not, create it, with the [default] section */
-    else
-    {
-	string = g_strdup_printf(_("Configuration file (%s) with\n[default] configuration has been created.\n"), config_file);
-	show_message(string, MSG_WRN);
-	cfgAllocForNewSection(cfg, "default");
-    gt_config_default ();
-	Copy_configuration(0);
-	cfgDump(config_file, cfg, CFG_INI, 1);
-	g_free(string);
-    }
-    return 0;
 }
 
+#if 0
 void gt_config_default (void)
 {
     strcpy(config.port, DEFAULT_PORT);
@@ -987,7 +952,10 @@ void gt_config_default (void)
     Selec_couleur(&term_conf.foreground_color, 0.66, 0.66, 0.66);
     Selec_couleur(&term_conf.background_color, 0, 0, 0);
 }
+#endif
 
+
+#if 0
 void Copy_configuration(int pos)
 {
     gchar *string = NULL;
@@ -1130,8 +1098,10 @@ void Copy_configuration(int pos)
     cfgStoreValue(cfg, "term_background_blue", string, CFG_INI, pos);
     g_free(string);
 }
+#endif
 
 
+#if 0
 gint remove_section(gchar *cfg_file, gchar *section)
 {
     FILE *f = NULL;
@@ -1213,6 +1183,7 @@ gint remove_section(gchar *cfg_file, gchar *section)
 
     return 0;
 }
+#endif
 
 void Config_Terminal(GtkAction *action, gpointer data)
 {
@@ -1250,6 +1221,7 @@ void Config_Terminal(GtkAction *action, gpointer data)
     g_object_unref (builder);
 }
 
+#if 0
 void Selec_couleur(GdkRGBA *color, gfloat R, gfloat G, gfloat B)
 {
 	color->red = R;
@@ -1257,9 +1229,11 @@ void Selec_couleur(GdkRGBA *color, gfloat R, gfloat G, gfloat B)
 	color->blue = B;
     color->alpha = 1.0;
 }
+#endif
 
 void config_fg_color(GtkWidget *button, gpointer data)
 {
+#if 0
 	gchar *string;
 
 	gtk_color_chooser_get_rgba (GTK_COLOR_CHOOSER (button), &term_conf.foreground_color);
@@ -1276,10 +1250,12 @@ void config_fg_color(GtkWidget *button, gpointer data)
 	string = g_strdup_printf ("%d", (guint16) (term_conf.foreground_color.blue * G_MAXUINT16));
 	cfgStoreValue (cfg, "term_foreground_blue", string, CFG_INI, 0);
 	g_free (string);
+#endif
 }
 
 void config_bg_color(GtkWidget *button, gpointer data)
 {
+#if 0
 	gchar *string;
 
 	gtk_color_chooser_get_rgba (GTK_COLOR_CHOOSER (button), &term_conf.background_color);
@@ -1296,6 +1272,7 @@ void config_bg_color(GtkWidget *button, gpointer data)
 	string = g_strdup_printf ("%d", (guint16) (term_conf.background_color.blue * G_MAXUINT16));
 	cfgStoreValue (cfg, "term_background_blue", string, CFG_INI, 0);
 	g_free (string);
+#endif
 }
 
 

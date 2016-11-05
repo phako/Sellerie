@@ -32,8 +32,6 @@ gtkterm_SOURCES = \
     widgets.h \
     cmdline.c \
     cmdline.h \
-    parsecfg.c \
-    parsecfg.h \
     buffer.c \
     buffer.h \
     macros.c \

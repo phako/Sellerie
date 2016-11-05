@@ -95,10 +95,4 @@
             <description>Background color of the terminal</description>
         </key>
    </schema>
-
-   <schema id="org.jensge.GtkTerm.DefaultProfile"
-            extends="org.jensge.GtkTerm.Profile"
-            path="/org/jensge/GtkTerm/149e7525-24af-448f-a3a7-1b32d0930486/">
-        <override name="name">'default'</override>
-    </schema>
 </schemalist>

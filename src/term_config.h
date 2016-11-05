@@ -30,7 +30,6 @@ typedef enum {
 } GtSerialFlow;
 
 void Config_Port_Fenetre(GtkWindow *parent);
-gint Lis_Config(GtkBuilder *builder);
 void Config_Terminal(GtkAction *action, gpointer data);
 void select_config_callback(GtkAction *action, gpointer data);
 void save_config_callback(GtkAction *action, gpointer data);

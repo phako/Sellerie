@@ -106,25 +106,84 @@ typedef struct {
 static display_config_t term_conf;
 
 static void read_font_button(GtkFontButton *fontButton);
-static gint Grise_Degrise(GtkWidget *bouton, gpointer pointeur);
-//static void gt_config_default(void);
-//static void Copy_configuration(int);
 static void Select_config(gchar *, void *);
 static void Save_config_file(void);
 static void load_config(GtkDialog *, gint, GtkTreeSelection *);
 static void delete_config(GtkDialog *, gint, GtkTreeSelection *);
 static void save_config(GtkDialog *, gint, GtkWidget *);
-//static void really_save_config(GtkDialog *, gint, gpointer);
-//static gint remove_section(gchar *, gchar *);
-//static void Selec_couleur(GdkRGBA *, gfloat, gfloat, gfloat);
 static void config_fg_color(GtkWidget *button, gpointer data);
 static void config_bg_color(GtkWidget *button, gpointer data);
 static void scrollback_set(GtkSpinButton *spin_button, gpointer data);
+void gt_config_edit_profile (GtkWindow *parent, const char *profile);
+
+/* GSettings binding mapping functions */
+static gboolean int_to_str (GValue *value,
+                            GVariant *data,
+                            gpointer user_data);
+static GVariant *str_to_int (const GValue *value,
+                             const GVariantType *type,
+                             gpointer user_data);
+
+static gboolean speed_to_str (GValue *value,
+                              GVariant *data,
+                              gpointer user_data);
+static GVariant *str_to_speed (const GValue *value,
+                               const GVariantType *type,
+                               gpointer user_data);
 
 extern GtkWidget *display;
 
 void Config_Port_Fenetre(GtkWindow *parent)
 {
+    gt_config_edit_profile (parent, GT_SETTINGS_DEFAULT_ID);
+}
+
+static gboolean int_to_str (GValue *value, GVariant *data, gpointer user_data)
+{
+    int val = -1;
+    char *str = NULL;
+
+    val = g_variant_get_int32 (data);
+    if (val == -1)
+    {
+        str = g_strdup ("");
+    }
+    else
+    {
+        str = g_strdup_printf ("%c", (char) g_variant_get_int32 (data));
+    }
+
+    g_value_take_string (value, str);
+
+    return TRUE;
+}
+
+static GVariant *str_to_int (const GValue *value,
+                             const GVariantType *type,
+                             gpointer user_data)
+{
+    const char *str = g_value_get_string (value);
+
+    return g_variant_new_int32 (str == NULL ? 0 : (int) str[0]);
+}
+
+static gboolean speed_to_str (GValue *value, GVariant *data, gpointer user_data)
+{
+    g_value_take_string (value, g_strdup_printf ("%d", g_variant_get_int32 (data)));
+
+    return TRUE;
+}
+
+static GVariant *str_to_speed (const GValue *value,
+                               const GVariantType *type,
+                               gpointer user_data)
+{
+    return g_variant_new_int32 (atoi (g_value_get_string (value)));
+}
+
+void gt_config_edit_profile (GtkWindow *parent, const char *profile)
+{
+    GSettings *settings;
     GtkBuilder *builder;
     GtkDialog *dialog;
     GtkWidget *combo;
@@ -132,12 +191,15 @@ void Config_Port_Fenetre(GtkWindow *parent)
     GList *device_list = NULL;
     int device_list_length = 0;
     GList *it = NULL;
-    char *rate = NULL;
     struct stat my_stat;
     int result = GTK_RESPONSE_CANCEL;
 
     const gchar **dev = NULL;
     guint i;
+
+    settings = gt_config_get_settings_for_profile (profile);
+    g_settings_delay (settings);
+
 
     for(dev = devices_to_check; *dev != NULL; dev++)
     {
@@ -177,62 +239,65 @@ void Config_Port_Fenetre(GtkWindow *parent)
 
     g_list_free_full (device_list, g_free);
 
-    /* Set values on first page */
-    if (config.port[0] != '\0') {
-        entry = gtk_bin_get_child (GTK_BIN (combo));
-
-        gtk_entry_set_text (GTK_ENTRY (entry), config.port);
-    } else {
-        gtk_combo_box_set_active (GTK_COMBO_BOX (combo), 0);
-    }
+    entry = gtk_bin_get_child (GTK_BIN (combo));
+    g_settings_bind (settings, "port", entry, "text", G_SETTINGS_BIND_DEFAULT);
 
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-baud-rate"));
-    rate = g_strdup_printf ("%d", config.vitesse);
     entry = gtk_bin_get_child (GTK_BIN (combo));
     g_signal_connect (G_OBJECT (entry),
                       "insert-text",
                       G_CALLBACK (check_text_input),
                       isdigit);
 
-    if (config.vitesse == 0) {
-        gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), "9600");
-    } else {
-        if (!gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), rate)) {
-            gtk_entry_set_text (GTK_ENTRY (entry), rate);
-        }
+    g_settings_bind_with_mapping (settings,
+                                  "speed",
+                                  entry,
+                                  "text",
+                                  G_SETTINGS_BIND_DEFAULT,
+                                  speed_to_str,
+                                  str_to_speed,
+                                  NULL, NULL);
+
+
+    if (g_settings_get_int (settings, "speed") == 0) {
+        gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), "115200");
     }
-    g_free (rate);
 
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-parity"));
-    rate = g_strdup_printf ("%d", config.parite);
-    gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), rate);
-    g_free (rate);
+    g_settings_bind (settings, "parity", combo, "active-id", G_SETTINGS_BIND_DEFAULT);
 
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "spin-bits"));
-    gtk_spin_button_set_value (GTK_SPIN_BUTTON (combo), config.bits);
+    g_settings_bind (settings, "bits", combo, "value", G_SETTINGS_BIND_DEFAULT);
 
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "spin-stopbits"));
-    gtk_spin_button_set_value (GTK_SPIN_BUTTON (combo), config.stops);
+    g_settings_bind (settings, "stopbits", combo, "value", G_SETTINGS_BIND_DEFAULT);
 
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-flow"));
-    rate = g_strdup_printf ("%d", config.flux);
-    gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), rate);
-    g_free (rate);
+    g_settings_bind (settings, "flow", combo, "active-id", G_SETTINGS_BIND_DEFAULT);
 
     /* Set values on second page */
     {
-        GtkWidget *spin;
-        spin = GTK_WIDGET (gtk_builder_get_object (builder, "spin-eol-delay"));
-        gtk_spin_button_set_value (GTK_SPIN_BUTTON (spin), (gfloat) config.delai);
-
+        combo = GTK_WIDGET (gtk_builder_get_object (builder, "spin-eol-delay"));
+        g_settings_bind (settings, "wait-delay", combo, "value", G_SETTINGS_BIND_DEFAULT);
         combo = GTK_WIDGET (gtk_builder_get_object (builder, "check-use-wait-char"));
+        entry = GTK_WIDGET (gtk_builder_get_object (builder, "entry-wait-char"));
 
-        g_signal_connect (G_OBJECT (combo), "toggled", G_CALLBACK (Grise_Degrise), spin);
+        g_object_bind_property (G_OBJECT (combo), "active",
+                                entry,
+                                "sensitive", 0);
+        g_object_bind_property (G_OBJECT (combo), "active",
+                                entry,
+                                "sensitive", G_BINDING_INVERT_BOOLEAN);
 
-        Entry = combo = GTK_WIDGET (gtk_builder_get_object (builder, "entry-wait-char"));
+        g_settings_bind_with_mapping (settings, "wait-character",
+                                      entry,
+                                      "text",
+                                      G_SETTINGS_BIND_DEFAULT,
+                                      int_to_str,
+                                      str_to_int,
+                                      NULL, NULL);
 
-        if (config.car != -1) {
-            gtk_entry_set_text (GTK_ENTRY (combo), &(config.car));
+        if (g_settings_get_int (settings, "wait-character") != -1) {
             gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (combo), TRUE);
         }
     }
@@ -240,90 +305,21 @@ void Config_Port_Fenetre(GtkWindow *parent)
     /* Set values on third page */
     {
         combo = GTK_WIDGET (gtk_builder_get_object (builder, "spin-rs485-on"));
-        gtk_spin_button_set_value (GTK_SPIN_BUTTON (combo),
-                                   (gfloat) config.rs485_rts_time_before_transmit);
+        g_settings_bind (settings, "rs485-pre-tx-rts-delay", combo, "value", G_SETTINGS_BIND_DEFAULT);
 
         combo = GTK_WIDGET (gtk_builder_get_object (builder, "spin-rs485-off"));
-        gtk_spin_button_set_value (GTK_SPIN_BUTTON (combo),
-                                   (gfloat) config.rs485_rts_time_after_transmit);
+        g_settings_bind (settings, "rs485-post-tx-rts-delay", combo, "value", G_SETTINGS_BIND_DEFAULT);
     }
 
     result = gtk_dialog_run (dialog);
     gtk_widget_hide (GTK_WIDGET (dialog));
     if (result == GTK_RESPONSE_OK) {
-        Lis_Config (builder);
+        g_settings_apply (settings);
+        gt_serial_port_config (serial_port, profile);
     }
 
     g_object_unref (builder);
-
-    gtk_widget_destroy (GTK_WIDGET (dialog));
-}
-
-gint Lis_Config(GtkBuilder *builder)
-{
-    GObject *widget;
-    gchar *message;
-
-    widget = gtk_builder_get_object (builder, "combo-device");
-    message = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget));
-    strcpy(config.port, message);
-    g_free(message);
-
-    widget = gtk_builder_get_object (builder, "combo-baud-rate");
-    message = (char *) gtk_combo_box_get_active_id (GTK_COMBO_BOX (widget));
-    config.vitesse = atoi(message);
-
-    widget = gtk_builder_get_object (builder, "spin-bits");
-    config.bits = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON (widget));
-
-    widget = gtk_builder_get_object (builder, "spin-eol-delay");
-    config.delai = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-
-    widget = gtk_builder_get_object (builder, "spin-rs485-on");
-    config.rs485_rts_time_before_transmit = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-
-    widget = gtk_builder_get_object (builder, "spin-rs485-off");
-    config.rs485_rts_time_after_transmit = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
-
-    widget = gtk_builder_get_object (builder, "combo-parity");
-    message = (char *)gtk_combo_box_get_active_id(GTK_COMBO_BOX(widget));
-    config.parite = atoi (message);
-
-    widget = gtk_builder_get_object (builder, "spin-stopbits");
-    config.stops = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON (widget));
-
-    widget = gtk_builder_get_object (builder, "combo-flow");
-    message = (char *)gtk_combo_box_get_active_id(GTK_COMBO_BOX(widget));
-    config.flux = atoi (message);
-
-    widget = gtk_builder_get_object (builder, "check-use-wait-char");
-    if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)))
-    {
-        widget = gtk_builder_get_object (builder, "entry-wait-char");
-        config.car = *gtk_entry_get_text(GTK_ENTRY(widget));
-        config.delai = 0;
-    }
-    else
-        config.car = -1;
-
-    gt_serial_port_config (serial_port, GT_SETTINGS_DEFAULT_ID);
-
-    return FALSE;
-}
-
-gint Grise_Degrise(GtkWidget *bouton, gpointer pointeur)
-{
-    if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(bouton)))
-    {
-	gtk_widget_set_sensitive(GTK_WIDGET(Entry), TRUE);
-	gtk_widget_set_sensitive(GTK_WIDGET(pointeur), FALSE);
-    }
-    else
-    {
-	gtk_widget_set_sensitive(GTK_WIDGET(Entry), FALSE);
-	gtk_widget_set_sensitive(GTK_WIDGET(pointeur), TRUE);
-    }
-    return FALSE;
+    g_object_unref (settings);
 }
 
 void read_font_button(GtkFontButton *fontButton)

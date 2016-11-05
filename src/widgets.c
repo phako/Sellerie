@@ -163,7 +163,6 @@ static void on_logging_stop (GSimpleAction *action, GVariant *parameter, gpointe
 static void on_logging_clear (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_config_port (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_config_terminal (GSimpleAction *action, GVariant *parameter, gpointer user_data);
-static void on_local_echo_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_config_macros (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_config_profile_select (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_config_profile_save (GSimpleAction *action, GVariant *parameter, gpointer user_data);
@@ -175,7 +174,6 @@ static void on_about (GSimpleAction *action, GVariant *parameter, gpointer user_
 static void on_reconnect (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_action_radio (GSimpleAction *action, GVariant *parameter, gpointer user_data);
-static void on_crlf_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_view_ascii_hex_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_view_index_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void on_view_send_hex_change_state  (GSimpleAction *action, GVariant *parameter, gpointer user_data);
@@ -204,8 +202,9 @@ const GActionEntry menu_actions[] = {
     /* Configuration menu */
     {"config.port", on_config_port },
     {"config.terminal", on_config_terminal },
+    /* Gotten from GSettings
     {"config.local-echo", on_action_toggle, NULL, "false", on_local_echo_change_state},
-    {"config.crlf", on_action_toggle, NULL, "false", on_crlf_change_state },
+    {"config.crlf", on_action_toggle, NULL, "false", on_crlf_change_state }, */
 
     {"config.macros", on_config_macros },
 
@@ -318,47 +317,6 @@ void set_view(guint type)
     gt_buffer_write (buffer);
 }
 
-void Set_local_echo(gboolean echo)
-{
-  GActionGroup *group;
-  GSimpleAction *action;
-  GVariant *value;
-
-  group = gtk_widget_get_action_group (Fenetre, "main");
-  action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group),
-                            "config.local-echo"));
-
-  echo_on = echo;
-
-  value = g_variant_new_boolean (echo);
-  g_variant_ref_sink (value);
-
-  if(action)
-      g_simple_action_set_state (action, value);
-
-  g_variant_unref (value);
-}
-
-void Set_crlfauto(gboolean crlfauto)
-{
-  GActionGroup *group;
-  GSimpleAction *action;
-  GVariant *value;
-
-  group = gtk_widget_get_action_group (Fenetre, "main");
-  action = G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (group),
-              "config.crlf"));
-
-  crlfauto_on = crlfauto;
-
-  value = g_variant_new_boolean (crlfauto);
-
-  if(action)
-      g_simple_action_set_state (action, value);
-
-  g_variant_unref (value);
-}
-
 void toggle_logging_sensitivity(gboolean currentlyLogging)
 {
     g_simple_action_set_enabled (find_action ("log.to-file"), !currentlyLogging);
@@ -406,6 +364,10 @@ void create_main_window(void)
   GActionGroup *group;
   GMenuModel *menu_model = NULL;
   int i = 0;
+  GSettings *settings = NULL;
+  GAction *settings_action = NULL;
+
+  settings = gt_config_get_profile_settings ();
 
   g_signal_connect (G_OBJECT (serial_port), "notify::status",
                     G_CALLBACK (on_serial_port_status_changed),
@@ -421,6 +383,10 @@ void create_main_window(void)
                                    menu_actions,
                                    G_N_ELEMENTS (menu_actions),
                                    NULL);
+  settings_action = g_settings_create_action (settings, "crlf-auto");
+  g_action_map_add_action (G_ACTION_MAP (group), settings_action);
+  settings_action = g_settings_create_action (settings, "local-echo");
+  g_action_map_add_action (G_ACTION_MAP (group), settings_action);
 
   builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/main-window.ui");
 
@@ -945,25 +911,6 @@ void on_action_toggle (GSimpleAction *action, GVariant *parameter, gpointer user
     g_action_change_state (G_ACTION (action),
                            g_variant_new_boolean (!g_variant_get_boolean (state)));
     g_variant_unref (state);
-}
-
-
-void on_local_echo_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
-    GtSerialPortConfiguration *config = gt_config_get ();
-    echo_on = g_variant_get_boolean (parameter);
-
-    gt_config_set_echo (config, echo_on);
-    gt_serial_port_set_local_echo (serial_port, echo_on);
-    g_simple_action_set_state (action, parameter);
-}
-
-void on_crlf_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {
-    GtSerialPortConfiguration *config = gt_config_get ();
-    crlfauto_on = g_variant_get_boolean (parameter);
-
-    gt_config_set_auto_crlf (config, crlfauto_on);
-    gt_serial_port_set_crlfauto (serial_port, crlfauto_on);
-    g_simple_action_set_state (action, parameter);
 }
 
 void on_view_index_change_state (GSimpleAction *action, GVariant *parameter, gpointer user_data) {

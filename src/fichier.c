@@ -156,7 +156,9 @@ static gboolean on_serial_io_ready (GIOChannel *source,
     static gint bytes_to_write;
     gint bytes_written;
     gchar *car;
-    GtSerialPortConfiguration *config;
+    GSettings *config;
+    int delay = 0;
+    int wait_char = -1;
 
     if (condition == G_IO_ERR) {
         str = g_strdup_printf (_("Error sending file\n"));
@@ -190,34 +192,37 @@ static gboolean on_serial_io_ready (GIOChannel *source,
     }
 
 	car = current_buffer;
-    config = gt_config_get ();
+    config = gt_config_get_profile_settings ();
+    delay = g_settings_get_int (config, "wait-delay");
+    wait_char = g_settings_get_int (config, "wait-delay");
+    g_object_unref (config);
 
-	if(gt_config_get_delay (config) != 0 ||
-       gt_config_get_wait_char (config) != -1)
-	{
-	    /* search for next LF */
-	    bytes_to_write = current_buffer_position;
-	    while(*car != LINE_FEED && bytes_to_write < bytes_read)
-	    {
-		car++;
-		bytes_to_write++;
-	    }
-	    if(*car == LINE_FEED)
-		bytes_to_write++;
-	}
+    if (delay != 0 || wait_char != -1)
+    {
+        /* search for next LF */
+        bytes_to_write = current_buffer_position;
+        while(*car != LINE_FEED && bytes_to_write < bytes_read)
+        {
+            car++;
+            bytes_to_write++;
+        }
+        if(*car == LINE_FEED)
+            bytes_to_write++;
+    }
 
-	/* write to serial port */
-	bytes_written = send_serial(current_buffer, bytes_to_write - current_buffer_position);
+    /* write to serial port */
+    bytes_written = send_serial(current_buffer, bytes_to_write - current_buffer_position);
 
-	if(bytes_written == -1)
-	{
-	    /* Problem while writing, stop file transfer */
-	    g_free(str);
-	    str = g_strdup_printf(_("Error sending file: %s\n"), strerror(errno));
-	    show_message(str, MSG_ERR);
-	    close_all();
-	    return FALSE;
-	}
+    if(bytes_written == -1)
+    {
+        /* Problem while writing, stop file transfer */
+        g_free(str);
+        str = g_strdup_printf(_("Error sending file: %s\n"), strerror(errno));
+        show_message(str, MSG_ERR);
+        close_all();
+
+        return FALSE;
+    }
 
 	car_written += bytes_written;
 	current_buffer_position += bytes_written;
@@ -225,13 +230,13 @@ static gboolean on_serial_io_ready (GIOChannel *source,
 
 	gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(ProgressBar), (gfloat)car_written/(gfloat)nb_car );
 
-	if(gt_config_get_delay (config) != 0 && *car == LINE_FEED)
+	if(delay != 0 && *car == LINE_FEED)
 	{
 	    remove_input();
-	    g_timeout_add(gt_config_get_delay (config), (GSourceFunc)timer, NULL);
+	    g_timeout_add(delay, (GSourceFunc)timer, NULL);
 	    waiting_for_timer = TRUE;
 	}
-	else if(gt_config_get_wait_char (config) != -1 && *car == LINE_FEED)
+	else if(wait_char != -1 && *car == LINE_FEED)
 	{
 	    remove_input();
 	    waiting_for_char = TRUE;

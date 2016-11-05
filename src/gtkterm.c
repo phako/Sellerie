@@ -37,23 +37,16 @@ GtBuffer *buffer;
 
 int main(int argc, char *argv[])
 {
-  char *config_file;
-
-  buffer = gt_buffer_new ();
-  serial_port = gt_serial_port_new ();
-  gt_serial_port_set_buffer (serial_port, buffer);
-  g_object_unref (G_OBJECT (buffer));
-
-  config_file = g_strdup_printf("%s/.gtktermrc", getenv("HOME"));
-  gt_config_set_file_path (config_file);
-  g_free (config_file);
-
   bindtextdomain(PACKAGE, LOCALEDIR);
   bind_textdomain_codeset(PACKAGE, "UTF-8");
   textdomain(PACKAGE);
 
   gtk_init(&argc, &argv);
 
+  buffer = gt_buffer_new ();
+  serial_port = gt_serial_port_new ();
+  gt_serial_port_set_buffer (serial_port, buffer);
+  g_object_unref (G_OBJECT (buffer));
 
   create_main_window();
 
@@ -62,7 +55,7 @@ int main(int argc, char *argv[])
       exit (EXIT_FAILURE);
   }
 
-  gt_serial_port_config (serial_port, gt_config_get ());
+  gt_serial_port_config (serial_port, gt_config_get_profile ());
 
   add_shortcuts();
 

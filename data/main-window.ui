@@ -86,11 +86,11 @@
         </item>
         <item>
           <attribute name="label" translatable="yes">Local _echo</attribute>
-          <attribute name="action">main.config.local-echo</attribute>
+          <attribute name="action">main.local-echo</attribute>
         </item>
         <item>
           <attribute name="label" translatable="yes">_CR LF auto</attribute>
-          <attribute name="action">main.config.crlf</attribute>
+          <attribute name="action">main.crlf-auto</attribute>
         </item>
         <item>
           <attribute name="label" translatable="yes">Ma_cros…</attribute>

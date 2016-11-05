@@ -23,9 +23,9 @@
 #include <config.h>
 #endif
 
+#include "term_config.h"
 #include "serial-port.h"
 
-#include "term_config.h"
 #include "widgets.h"
 #include "fichier.h"
 #include "buffer.h"
@@ -80,7 +80,7 @@ gt_serial_port_state_get_type (void)
 }
 
 typedef struct {
-    struct configuration_port *config;
+    GSettings *config;
     struct termios termios_save;
     int serial_port_fd;
 
@@ -163,8 +163,8 @@ gt_serial_port_on_channel_read (GIOChannel* src, GIOCondition cond, gpointer dat
         bytes_read = read (priv->serial_port_fd, c, BUFFER_RECEPTION);
         if(bytes_read > 0)
         {
-            gboolean crlf_auto = gt_config_get_auto_crlf (priv->config);
-            int wait_char = gt_config_get_wait_char (priv->config);
+            gboolean crlf_auto = g_settings_get_boolean (priv->config, "crlf-auto");
+            int wait_char = g_settings_get_int (priv->config, "wait-character");
             gt_buffer_put_chars (priv->buffer, c, bytes_read, crlf_auto);
 
             if (wait_char != -1 && gt_file_get_waiting_for_char () == TRUE)
@@ -185,7 +185,11 @@ gt_serial_port_on_channel_read (GIOChannel* src, GIOCondition cond, gpointer dat
         else if (bytes_read == -1)
         {
             if (errno != EAGAIN)
-                perror (gt_config_get_port (priv->config));
+            {
+                char *port = g_settings_get_string (priv->config, "port");
+                perror (port);
+                g_free (port);
+            }
         }
     }
 
@@ -210,8 +214,10 @@ gt_serial_port_termios_from_config (GtSerialPort *self,
                                     GError **error)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+    int speed = -1;
 
-    switch (gt_config_get_serial_speed (priv->config))
+    speed = g_settings_get_int (priv->config, "speed");
+    switch (speed)
     {
     case 300: termios_p->c_cflag = B300; break;
     case 600: termios_p->c_cflag = B600; break;
@@ -226,8 +232,7 @@ gt_serial_port_termios_from_config (GtSerialPort *self,
 
     default:
 #ifdef HAVE_LINUX_SERIAL_H
-        gt_serial_port_set_custom_speed (self,
-                                         gt_config_get_serial_speed (priv->config));
+        gt_serial_port_set_custom_speed (self, speed);
         termios_p->c_cflag |= B38400;
 #else
         g_propagate_error (error,
@@ -238,7 +243,7 @@ gt_serial_port_termios_from_config (GtSerialPort *self,
 #endif
     }
 
-    switch (gt_config_get_serial_bits (priv->config))
+    switch (g_settings_get_int (priv->config, "bits"))
     {
     case 5: termios_p->c_cflag |= CS5; break;
     case 6: termios_p->c_cflag |= CS6; break;
@@ -247,7 +252,7 @@ gt_serial_port_termios_from_config (GtSerialPort *self,
     default: g_assert_not_reached();
     }
 
-    switch (gt_config_get_serial_parity (priv->config))
+    switch (g_settings_get_enum (priv->config, "parity"))
     {
     case GT_SERIAL_PARITY_ODD : termios_p->c_cflag |= PARODD | PARENB; break;
     case GT_SERIAL_PARITY_EVEN: termios_p->c_cflag |= PARENB; break;
@@ -255,14 +260,14 @@ gt_serial_port_termios_from_config (GtSerialPort *self,
     default: g_assert_not_reached ();
     }
 
-    if (gt_config_get_serial_stop_bits (priv->config) == 2)
+    if (g_settings_get_int (priv->config, "stopbits") == 2)
         termios_p->c_cflag |= CSTOPB;
 
     termios_p->c_cflag |= CREAD;
     termios_p->c_iflag = IGNPAR | IGNBRK;
 
     termios_p->c_cflag |= CLOCAL;
-    switch(gt_config_get_serial_flow (priv->config))
+    switch(g_settings_get_enum (priv->config, "flow"))
     {
     case GT_SERIAL_FLOW_XON : termios_p->c_iflag |= IXON | IXOFF; break;
     case GT_SERIAL_FLOW_RTS : termios_p->c_cflag |= CRTSCTS; break;
@@ -284,6 +289,7 @@ int gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     int bytes_written = 0;
+    GtSerialFlow flow = GT_SERIAL_FLOW_NONE;
 
     if(priv->serial_port_fd == -1)
         return 0;
@@ -292,24 +298,32 @@ int gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
     if(length == 0)
         return 0;
 
+    flow = g_settings_get_enum (priv->config, "flow");
+
     /* RS485 half-duplex mode ? */
-    if (gt_config_get_serial_flow (priv->config) == GT_SERIAL_FLOW_RS485)
+    if (flow == GT_SERIAL_FLOW_RS485)
     {
+        int tx_delay = -1;
+
         /* set RTS (start to send) */
         gt_serial_port_set_signals (self, 1);
-        if (gt_config_get_rs485_before_tx_time (priv->config) > 0)
-            usleep (gt_config_get_rs485_before_tx_time (priv->config) * 1000);
+        tx_delay = g_settings_get_int (priv->config, "rs485-pre-tx-rts-delay");
+        if (tx_delay > 0)
+            usleep (tx_delay * 1000);
     }
 
     bytes_written = write(priv->serial_port_fd, string, length);
 
     /* RS485 half-duplex mode ? */
-    if (gt_config_get_serial_flow (priv->config) == GT_SERIAL_FLOW_RS485)
+    if (flow == GT_SERIAL_FLOW_RS485)
     {
+        int tx_delay = -1;
+
         /* wait all chars are send */
         tcdrain (priv->serial_port_fd);
-        if (gt_config_get_rs485_after_tx_time (priv->config) > 0)
-            usleep (gt_config_get_rs485_after_tx_time (priv->config) * 1000);
+        tx_delay =  g_settings_get_int (priv->config, "rs485-pre-tx-rts-delay");
+        if (tx_delay > 0)
+            usleep (tx_delay * 1000);
         /* reset RTS (end of send, now receiving back) */
         gt_serial_port_set_signals(self, 1 );
     }
@@ -317,15 +331,15 @@ int gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
     return bytes_written;
 }
 
-gboolean gt_serial_port_config (GtSerialPort *self,
-                                struct configuration_port *config)
+gboolean gt_serial_port_config (GtSerialPort *self, const char *profile_id)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
 
     gt_serial_port_close (self);
     gt_serial_port_unlock (self);
 
-    priv->config = config;
+    g_clear_object (&priv->config);
+    priv->config = gt_config_get_settings_for_profile (profile_id);
 
     return gt_serial_port_connect (self);
 }
@@ -345,7 +359,7 @@ gt_serial_port_connect (GtSerialPort *self)
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     struct termios termios_p;
     GError *error = NULL;
-    const char *port = gt_config_get_port (priv->config);
+    char *port = g_settings_get_string (priv->config, "port");
 
     priv->serial_port_fd = open (port, O_RDWR | O_NOCTTY | O_NDELAY);
     if(priv->serial_port_fd == -1)
@@ -357,6 +371,8 @@ gt_serial_port_connect (GtSerialPort *self)
                              g_strerror (errno));
         gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_ERROR, error);
 
+        g_free (port);
+
         return FALSE;
     }
 
@@ -364,6 +380,8 @@ gt_serial_port_connect (GtSerialPort *self)
     {
         gt_serial_port_close (self);
         gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_ERROR, error);
+
+        g_free (port);
 
         return FALSE;
     }
@@ -398,7 +416,6 @@ gt_serial_port_connect (GtSerialPort *self)
 
     priv->callback_activated = TRUE;
 
-    Set_local_echo(gt_config_get_echo (priv->config));
     gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_ONLINE, NULL);
 
     priv->status_timeout = g_timeout_add (GT_SERIAL_PORT_CONTROL_POLL_DELAY,
@@ -413,7 +430,7 @@ void gt_serial_port_set_local_echo (GtSerialPort *self, gboolean echo)
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
 
     /* Double book-keeping for now */
-    gt_config_set_echo (priv->config, echo);
+    g_settings_set_boolean (priv->config, "local-echo", echo);
 }
 
 void gt_serial_port_set_crlfauto(GtSerialPort *self, gboolean crlfauto)
@@ -421,7 +438,7 @@ void gt_serial_port_set_crlfauto(GtSerialPort *self, gboolean crlfauto)
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
 
     /* Double book-keeping for now */
-    gt_config_set_auto_crlf (priv->config, crlfauto);
+    g_settings_set_boolean (priv->config, "crlf-auto", crlfauto);
 }
 
 void
@@ -503,7 +520,7 @@ gt_serial_port_read_signals (GtSerialPort *self)
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     int stat_read;
 
-    if (gt_config_get_serial_flow (priv->config) == GT_SERIAL_FLOW_RTS)
+    if (g_settings_get_enum (priv->config, "flow") == GT_SERIAL_FLOW_RTS)
     {
         /* reset RTS (default = receive) */
         gt_serial_port_set_signals (self, 1);
@@ -710,7 +727,6 @@ gchar* gt_serial_port_to_string (GtSerialPort *self)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     gchar* msg;
-    gchar parity;
 
     if(priv->serial_port_fd == -1)
     {
@@ -718,8 +734,11 @@ gchar* gt_serial_port_to_string (GtSerialPort *self)
     }
     else
     {
+        char parity = '\0';
+        char *port = NULL;
+
         // 0: none, 1: odd, 2: even
-        switch (gt_config_get_serial_parity (priv->config))
+        switch (g_settings_get_enum (priv->config, "parity"))
         {
         case GT_SERIAL_PARITY_NONE: parity = 'N'; break;
         case GT_SERIAL_PARITY_ODD: parity = 'O'; break;
@@ -727,13 +746,16 @@ gchar* gt_serial_port_to_string (GtSerialPort *self)
         default: parity = 'N'; break;
         }
 
+        port = g_settings_get_string (priv->config, "port");
+
         /* "GtkTerm: device  baud-bits-parity-stops"  */
         msg = g_strdup_printf("%.15s  %d-%d-%c-%d",
-                              gt_config_get_port (priv->config),
-                              gt_config_get_serial_speed (priv->config),
-                              gt_config_get_serial_bits (priv->config),
+                              port,
+                              g_settings_get_int (priv->config, "speed"),
+                              g_settings_get_int (priv->config, "bits"),
                               parity,
-                              gt_config_get_serial_stop_bits (priv->config));
+                              g_settings_get_int (priv->config, "stopbits"));
+        g_free (port);
     }
 
     return msg;

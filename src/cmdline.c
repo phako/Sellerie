@@ -34,16 +34,16 @@ static gboolean on_parity_parse (const gchar *name,
                                  gpointer data,
                                  GError **error)
 {
-    GtSerialPortConfiguration *config = (GtSerialPortConfiguration *) data;
+    GSettings *settings = G_SETTINGS (data);
 
     if (g_str_equal (value, "odd")) {
-        gt_config_set_serial_parity (config, GT_SERIAL_PARITY_ODD);
+        g_settings_set_enum (settings, "parity", GT_SERIAL_PARITY_ODD);
 
         return TRUE;
     }
 
     if (g_str_equal (value, "even")) {
-        gt_config_set_serial_parity (config, GT_SERIAL_PARITY_EVEN);
+        g_settings_set_enum (settings, "parity", GT_SERIAL_PARITY_ODD);
 
         return TRUE;
     }
@@ -57,37 +57,27 @@ static gboolean on_parity_parse (const gchar *name,
     return FALSE;
 }
 
-static gboolean on_config_parse (const gchar *name,
-                                 const gchar *value,
-                                 gpointer data,
-                                 GError **error)
-{
-    gt_config_load_profile (value);
-
-    return TRUE;
-}
-
 static gboolean on_flow_parse (const gchar *name,
                                const gchar *value,
                                gpointer data,
                                GError **error)
 {
-    GtSerialPortConfiguration *config = (GtSerialPortConfiguration *) data;
+    GSettings *settings = G_SETTINGS (data);
 
     if (g_str_equal (value, "RTS")) {
-        gt_config_set_serial_flow (config, GT_SERIAL_FLOW_RTS);
+        g_settings_set_enum (settings, "flow", GT_SERIAL_FLOW_RTS);
 
         return TRUE;
     }
 
     if (g_str_equal (value, "Xon")) {
-        gt_config_set_serial_flow (config, GT_SERIAL_FLOW_XON);
+        g_settings_set_enum (settings, "flow", GT_SERIAL_FLOW_XON);
 
         return TRUE;
     }
 
     if (g_str_equal (value, "RS485")) {
-        gt_config_set_serial_flow (config, GT_SERIAL_FLOW_RS485);
+        g_settings_set_enum (settings, "flow", GT_SERIAL_FLOW_RS485);
 
         return TRUE;
     }
@@ -113,7 +103,6 @@ static int config_rs485_rts_b4tx = -1;
 static int config_rs485_rts_tx = -1;
 
 static GOptionEntry entries[] = {
-    { "config", 'c', 0, G_OPTION_ARG_CALLBACK, on_config_parse, N_("Load configuration FILE"), "FILE", },
     { "speed", 's', 0, G_OPTION_ARG_INT, &config_speed, N_("Serial port SPEED (default 9600)"), "SPEED"},
     { "parity", 'a', 0, G_OPTION_ARG_CALLBACK, on_parity_parse, N_("Serial port PARITY (even|odd, default none)"), "PARITY" },
     { "stopbits", 't', 0, G_OPTION_ARG_INT, &config_stops, N_("Number of STOPBITS (default 1)"), "STOPBITS" },
@@ -135,10 +124,9 @@ int read_command_line (int argc, char **argv)
   GOptionContext *context = NULL;
   GOptionGroup *group = NULL;
   int result = -1;
+  GSettings *settings  = gt_config_get_profile_settings ();
 
-  Check_configuration_file();
-
-  group = g_option_group_new ("default", "gtkterm", "gtkterm", gt_config_get (), NULL);
+  group = g_option_group_new ("default", "gtkterm", "gtkterm", settings, g_object_unref);
   g_option_group_set_translation_domain (group, GETTEXT_PACKAGE);
   g_option_group_add_entries (group, entries);
 
@@ -147,15 +135,10 @@ int read_command_line (int argc, char **argv)
   if (!g_option_context_parse (context, &argc, &argv, &error)) {
     g_warning ("Failed to parse commandline options: %s", error->message);
   } else {
-    if (default_file != NULL) {
-      gt_file_set_default (default_file);
-    }
-
     if (config_port != NULL)
     {
-        gt_config_set_port (gt_config_get (), config_port);
+        g_settings_set_string (settings, "port", config_port);
     }
-    gt_config_validate ();
     result = 0;
   }
 

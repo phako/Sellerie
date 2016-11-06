@@ -130,7 +130,6 @@ static gchar *config_file = NULL;
 struct configuration_port config;
 
 typedef struct {
-  gboolean show_cursor;
   gint rows;
   gint columns;
   gint scrollback;
@@ -144,11 +143,10 @@ static display_config_t term_conf;
 
 static GtkWidget *Entry;
 
-static gint Grise_Degrise(GtkWidget *bouton, gpointer pointeur);
 static void read_font_button(GtkFontButton *fontButton);
+static gint Grise_Degrise(GtkWidget *bouton, gpointer pointeur);
 static void Hard_default_configuration(void);
 static void Copy_configuration(int);
-
 static void Select_config(gchar *, void *);
 static void Save_config_file(void);
 static void load_config(GtkDialog *, gint, GtkTreeSelection *);
@@ -156,7 +154,6 @@ static void delete_config(GtkDialog *, gint, GtkTreeSelection *);
 static void save_config(GtkDialog *, gint, GtkWidget *);
 static void really_save_config(GtkDialog *, gint, gpointer);
 static gint remove_section(gchar *, gchar *);
-static void Curseur_OnOff(GtkWidget *, gpointer);
 static void Selec_couleur(GdkRGBA *, gfloat, gfloat, gfloat);
 static void config_fg_color(GtkWidget *button, gpointer data);
 static void config_bg_color(GtkWidget *button, gpointer data);
@@ -783,11 +780,6 @@ gint Load_configuration_from_file(const gchar *config_name)
 		create_shortcuts(macros, size);
 		g_free(macros);
 
-		if(show_cursor[i] != -1)
-		    term_conf.show_cursor = (gboolean)show_cursor[i];
-		else
-		    term_conf.show_cursor = FALSE;
-
 		if(rows[i] != 0)
 		    term_conf.rows = rows[i];
 
@@ -814,7 +806,6 @@ gint Load_configuration_from_file(const gchar *config_name)
 		   first save; so set term to default */
 		if(rows[i] == 0 || columns[i] == 0)
 		{
-		    term_conf.show_cursor = TRUE;
 		    term_conf.rows = 80;
 		    term_conf.columns = 25;
 		    term_conf.scrollback = DEFAULT_SCROLLBACK;
@@ -953,7 +944,6 @@ void Hard_default_configuration(void)
 
     term_conf.font = pango_font_description_from_string (DEFAULT_FONT);
 
-    term_conf.show_cursor = TRUE;
     term_conf.rows = 80;
     term_conf.columns = 25;
     term_conf.scrollback = DEFAULT_SCROLLBACK;
@@ -1065,13 +1055,6 @@ void Copy_configuration(int pos)
 	cfgStoreValue(cfg, "macros", string, CFG_INI, pos);
 	g_free(string);
     }
-
-    if(term_conf.show_cursor == FALSE)
-	string = g_strdup_printf("False");
-    else
-	string = g_strdup_printf("True");
-    cfgStoreValue(cfg, "term_show_cursor", string, CFG_INI, pos);
-    g_free(string);
 
     string = g_strdup_printf("%d", term_conf.rows);
     cfgStoreValue(cfg, "term_rows", string, CFG_INI, pos);
@@ -1200,7 +1183,6 @@ void Config_Terminal(GtkAction *action, gpointer data)
 {
     GtkWidget *dialog;
     GtkWidget *font_button;
-    GtkWidget *check_box;
     GtkWidget *fg_color_button;
     GtkWidget *bg_color_button;
     GtkWidget *scrollback_spin;
@@ -1214,10 +1196,6 @@ void Config_Terminal(GtkAction *action, gpointer data)
     font_button = GTK_WIDGET (gtk_builder_get_object (builder, "font-button"));
     gtk_font_chooser_set_font_desc (GTK_FONT_CHOOSER (font_button), term_conf.font);
     g_signal_connect(GTK_WIDGET(font_button), "font-set", G_CALLBACK(read_font_button), 0);
-
-    check_box = GTK_WIDGET (gtk_builder_get_object (builder, "check-show-cursor"));
-    g_signal_connect(GTK_WIDGET(check_box), "toggled", G_CALLBACK(Curseur_OnOff), 0);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_box), term_conf.show_cursor);
 
     fg_color_button = GTK_WIDGET (gtk_builder_get_object (builder, "color-button-fg"));
     gtk_color_chooser_set_rgba (GTK_COLOR_CHOOSER (fg_color_button), &term_conf.foreground_color);
@@ -1235,11 +1213,6 @@ void Config_Terminal(GtkAction *action, gpointer data)
     gtk_widget_hide (dialog);
     gtk_widget_destroy (dialog);
     g_object_unref (builder);
-}
-
-void Curseur_OnOff(GtkWidget *Check_Bouton, gpointer data)
-{
-    term_conf.show_cursor = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(Check_Bouton));
 }
 
 void Selec_couleur(GdkRGBA *color, gfloat R, gfloat G, gfloat B)

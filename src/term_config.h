@@ -40,4 +40,5 @@ const char *gt_config_get_profile (void);
 
 GSettings *gt_config_get_settings_for_profile (const char *id);
 GSettings *gt_config_get_profile_settings (void);
+
 #endif

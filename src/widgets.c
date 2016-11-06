@@ -357,6 +357,73 @@ static void terminal_popup_menu_callback(GtkWidget *widget, gpointer data)
 #endif
 }
 
+static gboolean font_to_fontdesc (GValue *value,
+                                  GVariant *variant,
+                                  gpointer user_data)
+{
+    PangoFontDescription *font_desc = NULL;
+    const char *font = NULL;
+
+    font = g_variant_get_string (variant, NULL);
+    font_desc = pango_font_description_from_string (font);
+
+    if (font_desc == NULL) {
+        return FALSE;
+    }
+
+    g_value_set_boxed (value, font_desc);
+
+    return TRUE;
+}
+
+static GVariant *fontdesc_to_font (const GValue *value,
+                                   const GVariantType *type,
+                                   gpointer user_data)
+{
+    char *font = NULL;
+    GVariant *variant = NULL;
+    PangoFontDescription *boxed = NULL;
+
+    boxed = g_value_get_boxed (value);
+    if (boxed == NULL) {
+        return NULL;
+    }
+
+    font = pango_font_description_to_string (g_value_get_boxed (value));
+    variant = g_variant_new_take_string (font);
+
+    return variant;
+}
+
+static void on_color_changed (GSettings *settings, char *key, gpointer user_data)
+{
+    static GQuark fore;
+    static GQuark back;
+
+    VteTerminal *terminal = VTE_TERMINAL (user_data);
+    GdkRGBA color = { 0 };
+    char *value = NULL;
+
+    fore = g_quark_from_static_string ("foreground-color");
+    back = g_quark_from_static_string ("background-color");
+
+    value = g_settings_get_string (settings, key);
+    if (!gdk_rgba_parse (&color, value)) {
+        g_free (value);
+
+        return;
+    }
+
+    if (g_quark_from_string (key) == fore) {
+        vte_terminal_set_color_foreground (terminal, &color);
+    } else if (g_quark_from_string (key) == back) {
+        vte_terminal_set_color_background (terminal, &color);
+    } else {
+        g_critical ("Unknown key: %s", key);
+    }
+
+}
+
 void create_main_window(void)
 {
   GtkWidget *main_vbox, *label;
@@ -417,6 +484,30 @@ void create_main_window(void)
   vte_terminal_set_mouse_autohide(VTE_TERMINAL(display), TRUE);
   vte_terminal_set_backspace_binding(VTE_TERMINAL(display),
                                      VTE_ERASE_ASCII_BACKSPACE);
+  g_settings_bind_with_mapping (settings,
+                                "font",
+                                display,
+                                "font-desc",
+                                G_SETTINGS_BIND_SET,
+                                font_to_fontdesc,
+                                fontdesc_to_font,
+                                NULL,
+                                NULL);
+  g_signal_connect (settings,
+                    "changed::foreground-color",
+                    G_CALLBACK (on_color_changed),
+                    display);
+
+  g_signal_connect (settings,
+                    "changed::background-color",
+                    G_CALLBACK (on_color_changed),
+                    display);
+
+  g_settings_bind (settings,
+                   "scrollback-size",
+                   display,
+                   "scrollback-lines",
+                   G_SETTINGS_BIND_SET);
 
   clear_display();
 

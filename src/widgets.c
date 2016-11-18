@@ -377,8 +377,12 @@ static gboolean terminal_button_press_callback(GtkWidget *widget,
      event->button == 3 &&
      (event->state & gtk_accelerator_get_default_mod_mask()) == 0)
   {
+#if GTK_CHECK_VERSION(3,22,0)
+      gtk_menu_popup_at_pointer (GTK_MENU (popup_menu), (GdkEvent *) event);
+#else
       gtk_menu_popup(GTK_MENU(popup_menu), NULL, NULL, NULL, NULL,
                      event->button, event->time);
+#endif
       return TRUE;
   }
 
@@ -387,8 +391,15 @@ static gboolean terminal_button_press_callback(GtkWidget *widget,
 
 static void terminal_popup_menu_callback(GtkWidget *widget, gpointer data)
 {
-  gtk_menu_popup(GTK_MENU(popup_menu), NULL, NULL, NULL, NULL,
-                 0, gtk_get_current_event_time());
+#if GTK_CHECK_VERSION(3,22,0)
+    gtk_menu_popup_at_widget (GTK_MENU (popup_menu), widget,
+                              GDK_GRAVITY_CENTER,
+                              GDK_GRAVITY_CENTER,
+                              NULL);
+#else
+    gtk_menu_popup(GTK_MENU(popup_menu), NULL, NULL, NULL, NULL,
+                   0, gtk_get_current_event_time());
+#endif
 }
 
 void create_main_window(void)

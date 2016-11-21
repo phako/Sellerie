@@ -392,10 +392,7 @@ static gboolean terminal_button_press_callback(GtkWidget *widget,
 static void terminal_popup_menu_callback(GtkWidget *widget, gpointer data)
 {
 #if GTK_CHECK_VERSION(3,22,0)
-    gtk_menu_popup_at_widget (GTK_MENU (popup_menu), widget,
-                              GDK_GRAVITY_CENTER,
-                              GDK_GRAVITY_CENTER,
-                              NULL);
+    gtk_menu_popup_at_pointer (GTK_MENU (popup_menu), gtk_get_current_event ());
 #else
     gtk_menu_popup(GTK_MENU(popup_menu), NULL, NULL, NULL, NULL,
                    0, gtk_get_current_event_time());

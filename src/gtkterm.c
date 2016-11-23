@@ -37,34 +37,38 @@ GtBuffer *buffer;
 
 int main(int argc, char *argv[])
 {
-  bindtextdomain(PACKAGE, LOCALEDIR);
-  bind_textdomain_codeset(PACKAGE, "UTF-8");
-  textdomain(PACKAGE);
+    GSettings *settings = NULL;
 
-  gtk_init(&argc, &argv);
+    bindtextdomain(PACKAGE, LOCALEDIR);
+    bind_textdomain_codeset(PACKAGE, "UTF-8");
+    textdomain(PACKAGE);
 
-  buffer = gt_buffer_new ();
-  serial_port = gt_serial_port_new ();
-  gt_serial_port_set_buffer (serial_port, buffer);
-  g_object_unref (G_OBJECT (buffer));
+    gtk_init(&argc, &argv);
 
-  create_main_window();
+    settings = gt_config_get_profile_settings ();
 
-  if (read_command_line(argc, argv) < 0)
-  {
-      exit (EXIT_FAILURE);
-  }
+    buffer = gt_buffer_new ();
+    serial_port = gt_serial_port_new (settings);
+    gt_serial_port_set_buffer (serial_port, buffer);
+    g_object_unref (G_OBJECT (buffer));
 
-  gt_serial_port_config (serial_port, gt_config_get_profile ());
+    create_main_window(settings);
 
-  add_shortcuts();
+    /*
+       if (read_command_line(argc, argv) < 0)
+       {
+       exit (EXIT_FAILURE);
+       }
+       */
 
-  set_view(ASCII_VIEW);
+    add_shortcuts();
 
-  gtk_main();
+    set_view(ASCII_VIEW);
 
-  gt_serial_port_close_and_unlock (serial_port);
-  g_object_unref (serial_port);
+    gtk_main();
 
-  return EXIT_SUCCESS;
+    gt_serial_port_close_and_unlock (serial_port);
+    g_object_unref (serial_port);
+
+    return EXIT_SUCCESS;
 }

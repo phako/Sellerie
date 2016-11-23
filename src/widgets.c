@@ -424,17 +424,14 @@ static void on_color_changed (GSettings *settings, char *key, gpointer user_data
 
 }
 
-void create_main_window(void)
+void create_main_window(GSettings *settings)
 {
   GtkWidget *main_vbox, *label;
   GtkWidget *hex_send_entry;
   GActionGroup *group;
   GMenuModel *menu_model = NULL;
   int i = 0;
-  GSettings *settings = NULL;
   GAction *settings_action = NULL;
-
-  settings = gt_config_get_profile_settings ();
 
   g_signal_connect (G_OBJECT (serial_port), "notify::status",
                     G_CALLBACK (on_serial_port_status_changed),
@@ -567,6 +564,8 @@ void create_main_window(void)
 
   gtk_window_set_default_size(GTK_WINDOW(Fenetre), 750, 550);
   gtk_widget_show_all(Fenetre);
+  on_serial_port_signals_changed (G_OBJECT (serial_port), NULL, NULL);
+
   gtk_widget_hide(GTK_WIDGET(Hex_Box));
 }
 

@@ -24,7 +24,7 @@
 #define ASCII_VIEW 0
 #define HEXADECIMAL_VIEW 1
 
-void create_main_window(void);
+void create_main_window(GSettings *settings);
 
 void gt_main_window_set_status (const char *msg);
 void gt_main_window_push_status (const char *msg);

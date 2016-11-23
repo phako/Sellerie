@@ -112,6 +112,7 @@ enum GtSerialPortProperties {
     PROP_STATUS = 1,
     PROP_ERROR,
     PROP_CONTROL,
+    PROP_SETTINGS,
     N_PROPERTIES
 };
 
@@ -333,13 +334,20 @@ int gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
 
 gboolean gt_serial_port_config (GtSerialPort *self, const char *profile_id)
 {
+    GSettings *settings = gt_config_get_settings_for_profile (profile_id);
+
+    return gt_serial_port_set_settings (self, settings);
+}
+
+gboolean gt_serial_port_set_settings (GtSerialPort *self, GSettings *settings)
+{
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
 
     gt_serial_port_close (self);
     gt_serial_port_unlock (self);
 
     g_clear_object (&priv->config);
-    priv->config = gt_config_get_settings_for_profile (profile_id);
+    priv->config = g_object_ref (settings);
 
     return gt_serial_port_connect (self);
 }
@@ -818,6 +826,12 @@ gt_serial_port_class_init (GtSerialPortClass *klass)
                           0,
                           G_PARAM_STATIC_STRINGS |
                           G_PARAM_READABLE);
+    gt_serial_port_properties[PROP_SETTINGS] =
+        g_param_spec_object ("settings", "settings", "settings",
+                             G_TYPE_SETTINGS,
+                             G_PARAM_STATIC_STRINGS |
+                             G_PARAM_CONSTRUCT |
+                             G_PARAM_READWRITE);
 
     g_object_class_install_properties (object_class,
                                        N_PROPERTIES,
@@ -839,7 +853,14 @@ gt_serial_port_set_property (GObject *object,
                              const GValue *value,
                              GParamSpec *pspec)
 {
-    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    switch (property_id) {
+        case PROP_SETTINGS:
+            gt_serial_port_set_settings (GT_SERIAL_PORT (object),
+                                         g_value_get_object (value));
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    }
 }
 
 static void
@@ -860,6 +881,9 @@ gt_serial_port_get_property (GObject *object,
             break;
         case PROP_CONTROL:
             g_value_set_int (value, priv->control_flags);
+            break;
+        case PROP_SETTINGS:
+            g_value_set_object (value, priv->config);
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -911,9 +935,11 @@ gt_serial_port_on_control_signals_read (gpointer data)
 }
 
 GtSerialPort *
-gt_serial_port_new (void)
+gt_serial_port_new (GSettings *settings)
 {
-    return GT_SERIAL_PORT (g_object_new (GT_TYPE_SERIAL_PORT, NULL));
+    return GT_SERIAL_PORT (g_object_new (GT_TYPE_SERIAL_PORT,
+                                         "settings", settings,
+                                         NULL));
 }
 
 void

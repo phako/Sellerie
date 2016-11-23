@@ -22,11 +22,12 @@ enum _GtSerialPortState {
 };
 typedef enum _GtSerialPortState GtSerialPortState;
 
-GtSerialPort *gt_serial_port_new (void);
+GtSerialPort *gt_serial_port_new (GSettings *);
 
 void gt_serial_port_set_buffer (GtSerialPort *, GtBuffer *);
 int gt_serial_port_send_chars (GtSerialPort *, char *, int);
 gboolean gt_serial_port_config (GtSerialPort *self, const char *profile_id);
+gboolean gt_serial_port_set_settings (GtSerialPort *self, GSettings *settings);
 void gt_serial_port_set_signals (GtSerialPort *, guint);
 guint gt_serial_port_get_signals (GtSerialPort *);
 void gt_serial_port_close_and_unlock (GtSerialPort *);

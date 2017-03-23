@@ -322,7 +322,7 @@ int gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
 
         /* wait all chars are send */
         tcdrain (priv->serial_port_fd);
-        tx_delay =  g_settings_get_int (priv->config, "rs485-pre-tx-rts-delay");
+        tx_delay =  g_settings_get_int (priv->config, "rs485-post-tx-rts-delay");
         if (tx_delay > 0)
             usleep (tx_delay * 1000);
         /* reset RTS (end of send, now receiving back) */

@@ -307,6 +307,8 @@ void gt_config_edit_profile (GtkWindow *parent, const char *profile)
     if (result == GTK_RESPONSE_OK) {
         g_settings_apply (settings);
         gt_serial_port_config (serial_port, profile);
+    } else {
+        g_settings_revert (settings);
     }
 
     g_object_unref (builder);

@@ -54,8 +54,6 @@
 
 #define GT_SERIAL_PORT_CONTROL_POLL_DELAY 100 /* in ms (for control signals) */
 
-#define P_LOCK "/var/lock/lockdev"  /* lock file location */
-
 /* GType for GtSerialPortState enum */
 #define GT_SERIAL_PORT_STATE_TYPE (gt_serial_port_state_get_type ())
 static GType

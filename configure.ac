@@ -39,6 +39,13 @@ AM_GNU_GETTEXT([external])
 # GLib Resource compiler
 AC_SUBST([GLIB_COMPILE_RESOURCES], [`$PKG_CONFIG --variable glib_compile_resources gio-2.0`])
 
+AC_ARG_WITH([lockdir],
+            [AS_HELP_STRING([--with-lockdir],
+                            [Use a different lockdir @<:@default=/var/lock/lockdev@:>@])],
+            [],
+            [with_lockdir="/var/lock/lockdev"])
+AC_DEFINE_UNQUOTED(P_LOCK, "$with_lockdir", [Serial lockfile directory])
+
 AC_CONFIG_FILES([
     Makefile
     src/Makefile

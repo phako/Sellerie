@@ -896,6 +896,7 @@ gt_serial_port_set_buffer (GtSerialPort *self, GtBuffer *buffer)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
 
+    g_clear_object(&priv->buffer);
     priv->buffer = g_object_ref (buffer);
 }
 

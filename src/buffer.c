@@ -42,7 +42,6 @@ typedef struct {
     char *current_buffer;
     gboolean overlapped;
     GtBufferFunc write_func;
-    GtBufferClearFunc clear_func;
 } GtBufferPrivate;
 
 struct _GtBuffer {
@@ -186,11 +185,6 @@ gt_buffer_clear (GtBuffer *self)
 {
     GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
 
-    if (priv->clear_func != NULL)
-    {
-        priv->clear_func ();
-    }
-
     priv->overlapped = FALSE;
     memset (priv->buffer, 0, BUFFER_SIZE);
     priv->current_buffer = priv->buffer;
@@ -242,21 +236,5 @@ gt_buffer_unset_display_func (GtBuffer *self)
     GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
 
     priv->write_func = NULL;
-}
-
-void
-gt_buffer_set_clear_func (GtBuffer *self, GtBufferClearFunc clear_func)
-{
-    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
-
-    priv->clear_func = clear_func;
-}
-
-void
-gt_buffer_unset_clear_func (GtBuffer *self)
-{
-    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
-
-    priv->clear_func = NULL;
 }
 

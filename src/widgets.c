@@ -297,7 +297,6 @@ void set_view(guint type)
                 "view.index"));
 
     clear_display();
-    gt_buffer_set_clear_func (buffer, clear_display);
     switch(type)
     {
         case ASCII_VIEW:
@@ -834,6 +833,7 @@ void on_quit (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 void on_clear_buffer (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
     gt_buffer_clear (buffer);
+    clear_display();
 }
 
 void on_send_raw_file (GSimpleAction *action, GVariant *parameter, gpointer user_data)

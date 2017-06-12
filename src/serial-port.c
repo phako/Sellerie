@@ -48,6 +48,10 @@
 #include <linux/serial.h>
 #endif
 
+#ifdef HAVE_GUDEV
+#include <gudev/gudev.h>
+#endif
+
 #include <gtk/gtk.h>
 #include <glib.h>
 #include <glib/gi18n.h>
@@ -918,3 +922,102 @@ gt_serial_port_get_buffer (GtSerialPort *self)
 
     return priv->buffer;
 }
+
+#ifdef HAVE_GUDEV
+static gboolean probe_port (const char *name)
+{
+    gboolean retval = FALSE;
+    struct serial_struct serinfo = { 0 };
+
+    int fd = open (name, O_RDWR | O_NONBLOCK | O_NOCTTY);
+
+    if (fd < 0) {
+        goto probe_port_out;
+    }
+
+
+    if (ioctl (fd, TIOCGSERIAL, &serinfo) == 0)
+        retval = serinfo.type != PORT_UNKNOWN ? TRUE : FALSE;
+
+probe_port_out:
+    if (fd > -1)
+        close (fd);
+
+    return retval;
+}
+#else
+static const gchar *devices_to_check[] = {
+    "/dev/ttyS%d",
+    "/dev/tts/%d",
+    "/dev/ttyUSB%d",
+    "/dev/ttyACM%d",
+    "/dev/usb/tts/%d",
+    NULL
+};
+
+#define DEVICE_NUMBERS_TO_CHECK 12
+
+#endif
+
+GList *
+gt_serial_port_detect_devices (void)
+{
+    GList *result = NULL;
+#ifdef HAVE_GUDEV
+    {
+        GList *iter = NULL;
+        const char *subsystems[] = { "tty", NULL };
+
+        GUdevClient *client = g_udev_client_new (subsystems);
+        GList *devices = g_udev_client_query_by_subsystem (client, subsystems[0]);
+
+        for (iter = devices; iter != NULL; iter = iter->next) {
+            GUdevDevice *p = g_udev_device_get_parent (G_UDEV_DEVICE (iter->data));
+            if (p != NULL) {
+                const char *driver = g_udev_device_get_driver (p);
+                const char *device_file = g_udev_device_get_device_file (G_UDEV_DEVICE (iter->data));
+
+                if (driver != NULL) {
+                    if (g_str_equal (driver, "serial8250")) {
+                        if (probe_port (device_file)) {
+                            result = g_list_prepend (result, g_strdup (device_file));
+                        }
+                    } else {
+                        result = g_list_prepend (result, g_strdup (device_file));
+                    }
+                }
+
+                g_object_unref (p);
+            }
+        }
+
+        g_list_free_full (devices, g_object_unref);
+        g_object_unref (client);
+    }
+#else
+    guint i;
+    const gchar **dev = NULL;
+    struct stat my_stat;
+
+    for(dev = devices_to_check; *dev != NULL; dev++)
+    {
+        for(i = 0; i < DEVICE_NUMBERS_TO_CHECK; i++)
+        {
+            gchar *device_name = NULL;
+
+            device_name = g_strdup_printf(*dev, i);
+            if (stat(device_name, &my_stat) == 0) {
+                result = g_list_prepend (result, device_name);
+            }
+            else
+                g_free (device_name);
+        }
+    }
+
+#endif
+
+    result = g_list_reverse (result);
+
+    return result;
+}
+

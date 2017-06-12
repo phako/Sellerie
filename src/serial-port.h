@@ -42,6 +42,7 @@ GtSerialPortState gt_serial_port_get_status (GtSerialPort *self);
 gboolean gt_serial_port_reconnect (GtSerialPort *);
 gboolean gt_serial_port_connect (GtSerialPort *self);
 GtBuffer *gt_serial_port_get_buffer (GtSerialPort *self);
+GList *gt_serial_port_detect_devices (void);
 
 #define BUFFER_RECEPTION 8192
 #define BUFFER_EMISSION 4096

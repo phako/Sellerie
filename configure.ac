@@ -29,6 +29,14 @@ AC_CHECK_HEADERS_ONCE([linux/serial.h])
 PKG_CHECK_MODULES([gtk], [gtk+-3.0 >= 3.18.0])
 PKG_CHECK_MODULES([vte], [vte-2.91 >= 0.28.0])
 
+AC_ARG_WITH([gudev],
+	    AS_HELP_STRING([--with-gudev], [Build with GUdev support to detect serial devices (default: auto)]),
+	    [with_gudev=$withval],[with_gudev=yes])
+
+AS_IF([test "x$with_gudev" = "xyes"],
+    [PKG_CHECK_MODULES([gudev], [gudev-1.0 >= 230], [AC_DEFINE([HAVE_GUDEV], [1], [Use GUdev for serial device detection])], [])]
+])
+
 # Gettext
 GETTEXT_PACKAGE="gtkterm"
 AC_SUBST(GETTEXT_PACKAGE)

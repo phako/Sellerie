@@ -1,6 +1,6 @@
 # GtkTerm src/Makefile.am
 
-AM_CFLAGS = $(gtk_CFLAGS) $(vte_CFLAGS) $(WARN_CFLAGS) -Wno-format-nonliteral
+AM_CFLAGS = $(gtk_CFLAGS) $(vte_CFLAGS) $(gudev_CFLAGS) $(WARN_CFLAGS) -Wno-format-nonliteral
 
 bin_PROGRAMS = gtkterm
 
@@ -46,7 +46,7 @@ gtkterm_SOURCES = \
 	serial-port.h
 
 gtkterm_LDFLAGS = $(WARN_LDFLAGS) -export-dynamic
-gtkterm_LDADD = $(gtk_LIBS) $(vte_LIBS)
+gtkterm_LDADD = $(gtk_LIBS) $(vte_LIBS) $(gudev_LIBS)
 
 CLEANFILES = *~
 MOSTLYCLEANFILES = resource.c

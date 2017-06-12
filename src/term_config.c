@@ -54,18 +54,8 @@
 #include <config.h>
 #endif
 
-#define DEVICE_NUMBERS_TO_CHECK 12
 
 extern GtSerialPort *serial_port;
-
-static const gchar *devices_to_check[] = {
-    "/dev/ttyS%d",
-    "/dev/tts/%d",
-    "/dev/ttyUSB%d",
-    "/dev/ttyACM%d",
-    "/dev/usb/tts/%d",
-    NULL
-};
 
 /* Configuration file variables */
 static gchar **port;
@@ -168,32 +158,11 @@ void Config_Port_Fenetre(GtkWindow *parent)
     GtkWidget *combo;
     GtkWidget *entry;
     GList *device_list = NULL;
-    int device_list_length = 0;
     GList *it = NULL;
     char *rate = NULL;
-    struct stat my_stat;
     int result = GTK_RESPONSE_CANCEL;
 
-    const gchar **dev = NULL;
-    guint i;
-
-    for(dev = devices_to_check; *dev != NULL; dev++)
-    {
-        for(i = 0; i < DEVICE_NUMBERS_TO_CHECK; i++)
-        {
-            gchar *device_name = NULL;
-
-            device_name = g_strdup_printf(*dev, i);
-            if (stat(device_name, &my_stat) == 0) {
-                device_list = g_list_prepend (device_list, device_name);
-                device_list_length++;
-            }
-            else
-                g_free (device_name);
-        }
-    }
-
-    device_list = g_list_reverse (device_list);
+    device_list = gt_serial_port_detect_devices ();
 
     if (device_list == NULL)
     {

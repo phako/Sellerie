@@ -34,7 +34,7 @@ AC_ARG_WITH([gudev],
 	    [with_gudev=$withval],[with_gudev=yes])
 
 AS_IF([test "x$with_gudev" = "xyes"],
-    [PKG_CHECK_MODULES([gudev], [gudev-1.0 >= 230], [AC_DEFINE([HAVE_GUDEV], [1], [Use GUdev for serial device detection])], [])]
+    [PKG_CHECK_MODULES([gudev], [gudev-1.0 >= 230], [AC_DEFINE([HAVE_GUDEV], [1], [Use GUdev for serial device detection])], [])
 ])
 
 # Gettext

@@ -1,0 +1,19 @@
+
+<!-- Generated data (by glib-mkenums) -->
+
+<schemalist>
+  <enum id='org.jensge.GtkTerm.GtSerialParity'>
+    <value nick='none' value='0'/>
+    <value nick='odd' value='1'/>
+    <value nick='even' value='2'/>
+  </enum>
+  <enum id='org.jensge.GtkTerm.GtSerialFlow'>
+    <value nick='none' value='0'/>
+    <value nick='xon' value='1'/>
+    <value nick='rts' value='2'/>
+    <value nick='rs485' value='3'/>
+  </enum>
+</schemalist>
+
+<!-- Generated data ends here -->
+

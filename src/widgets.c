@@ -364,12 +364,11 @@ static void terminal_popup_menu_callback(GtkWidget *widget, gpointer data)
 #endif
 }
 
-void create_main_window(void)
+void create_main_window(GtkApplication *app)
 {
   GtkWidget *main_vbox, *label;
   GtkWidget *hex_send_entry;
   GActionGroup *group;
-  GMenuModel *menu_model = NULL;
   int i = 0;
 
   g_signal_connect (G_OBJECT (serial_port), "notify::status",
@@ -390,22 +389,17 @@ void create_main_window(void)
   builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/main-window.ui");
 
   Fenetre = GTK_WIDGET (gtk_builder_get_object (builder, "window-main"));
+  gtk_application_window_set_show_menubar (GTK_APPLICATION_WINDOW (Fenetre), TRUE);
+  gtk_window_set_application (GTK_WINDOW (Fenetre), app);
   gtk_widget_insert_action_group (Fenetre, "main", group);
 
   shortcuts = gtk_accel_group_new();
   gtk_window_add_accel_group(GTK_WINDOW(Fenetre), GTK_ACCEL_GROUP(shortcuts));
 
-  g_signal_connect(GTK_WIDGET(Fenetre), "destroy", (GCallback)gtk_main_quit, NULL);
-  g_signal_connect(GTK_WIDGET(Fenetre), "delete_event", (GCallback)gtk_main_quit, NULL);
   
   Set_window_title("GtkTerm");
 
   main_vbox = GTK_WIDGET (gtk_builder_get_object (builder, "box-main"));
-
-  /* Create main menu bar */
-  menu_model = G_MENU_MODEL (gtk_builder_get_object (builder, "window-menu"));
-  menu_bar = gtk_menu_bar_new_from_model (menu_model);
-  gtk_box_pack_start (GTK_BOX (main_vbox), menu_bar, FALSE, FALSE, 0);
 
   /* create vte window */
   display = vte_terminal_new();
@@ -476,6 +470,7 @@ void create_main_window(void)
   gtk_window_set_default_size(GTK_WINDOW(Fenetre), 750, 550);
   gtk_widget_show_all(Fenetre);
   gtk_widget_hide(GTK_WIDGET(Hex_Box));
+  gtk_application_add_window (app, GTK_WINDOW (Fenetre));
 }
 
 void initialize_hexadecimal_display(void)
@@ -793,7 +788,7 @@ void edit_select_all_callback(GtkAction *action, gpointer data)
 
 void on_quit (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    gtk_main_quit ();
+    gtk_window_close(GTK_WINDOW (Fenetre));
 }
 
 void on_clear_buffer (GSimpleAction *action, GVariant *parameter, gpointer user_data)

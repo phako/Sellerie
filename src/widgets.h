@@ -20,6 +20,7 @@
 
 #include <glib.h>
 #include <gdk/gdk.h>
+#include <gtk/gtk.h>
 
 #define MSG_WRN 0
 #define MSG_ERR 1
@@ -27,7 +28,7 @@
 #define ASCII_VIEW 0
 #define HEXADECIMAL_VIEW 1
 
-void create_main_window(void);
+void create_main_window(GtkApplication *app);
 
 void gt_main_window_set_status (const char *msg);
 void gt_main_window_push_status (const char *msg);

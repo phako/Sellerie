@@ -98,8 +98,8 @@ static gboolean on_flow_parse (const gchar *name,
   return FALSE;
 }
 
-static char *default_file = NULL;
-static char *config_port = NULL;
+char *default_file = NULL;
+char *config_port = NULL;
 
 static GOptionEntry entries[] = {
     { "config", 'c', 0, G_OPTION_ARG_CALLBACK, on_config_parse, N_("Load configuration FILE"), "FILE", },
@@ -118,33 +118,7 @@ static GOptionEntry entries[] = {
     { NULL }
 };
 
-int read_command_line (int argc, char **argv)
-{
-  GError *error = NULL;
-  GOptionContext *context = NULL;
-  int result = -1;
 
-  Check_configuration_file();
-
-  context = g_option_context_new ("- GTK+ serial console");
-  g_option_context_add_main_entries (context, entries, GETTEXT_PACKAGE);
-  if (!g_option_context_parse (context, &argc, &argv, &error)) {
-    g_warning ("Failed to parse commandline options: %s", error->message);
-  } else {
-    if (default_file != NULL) {
-      gt_file_set_default (default_file);
-    }
-
-    if (config_port != NULL)
-    {
-        strncpy (config.port, config_port, sizeof (config.port));
-    }
-    Verify_configuration();
-    result = 0;
-  }
-
-  g_option_context_free (context);
-
-  return result;
+void add_option_group (GApplication *app) {
+    g_application_add_main_option_entries (app, entries);
 }
-

@@ -624,6 +624,22 @@ void delete_config(GtkDialog *dialog, gint response_id, GtkTreeSelection *Select
     }
 }
 
+void update_vte_config (void)
+{
+    if (!VTE_IS_TERMINAL (display)) {
+        return;
+    }
+
+    vte_terminal_set_font (VTE_TERMINAL(display), term_conf.font);
+
+    vte_terminal_set_size (VTE_TERMINAL(display), term_conf.rows, term_conf.columns);
+    vte_terminal_set_scrollback_lines (VTE_TERMINAL(display), term_conf.scrollback);
+    vte_terminal_set_color_foreground (VTE_TERMINAL(display), (const GdkRGBA *)&term_conf.foreground_color);
+    vte_terminal_set_color_background (VTE_TERMINAL(display), (const GdkRGBA *)&term_conf.background_color);
+    gtk_widget_queue_draw(display);
+
+}
+
 gint Load_configuration_from_file(const gchar *config_name)
 {
     int max, i, j, size;
@@ -790,16 +806,11 @@ gint Load_configuration_from_file(const gchar *config_name)
 	}
     }
 
-    vte_terminal_set_font (VTE_TERMINAL(display), term_conf.font);
-
-    vte_terminal_set_size (VTE_TERMINAL(display), term_conf.rows, term_conf.columns);
-    vte_terminal_set_scrollback_lines (VTE_TERMINAL(display), term_conf.scrollback);
-    vte_terminal_set_color_foreground (VTE_TERMINAL(display), (const GdkRGBA *)&term_conf.foreground_color);
-    vte_terminal_set_color_background (VTE_TERMINAL(display), (const GdkRGBA *)&term_conf.background_color);
-    gtk_widget_queue_draw(display);
+    update_vte_config ();
 
     return 0;
 }
+
 
 void Verify_configuration(void)
 {

@@ -34,6 +34,7 @@ void check_text_input(GtkEditable *editable,
 		       gint         new_text_length,
 		       gint        *position,
 		       gpointer     user_data);
+void update_vte_config (void);
 
 struct configuration_port {
   gchar port[1024];

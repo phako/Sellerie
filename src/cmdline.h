@@ -16,3 +16,4 @@
  */
 
 int read_command_line(int argc, char **argv);
+void add_option_group (GApplication *app);

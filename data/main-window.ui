@@ -234,7 +234,7 @@
       </item>
     </section>
   </menu>
-  <object class="GtkWindow" id="window-main">
+  <object class="GtkApplicationWindow" id="window-main">
     <property name="can_focus">False</property>
     <child>
       <object class="GtkBox" id="box-main">

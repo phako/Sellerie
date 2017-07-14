@@ -1,0 +1,1 @@
+option('lockdir', type: 'string', value: '/var/lock/lockdev', description: 'Folder to use for serial lockfiles')

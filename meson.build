@@ -37,3 +37,4 @@ install_man('gtkterm.1')
 
 subdir('src')
 subdir('po')
+subdir('data')

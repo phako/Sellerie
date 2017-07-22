@@ -35,6 +35,8 @@ void gt_main_window_push_status (const char *msg);
 void gt_main_window_pop_status (void);
 void gt_main_window_add_shortcut (guint key, GdkModifierType mod, GClosure *closure);
 void gt_main_window_remove_shortcut (GClosure *closure);
+void gt_main_window_set_info_bar (GtkWidget *info_bar);
+void gt_main_window_remove_info_bar (GtkWidget *widget);
 
 void put_text(gchar *, guint);
 void put_hexadecimal(gchar *, guint);

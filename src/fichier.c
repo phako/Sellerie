@@ -57,7 +57,9 @@ static gchar *str = NULL;
 static FILE *Fic;
 
 /* Local functions prototype */
-static gint close_all(void);
+static void close_all (void);
+static void on_infobar_close(GtkInfoBar *bar, gpointer user_data);
+static void on_infobar_response (GtkInfoBar *bar, gint response_id, gpointer user_data);
 static gboolean on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data);
 static gboolean timer(gpointer pointer);
 static void remove_input(void);
@@ -97,41 +99,34 @@ void send_raw_file(GtkWindow *parent)
 		}
 
 		Fichier = open(fileName, O_RDONLY);
-		if(Fichier != -1)
-		{
-			GtkWidget *Bouton_annuler, *Box;
-
-			fic_defaut = g_strdup(fileName);
-			msg = g_strdup_printf(_("%s : transfer in progress…"), fileName);
+        if(Fichier != -1)
+        {
+            fic_defaut = g_strdup(fileName);
+            msg = g_strdup_printf(_("%s : transfer in progress…"), fileName);
             gt_main_window_push_status (msg);
 
-			car_written = 0;
-			current_buffer_position = 0;
-			bytes_read = 0;
-			nb_car = lseek(Fichier, 0L, SEEK_END);
-			lseek(Fichier, 0L, SEEK_SET);
+            car_written = 0;
+            current_buffer_position = 0;
+            bytes_read = 0;
+            nb_car = lseek(Fichier, 0L, SEEK_END);
+            lseek(Fichier, 0L, SEEK_SET);
 
-			Window = gtk_dialog_new();
-			gtk_window_set_title(GTK_WINDOW(Window), msg);
-			g_free(msg);
-			Box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-			gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(Window))), Box);
-			ProgressBar = gtk_progress_bar_new();
+            GtkBuilder *builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/transfer-infobar.ui");
 
-			gtk_box_pack_start(GTK_BOX(Box), ProgressBar, FALSE, FALSE, 5);
+            Window = GTK_WIDGET (g_object_ref (gtk_builder_get_object (builder, "infobar")));
+            GtkWidget *label = GTK_WIDGET (gtk_builder_get_object (builder, "label"));
+            gtk_label_set_text (GTK_LABEL (label), msg);
+            ProgressBar = GTK_WIDGET (gtk_builder_get_object (builder, "progress-bar"));
+            g_object_unref (builder);
 
-			Bouton_annuler = gtk_button_new_with_label(_("_Cancel"));
-			g_signal_connect(GTK_WIDGET(Bouton_annuler), "clicked", G_CALLBACK(close_all), NULL);
-            gtk_dialog_add_action_widget (GTK_DIALOG (Window), Bouton_annuler, GTK_RESPONSE_CANCEL);
+            gt_main_window_set_info_bar (Window);
+            g_signal_connect (G_OBJECT (Window), "close", G_CALLBACK (on_infobar_close), NULL);
+            g_signal_connect (G_OBJECT (Window), "response", G_CALLBACK (on_infobar_response), NULL);
 
-			g_signal_connect(GTK_WIDGET(Window), "delete_event", G_CALLBACK(close_all), NULL);
+            gtk_widget_show_all (Window);
 
-			gtk_window_set_default_size(GTK_WINDOW(Window), 250, 100);
-			gtk_window_set_modal(GTK_WINDOW(Window), TRUE);
-			gtk_widget_show_all(Window);
-
-			add_input();
-		}
+            add_input();
+        }
 		else
 		{
 			msg = g_strdup_printf(_("Cannot read file %s: %s\n"), fileName, strerror(errno));
@@ -274,16 +269,25 @@ static void remove_input(void)
     }
 }
 
-static gint close_all(void)
+static void on_infobar_close (GtkInfoBar *bar, gpointer user_data)
+{
+    close_all ();
+}
+
+static void close_all (void)
 {
     remove_input();
     waiting_for_char = FALSE;
     waiting_for_timer = FALSE;
+    gt_main_window_remove_info_bar (Window);
     gt_main_window_pop_status ();
     close(Fichier);
     gtk_widget_destroy(Window);
+}
 
-    return FALSE;
+static void on_infobar_response (GtkInfoBar *bar, gint response_id, gpointer user_data)
+{
+    close_all ();
 }
 
 static void write_file(char *data, unsigned int size)

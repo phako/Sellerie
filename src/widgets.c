@@ -86,6 +86,8 @@ static GtkWidget *scrolled_window;
 static GtkWidget *popup_menu;
 static GtkAccelGroup *shortcuts;
 static GtkWidget *menu_bar;
+static GtkWidget *main_vbox;
+static GtkWidget *revealer;
 
 static GtkBuilder *builder;
 
@@ -370,7 +372,7 @@ static void terminal_popup_menu_callback(GtkWidget *widget, gpointer data)
 
 void create_main_window(GtkApplication *app)
 {
-  GtkWidget *main_vbox, *label;
+  GtkWidget *label;
   GtkWidget *hex_send_entry;
   GActionGroup *group;
   int i = 0;
@@ -430,7 +432,9 @@ void create_main_window(GtkApplication *app)
   gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolled_window),
                                       GTK_SHADOW_NONE);
 
+  revealer = gtk_revealer_new ();
   gtk_container_add(GTK_CONTAINER(scrolled_window), GTK_WIDGET(display));
+  gtk_box_pack_start (GTK_BOX (main_vbox), revealer, FALSE, FALSE, 0);
 
   gtk_box_pack_start(GTK_BOX(main_vbox), scrolled_window, TRUE, TRUE, 0);
 
@@ -676,6 +680,18 @@ void gt_main_window_add_shortcut (guint key, GdkModifierType mod, GClosure *clos
 void gt_main_window_remove_shortcut (GClosure *closure)
 {
     gtk_accel_group_disconnect (shortcuts, closure);
+}
+
+void gt_main_window_set_info_bar (GtkWidget *widget)
+{
+    gtk_container_add (GTK_CONTAINER (revealer), widget);
+    gtk_revealer_set_reveal_child (GTK_REVEALER (revealer), TRUE);
+}
+
+void gt_main_window_remove_info_bar (GtkWidget *widget)
+{
+    gtk_revealer_set_reveal_child (GTK_REVEALER (revealer), FALSE);
+    gtk_container_remove (GTK_CONTAINER (revealer), widget);
 }
 
 void Set_window_title(const gchar *msg)

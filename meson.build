@@ -1,4 +1,4 @@
-project('GtkTerm', 'c', version: '1.0.0')
+project('GtkTerm', 'c', version: '1.0.0', default_options : ['c_std=c11'])
 
 i18n = import('i18n')
 gnome = import('gnome')

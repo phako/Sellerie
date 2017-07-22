@@ -76,8 +76,12 @@ gt_buffer_finalize (GObject *object)
 {
     GtBuffer *self = GT_BUFFER (object);
     GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
+    GObjectClass *object_class = NULL;
 
     g_clear_pointer (&priv->buffer, g_free);
+
+    object_class = G_OBJECT_CLASS (gt_buffer_parent_class);
+    object_class->finalize (object);
 }
 
 GtBuffer *

@@ -843,8 +843,12 @@ gt_serial_port_finalize (GObject *object)
 {
     GtSerialPort *self = GT_SERIAL_PORT (object);
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+    GObjectClass *object_class = NULL;
 
     g_clear_error (&priv->last_error);
+
+    object_class = G_OBJECT_CLASS (gt_serial_port_parent_class);
+    object_class->finalize (object);
 }
 
 static void
@@ -852,8 +856,12 @@ gt_serial_port_dispose (GObject *object)
 {
     GtSerialPort *self = GT_SERIAL_PORT (object);
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+    GObjectClass *object_class = NULL;
 
     g_clear_object (&priv->buffer);
+
+    object_class = G_OBJECT_CLASS (gt_serial_port_parent_class);
+    object_class->dispose (object);
 }
 
 static gboolean

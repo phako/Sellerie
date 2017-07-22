@@ -107,6 +107,10 @@ static void help_about_callback(GtkAction *action, gpointer data);
 static void on_serial_port_signals_changed (GObject *object,
                                             GParamSpec *pspec,
                                             gpointer user_data);
+static void on_serial_port_status_changed (GObject *object,
+                                           GParamSpec *pspec,
+                                           gpointer user_data);
+static void on_window_destroyed (GtkWidget *widget, gpointer user_data);
 static void initialize_hexadecimal_display(void);
 static gboolean Send_Hexadecimal(GtkWidget *, GdkEventKey *, gpointer);
 static gboolean pop_message(void);
@@ -371,14 +375,6 @@ void create_main_window(GtkApplication *app)
   GActionGroup *group;
   int i = 0;
 
-  g_signal_connect (G_OBJECT (serial_port), "notify::status",
-                    G_CALLBACK (on_serial_port_status_changed),
-                    Fenetre);
-
-  g_signal_connect (G_OBJECT (serial_port),
-                    "notify::control",
-                    G_CALLBACK (on_serial_port_signals_changed),
-                    NULL);
 
   group = G_ACTION_GROUP (g_simple_action_group_new ());
   g_action_map_add_action_entries (G_ACTION_MAP (group),
@@ -389,6 +385,17 @@ void create_main_window(GtkApplication *app)
   builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/main-window.ui");
 
   Fenetre = GTK_WIDGET (gtk_builder_get_object (builder, "window-main"));
+
+  g_signal_connect (G_OBJECT (serial_port), "notify::status",
+                    G_CALLBACK (on_serial_port_status_changed),
+                    Fenetre);
+
+  g_signal_connect (G_OBJECT (serial_port),
+                    "notify::control",
+                    G_CALLBACK (on_serial_port_signals_changed),
+                    Fenetre);
+
+  g_signal_connect (G_OBJECT (Fenetre), "destroy", G_CALLBACK (on_window_destroyed), NULL);
   gtk_application_window_set_show_menubar (GTK_APPLICATION_WINDOW (Fenetre), TRUE);
   gtk_window_set_application (GTK_WINDOW (Fenetre), app);
   gtk_widget_insert_action_group (Fenetre, "main", group);
@@ -618,6 +625,15 @@ static void on_serial_port_signals_changed (GObject *object,
         gboolean active = (port_signals & signal_flags[i]) != 0;
         gtk_widget_set_sensitive (signals[i], active);
     }
+}
+
+static void on_window_destroyed (GtkWidget *widget, gpointer user_data)
+{
+    g_signal_handlers_disconnect_by_func (G_OBJECT (serial_port),
+            G_CALLBACK (on_serial_port_status_changed), Fenetre);
+
+    g_signal_handlers_disconnect_by_func (G_OBJECT (serial_port),
+            G_CALLBACK (on_serial_port_signals_changed), Fenetre);
 }
 
 void signals_send_break_callback(GtkAction *action, gpointer data)

@@ -101,7 +101,7 @@ void send_raw_file(GtkWindow *parent)
 		Fichier = open(fileName, O_RDONLY);
         if(Fichier != -1)
         {
-            fic_defaut = g_strdup(fileName);
+            gt_file_set_default (fileName);
             msg = g_strdup_printf(_("%s : transfer in progress…"), fileName);
             gt_main_window_push_status (msg);
 
@@ -337,7 +337,7 @@ void save_raw_file(GtkWindow *parent)
 		{
             GtBuffer *buffer = NULL;
 
-			fic_defaut = g_strdup(fileName);
+            gt_file_set_default (fileName);
             buffer = gt_serial_port_get_buffer (serial_port);
 
 			gt_buffer_write_with_func (buffer, write_file);
@@ -366,7 +366,11 @@ const char *gt_file_get_default (void)
 
 void gt_file_set_default (const char *file)
 {
-  g_free (fic_defaut);
+  g_clear_pointer (&fic_defaut, g_free);
+
+  if (file == NULL) {
+      return;
+  }
 
   fic_defaut = g_strdup (file);
 }

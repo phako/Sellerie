@@ -35,6 +35,6 @@ configure_file(output : 'config.h', configuration : conf)
 config = declare_dependency(include_directories : include_directories('.'))
 install_man('gtkterm.1')
 
+subdir('data')
 subdir('src')
 subdir('po')
-subdir('data')

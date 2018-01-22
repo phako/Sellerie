@@ -1,6 +1,3 @@
-ffiles = gnome.compile_resources('resource',
-                                   '../data/org.jensge.GtkTerm.gresource.xml',
-                                   source_dir: '../data')
 sources = [
     'term_config.h',
     'term_config.c',
@@ -23,7 +20,7 @@ sources = [
     'parsecfg.h',
     'serial-port.c',
     'serial-port.h',
-    ffiles
+    resources
 ]
 
 all_deps = [gtk_deps, vte_deps, udev_deps, config]

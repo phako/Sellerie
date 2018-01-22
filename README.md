@@ -63,16 +63,22 @@ GtkTerm has a few dependencies:
 
 Once these dependencies are installed, most people should simply run:
 
-    ./configure
-    make
+    meson build
+    ninja -C build
 
 And to install:
 
-    make install
+    ninja -C build install
 
 If you wish to install Gtkterm someplace other than the default directory, use:
 
-    ./configure --prefix=/install/directory
+    meson build -Dprefix=/install/directory
+    
+for an unconfigured build or
+
+    meson config build -Dprefix=/install/directory
+    
+for an already existing build.
 
 Then build and install as usual.
 

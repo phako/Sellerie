@@ -35,17 +35,17 @@
 
 ## Keyboard shortcuts
 As Gtkterm is often used like a terminal emulator,
-the shortcut keys are assigned to <ctrl><shift>, rather than just
-<ctrl>.  This allows the user to send keystrokes of the form <ctrl>X
+the shortcut keys are assigned to `<ctrl><shift>`, rather than just
+`<ctrl>`.  This allows the user to send keystrokes of the form `<ctrl>X`
 and not have Gtkterm intercept them.
 
- * &lt;ctrl>&lt;shift>L -- Clear screen
- * &lt;ctrl>&lt;shift>R -- Send file
- * &lt;ctrl>&lt;shift>Q -- Quit
- * &lt;ctrl>&lt;shift>S -- Configure port
- * &lt;ctrl>&lt;shift>V -- Paste
- * &lt;ctrl>&lt;shift>C -- Copy
- * &lt;ctrl>B	 -- Send break
+ * `<ctrl><shift>L` -- Clear screen
+ * `<ctrl><shift>R` -- Send file
+ * `<ctrl><shift>Q` -- Quit
+ * `<ctrl><shift>S` -- Configure port
+ * `<ctrl><shift>V` -- Paste
+ * `<ctrl><shift>C` -- Copy
+ * `<ctrl>B`        -- Send break
 
 ## NOTES on RS485:
 The RS485 flow control is a software user-space emulation and therefore

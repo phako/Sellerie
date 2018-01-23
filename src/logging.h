@@ -18,12 +18,13 @@
 #ifndef LOGGING_H_
 #define LOGGING_H_
 
-#include <gtk/gtk.h>
-
-void logging_start(GtkWindow *parent);
+void logging_start(const char *file_name);
 void logging_pause_resume(void);
 void logging_stop(void);
 void logging_clear(void);
-void log_chars(gchar *chars, guint size);
+void log_chars(const char *chars, size_t size);
+
+gboolean gt_logging_get_active(void);
+const char *gt_logging_get_default_file(void);
 
 #endif /* LOGGING_H_ */

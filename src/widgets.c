@@ -330,7 +330,7 @@ void Set_crlfauto(gboolean crlfauto)
   g_variant_unref (value);
 }
 
-void toggle_logging_sensitivity(gboolean currentlyLogging)
+static void toggle_logging_sensitivity(gboolean currentlyLogging)
 {
     g_simple_action_set_enabled (find_action ("log.to-file"), !currentlyLogging);
     g_simple_action_set_enabled (find_action ("log.pause-resume"),
@@ -856,7 +856,30 @@ void on_edit_select_all_callback (GSimpleAction *action, GVariant *parameter, gp
 
 void on_logging_start (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    logging_start (GTK_WINDOW (Fenetre));
+    GtkWidget *file_select;
+    gint retval = GTK_RESPONSE_NONE;
+
+    file_select = gtk_file_chooser_dialog_new(_("Log file selection"),
+                                       GTK_WINDOW(user_data),
+                                       GTK_FILE_CHOOSER_ACTION_SAVE,
+                                       _("_Cancel"), GTK_RESPONSE_CANCEL,
+                                       _("_OK"), GTK_RESPONSE_OK, NULL);
+    gtk_file_chooser_set_do_overwrite_confirmation (GTK_FILE_CHOOSER(file_select), TRUE);
+
+    const char *default_file = gt_logging_get_default_file();
+    if (default_file != NULL) {
+        gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(file_select), default_file);
+    }
+
+    retval = gtk_dialog_run(GTK_DIALOG(file_select));
+    gtk_widget_hide(file_select);
+    if (retval == GTK_RESPONSE_OK) {
+        char *file_name = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_select));
+        logging_start(file_name);
+        g_free(file_name);
+    }
+
+    toggle_logging_sensitivity (gt_logging_get_active());
 }
 
 void on_logging_pause_resume (GSimpleAction *action, GVariant *parameter, gpointer user_data)
@@ -868,6 +891,7 @@ void on_logging_pause_resume (GSimpleAction *action, GVariant *parameter, gpoint
 void on_logging_stop (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
     logging_stop ();
+    toggle_logging_sensitivity (gt_logging_get_active ());
 }
 
 void on_logging_clear (GSimpleAction *action, GVariant *parameter, gpointer user_data)

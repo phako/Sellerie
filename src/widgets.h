@@ -49,7 +49,4 @@ void Put_temp_message(const gchar *, gint);
 void Set_window_title(const gchar *msg);
 void Set_crlfauto(gboolean crlfauto);
 
-void toggle_logging_pause_resume(gboolean currentlyLogging);
-void toggle_logging_sensitivity(gboolean currentlyLogging);
-
 #endif

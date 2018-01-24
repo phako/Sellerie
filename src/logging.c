@@ -20,11 +20,12 @@
 #endif
 
 #include "logging.h"
-#include "widgets.h"
 
 #include <stdio.h>
+#include <errno.h>
 
 #include <glib/gi18n.h>
+#include <gio/gio.h>
 
 #define MAX_WRITE_ATTEMPTS 5
 
@@ -127,16 +128,14 @@ gt_logging_init (GtLogging *self)
     self->logfile_default = NULL;
 }
 
-gboolean gt_logging_start (GtLogging *self, const gchar *filename)
+gboolean gt_logging_start (GtLogging *self, const gchar *filename, GError **error)
 {
-    gchar *str;
+    gboolean previous_active = self->active;
 
     // open file and start logging
     if (!filename || g_ascii_strcasecmp (filename, "") == 0)
     {
-        str = g_strdup_printf(_("Filename error\n"));
-        show_message(str, MSG_ERR);
-        g_free(str);
+        g_set_error(error, G_IO_ERROR, G_IO_ERROR_INVAL, _("Filename error"));
         return FALSE;
     }
 
@@ -148,11 +147,8 @@ gboolean gt_logging_start (GtLogging *self, const gchar *filename)
 
     self->LoggingFile = fopen(self->LoggingFileName, "a");
     if (self->LoggingFile == NULL) {
-        str = g_strdup_printf(_("Cannot open file %s: %m\n"),
-                              self->LoggingFileName);
-
-        show_message(str, MSG_ERR);
-        g_free(str);
+        g_set_error(error, G_IO_ERROR, g_io_error_from_errno (errno),
+                    _("Cannot open file %s: %m\n"), self->LoggingFileName);
         g_clear_pointer(&self->LoggingFileName, g_free);
     } else {
         g_clear_pointer(&self->logfile_default, g_free);
@@ -160,7 +156,8 @@ gboolean gt_logging_start (GtLogging *self, const gchar *filename)
         self->active = TRUE;
     }
 
-    g_object_notify (G_OBJECT(self), "active");
+    if (self->active != previous_active)
+        g_object_notify (G_OBJECT(self), "active");
 
     return self->active;
 }
@@ -188,11 +185,11 @@ void gt_logging_stop(GtLogging *self)
     g_object_notify (G_OBJECT(self), "active");
 }
 
-void gt_logging_clear(GtLogging *self)
+gboolean gt_logging_clear(GtLogging *self, GError **error)
 {
     if(self->LoggingFile == NULL)
     {
-        return;
+        return FALSE;
     }
 
     //Reopening with "w" will truncate the file
@@ -200,23 +197,27 @@ void gt_logging_clear(GtLogging *self)
 
     if (self->LoggingFile == NULL)
     {
-        gchar *str = g_strdup_printf(_("Cannot open file %s: %m\n"),
-                                     self->LoggingFileName);
-        show_message(str, MSG_ERR);
-        g_free(str);
-
+        g_set_error(error, G_IO_ERROR, g_io_error_from_errno (errno),
+                    _("Cannot open file %s: %m\n"), self->LoggingFileName);
         g_clear_pointer(&self->LoggingFileName, g_free);
+
+        return FALSE;
     }
+
+    return TRUE;
 }
 
-void gt_logging_log(GtLogging *self, const char *chars, size_t size)
+gboolean gt_logging_log(GtLogging   *self,
+                         const char  *chars,
+                         size_t       size,
+                         GError     **error)
 {
    guint writeAttempts = 0;
    guint bytesWritten = 0;
 
     /* if we are not logging exit */
     if(self->LoggingFile == NULL || self->active == FALSE) {
-        return;
+        return FALSE;
     }
 
     while (bytesWritten < size)
@@ -228,12 +229,15 @@ void gt_logging_log(GtLogging *self, const char *chars, size_t size)
        }
        else
        {
-           show_message(_("Failed to log data\n"), MSG_ERR);
-           return;
+        g_set_error(error, G_IO_ERROR, g_io_error_from_errno (errno),
+                    _("Failed to log data: %m\n"));
+           return FALSE;
        }
     }
 
     fflush(self->LoggingFile);
+
+    return TRUE;
 }
 
 gboolean gt_logging_get_active(GtLogging *self)

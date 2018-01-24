@@ -27,11 +27,11 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (GtLogging, gt_logging, GT, LOGGING, GObject)
 
 GtLogging *gt_logging_new (void);
-gboolean gt_logging_start(GtLogging *logger, const char *file_name);
+gboolean gt_logging_start(GtLogging *logger, const char *file_name, GError **error);
 void gt_logging_pause_resume(GtLogging *logger);
 void gt_logging_stop(GtLogging *logger);
-void gt_logging_clear(GtLogging *logger);
-void gt_logging_log(GtLogging *logger, const char *chars, size_t size);
+gboolean gt_logging_clear(GtLogging *self, GError **error);
+gboolean gt_logging_log(GtLogging *logger, const char *chars, size_t size, GError **error);
 gboolean gt_logging_get_active(GtLogging *logger);
 const char *gt_logging_get_default_file(GtLogging *logger);
 G_END_DECLS

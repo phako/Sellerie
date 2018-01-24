@@ -534,7 +534,15 @@ void put_hexadecimal(gchar *string, guint size)
 	  gchar ascii[1];
 
 	  sprintf(data_byte, "%02X ", (guchar)string[i]);
-	  gt_logging_log(logger, data_byte, 3);
+
+        {
+            GError *error = NULL;
+            gt_logging_log(logger, data_byte, 3, NULL);
+            if (error != NULL) {
+                show_message(error->message, MSG_ERR);
+                g_error_free(error);
+            }
+        }
 	  vte_terminal_feed(VTE_TERMINAL(display), data_byte, 3);
 
 	  avance = (bytes_per_line - bytes) * 3 + bytes + 2;
@@ -571,7 +579,14 @@ void put_hexadecimal(gchar *string, guint size)
 
 void put_text(gchar *string, guint size)
 {
-    gt_logging_log (logger, string, size);
+    GError *error = NULL;
+
+    gt_logging_log (logger, string, size, &error);
+    if (error != NULL) {
+        show_message (error->message, MSG_ERR);
+        g_error_free (error);
+    }
+
     vte_terminal_feed(VTE_TERMINAL(display), string, size);
 }
 
@@ -875,8 +890,13 @@ void on_logging_start (GSimpleAction *action, GVariant *parameter, gpointer user
     retval = gtk_dialog_run(GTK_DIALOG(file_select));
     gtk_widget_hide(file_select);
     if (retval == GTK_RESPONSE_OK) {
+        GError *error = NULL;
         char *file_name = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_select));
-        gt_logging_start (logger, file_name);
+        gt_logging_start (logger, file_name, &error);
+        if (error != NULL) {
+            show_message(error->message, MSG_ERR);
+            g_error_free(error);
+        }
         g_free(file_name);
     }
 
@@ -897,7 +917,13 @@ void on_logging_stop (GSimpleAction *action, GVariant *parameter, gpointer user_
 
 void on_logging_clear (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    gt_logging_clear (logger);
+    GError *error = NULL;
+
+    gt_logging_clear (logger, &error);
+    if (error != NULL) {
+        show_message(error->message, MSG_ERR);
+        g_error_free(error);
+    }
 }
 
 void on_config_port (GSimpleAction *action, GVariant *parameter, gpointer user_data)

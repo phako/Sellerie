@@ -27,6 +27,7 @@
 #include "buffer.h"
 #include "macros.h"
 #include "fichier.h"
+#include "logging.h"
 
 #include <stdlib.h>
 
@@ -86,11 +87,15 @@ on_gtk_application_activate (GApplication *app,
     set_view(ASCII_VIEW);
 }
 
+GtLogging *logger;
+
 int main(int argc, char *argv[])
 {
   char *config_file;
   GtkApplication *app = NULL;
   int status;
+
+    logger = gt_logging_new();
 
   buffer = gt_buffer_new ();
   serial_port = gt_serial_port_new ();

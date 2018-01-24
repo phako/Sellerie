@@ -15,16 +15,26 @@
  *   along with GtkTerm.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LOGGING_H_
-#define LOGGING_H_
+#ifndef GT_LOGGING_H
+#define GT_LOGGING_H
 
-void logging_start(const char *file_name);
-void logging_pause_resume(void);
-void logging_stop(void);
-void logging_clear(void);
-void log_chars(const char *chars, size_t size);
+#include <glib-object.h>
 
-gboolean gt_logging_get_active(void);
-const char *gt_logging_get_default_file(void);
+G_BEGIN_DECLS
 
-#endif /* LOGGING_H_ */
+#define GT_TYPE_LOGGING (gt_logging_get_type())
+
+G_DECLARE_FINAL_TYPE (GtLogging, gt_logging, GT, LOGGING, GObject)
+
+GtLogging *gt_logging_new (void);
+gboolean gt_logging_start(GtLogging *logger, const char *file_name);
+void gt_logging_pause_resume(GtLogging *logger);
+void gt_logging_stop(GtLogging *logger);
+void gt_logging_clear(GtLogging *logger);
+void gt_logging_log(GtLogging *logger, const char *chars, size_t size);
+gboolean gt_logging_get_active(GtLogging *logger);
+const char *gt_logging_get_default_file(GtLogging *logger);
+G_END_DECLS
+
+#endif /* GT_LOGGING_H */
+

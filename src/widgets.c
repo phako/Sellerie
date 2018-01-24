@@ -46,6 +46,7 @@
 
 extern GtSerialPort *serial_port;
 extern GtBuffer *buffer;
+extern GtLogging *logger;
 
 typedef enum _GtSerialSignalsWidgets {
     SIGNAL_RING,
@@ -533,7 +534,7 @@ void put_hexadecimal(gchar *string, guint size)
 	  gchar ascii[1];
 
 	  sprintf(data_byte, "%02X ", (guchar)string[i]);
-	  log_chars(data_byte, 3);
+	  gt_logging_log(logger, data_byte, 3);
 	  vte_terminal_feed(VTE_TERMINAL(display), data_byte, 3);
 
 	  avance = (bytes_per_line - bytes) * 3 + bytes + 2;
@@ -570,7 +571,7 @@ void put_hexadecimal(gchar *string, guint size)
 
 void put_text(gchar *string, guint size)
 {
-    log_chars(string, size);
+    gt_logging_log (logger, string, size);
     vte_terminal_feed(VTE_TERMINAL(display), string, size);
 }
 
@@ -866,7 +867,7 @@ void on_logging_start (GSimpleAction *action, GVariant *parameter, gpointer user
                                        _("_OK"), GTK_RESPONSE_OK, NULL);
     gtk_file_chooser_set_do_overwrite_confirmation (GTK_FILE_CHOOSER(file_select), TRUE);
 
-    const char *default_file = gt_logging_get_default_file();
+    const char *default_file = gt_logging_get_default_file(logger);
     if (default_file != NULL) {
         gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(file_select), default_file);
     }
@@ -875,28 +876,28 @@ void on_logging_start (GSimpleAction *action, GVariant *parameter, gpointer user
     gtk_widget_hide(file_select);
     if (retval == GTK_RESPONSE_OK) {
         char *file_name = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_select));
-        logging_start(file_name);
+        gt_logging_start (logger, file_name);
         g_free(file_name);
     }
 
-    toggle_logging_sensitivity (gt_logging_get_active());
+    toggle_logging_sensitivity (gt_logging_get_active(logger));
 }
 
 void on_logging_pause_resume (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    logging_pause_resume ();
+    gt_logging_pause_resume (logger);
     g_simple_action_set_state (action, parameter);
 }
 
 void on_logging_stop (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    logging_stop ();
-    toggle_logging_sensitivity (gt_logging_get_active ());
+    gt_logging_stop (logger);
+    toggle_logging_sensitivity (gt_logging_get_active (logger));
 }
 
 void on_logging_clear (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-    logging_clear ();
+    gt_logging_clear (logger);
 }
 
 void on_config_port (GSimpleAction *action, GVariant *parameter, gpointer user_data)

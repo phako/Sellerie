@@ -622,7 +622,7 @@ void help_about_callback(GtkAction *action, gpointer data)
                         "program-name", "GTKTerm-lzr",
                         "version", VERSION,
                         "comments", _("GTKTerm-lzr is a simple GTK+ terminal used to communicate with the serial port."),
-                        "copyright", "Copyright © Julien Schimtt",
+                        "copyright", "Copyright © Julien Schmitt",
                         "authors", authors,
                         "website", "https://github.com/phako/gtkterm",
                         "website-label", "https://github.com/phako/gtkterm",

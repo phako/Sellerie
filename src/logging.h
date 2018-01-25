@@ -32,7 +32,6 @@ void gt_logging_pause_resume(GtLogging *logger);
 void gt_logging_stop(GtLogging *logger);
 gboolean gt_logging_clear(GtLogging *self, GError **error);
 gboolean gt_logging_log(GtLogging *logger, const char *chars, size_t size, GError **error);
-gboolean gt_logging_get_active(GtLogging *logger);
 const char *gt_logging_get_default_file(GtLogging *logger);
 G_END_DECLS
 

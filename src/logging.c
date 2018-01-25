@@ -114,7 +114,7 @@ gt_logging_class_init (GtLoggingClass *klass)
     properties[PROP_ACTIVE] = g_param_spec_boolean ("active", "active", "active",
                                                     FALSE,
                                                     G_PARAM_STATIC_STRINGS |
-                                                    G_PARAM_READABLE |
+                                                    G_PARAM_READWRITE |
                                                     G_PARAM_CONSTRUCT);
 
     g_object_class_install_properties (object_class, N_PROPS, properties);
@@ -169,7 +169,6 @@ void gt_logging_pause_resume (GtLogging *self)
     }
 
     self->active = !self->active;
-    g_object_notify (G_OBJECT(self), "active");
 }
 
 void gt_logging_stop(GtLogging *self)
@@ -238,11 +237,6 @@ gboolean gt_logging_log(GtLogging   *self,
     fflush(self->LoggingFile);
 
     return TRUE;
-}
-
-gboolean gt_logging_get_active(GtLogging *self)
-{
-    return self->active;
 }
 
 const char *gt_logging_get_default_file(GtLogging *self)

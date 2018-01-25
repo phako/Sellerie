@@ -331,15 +331,6 @@ void Set_crlfauto(gboolean crlfauto)
   g_variant_unref (value);
 }
 
-static void toggle_logging_sensitivity(gboolean currentlyLogging)
-{
-    g_simple_action_set_enabled (find_action ("log.to-file"), !currentlyLogging);
-    g_simple_action_set_enabled (find_action ("log.pause-resume"),
-                                 currentlyLogging);
-    g_simple_action_set_enabled (find_action ("log.stop"), currentlyLogging);
-    g_simple_action_set_enabled (find_action ("log.clear"), currentlyLogging);
-}
-
 static gboolean terminal_button_press_callback(GtkWidget *widget,
                                         GdkEventButton *event,
                                         gpointer *data)
@@ -403,6 +394,12 @@ void create_main_window(GtkApplication *app)
   gtk_window_set_application (GTK_WINDOW (Fenetre), app);
   gtk_widget_insert_action_group (Fenetre, "main", group);
 
+  g_object_bind_property (logger, "active", find_action ("log.to-file"), "enabled", G_BINDING_INVERT_BOOLEAN | G_BINDING_SYNC_CREATE);
+  g_object_bind_property(logger, "active", find_action ("log.pause-resume"), "enabled", G_BINDING_SYNC_CREATE);
+  g_object_bind_property(logger, "active", find_action ("log.stop"), "enabled", G_BINDING_SYNC_CREATE);
+  g_object_bind_property(logger, "active", find_action ("log.clear"), "enabled", G_BINDING_SYNC_CREATE);
+
+
   shortcuts = gtk_accel_group_new();
   gtk_window_add_accel_group(GTK_WINDOW(Fenetre), GTK_ACCEL_GROUP(shortcuts));
 
@@ -451,9 +448,6 @@ void create_main_window(GtkApplication *app)
 
   popup_menu = gtk_menu_new_from_model (G_MENU_MODEL (gtk_builder_get_object (builder, "popup-menu")));
   gtk_menu_attach_to_widget (GTK_MENU (popup_menu), display, NULL);
-
-  /* set up logging buttons availability */
-  toggle_logging_sensitivity(FALSE);
 
   /* send hex char box (hidden when not in use) */
   Hex_Box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
@@ -899,8 +893,6 @@ void on_logging_start (GSimpleAction *action, GVariant *parameter, gpointer user
         }
         g_free(file_name);
     }
-
-    toggle_logging_sensitivity (gt_logging_get_active(logger));
 }
 
 void on_logging_pause_resume (GSimpleAction *action, GVariant *parameter, gpointer user_data)
@@ -912,7 +904,6 @@ void on_logging_pause_resume (GSimpleAction *action, GVariant *parameter, gpoint
 void on_logging_stop (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
     gt_logging_stop (logger);
-    toggle_logging_sensitivity (gt_logging_get_active (logger));
 }
 
 void on_logging_clear (GSimpleAction *action, GVariant *parameter, gpointer user_data)

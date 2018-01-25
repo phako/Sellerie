@@ -2,249 +2,102 @@
 <!-- Generated with glade 3.20.0 -->
 <interface domain="sellerie">
   <requires lib="gtk+" version="3.18"/>
-  <menu id='window-menu'>
-    <submenu>
-      <attribute name="label" translatable="yes">_File</attribute>
-      <section>
-        <item>
-          <attribute name="label" translatable="yes">_Clear screen</attribute>
-          <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;l</attribute>
-          <attribute name="action">main.clear</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">Send _RAW file</attribute>
-          <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;r</attribute>
-          <attribute name="action">main.send-file</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">_Save RAW file</attribute>
-          <attribute name="action">main.save-file</attribute>
-        </item>
-      </section>
-      <section>
-        <item>
-          <attribute name="label" translatable="yes">_Quit</attribute>
-          <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;q</attribute>
-          <attribute name="action">main.quit</attribute>
-        </item>
-      </section>
-    </submenu>
-    <submenu>
-      <attribute name="label" translatable="yes">_Edit</attribute>
-      <section>
-        <item>
-          <attribute name="label" translatable="yes">_Copy</attribute>
-          <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;c</attribute>
-          <attribute name="action">main.copy</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">_Paste</attribute>
-          <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;v</attribute>
-          <attribute name="action">main.paste</attribute>
-        </item>
-      </section>
-      <section>
-        <item>
-          <attribute name="label" translatable="yes">Select _All</attribute>
-          <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;a</attribute>
-          <attribute name="action">main.select-all</attribute>
-        </item>
-      </section>
-    </submenu>
-    <submenu>
-      <attribute name="label" translatable="yes">_Log</attribute>
-      <section>
-        <item>
-          <attribute name="label" translatable="yes">To File…</attribute>
-          <attribute name="action">main.log.to-file</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">_Pause logging</attribute>
-          <attribute name="action">main.log.pause-resume</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">_Stop logging</attribute>
-          <attribute name="action">main.log.stop</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">Clear log</attribute>
-          <attribute name="action">main.log.clear</attribute>
-        </item>
-      </section>
-    </submenu>
-    <submenu>
-      <attribute name="label" translatable="yes">_Configuration</attribute>
-      <section>
-        <item>
-          <attribute name="label" translatable="yes">_Port…</attribute>
-          <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;s</attribute>
-          <attribute name="action">main.config.port</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">_Main Window…</attribute>
-          <attribute name="action">main.config.terminal</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">Local _echo</attribute>
-          <attribute name="action">main.config.local-echo</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">_CR LF auto</attribute>
-          <attribute name="action">main.config.crlf</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">Ma_cros…</attribute>
-          <attribute name="action">main.config.macros</attribute>
-        </item>
-      </section>
-      <section>
-        <item>
-          <attribute name="label" translatable="yes">_Load configuration…</attribute>
-          <attribute name="action">main.config.profile.select</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">_Save configuration…</attribute>
-          <attribute name="action">main.config.profile.save</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">_Delete configuration…</attribute>
-          <attribute name="action">main.config.profile.delete</attribute>
-        </item>
-      </section>
-    </submenu>
-    <submenu>
-      <attribute name="label" translatable="yes">Control _signals</attribute>
-      <section>
-        <item>
-          <attribute name="label" translatable="yes">Send break</attribute>
-          <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;b</attribute>
-          <attribute name="action">main.signals.send-break</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">Toggle DTR</attribute>
-          <attribute name="accel">F7</attribute>
-          <attribute name="action">main.signals.send-dtr</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">Toggle RTS</attribute>
-          <attribute name="accel">F8</attribute>
-          <attribute name="action">main.signals.send-rts</attribute>
-        </item>
-      </section>
-    </submenu>
-    <submenu>
-      <attribute name="label" translatable="yes">_View</attribute>
-      <section>
-        <item>
-          <attribute name="label" translatable="yes">_ASCII</attribute>
-          <attribute name="action">main.view.ascii-hex</attribute>
-          <attribute name="target">ascii</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">_Hexadecimal</attribute>
-          <attribute name="action">main.view.ascii-hex</attribute>
-          <attribute name="target">hex</attribute>
-        </item>
-        <submenu>
-          <attribute name="label" translatable="yes">Hexadecimal _chars</attribute>
-          <section>
-            <item>
-              <attribute name="label" translatable="no">_8</attribute>
-              <attribute name="action">main.view.hex-width</attribute>
-              <attribute name="target">8</attribute>
-            </item>
-            <item>
-              <attribute name="label" translatable="no">1_0</attribute>
-              <attribute name="action">main.view.hex-width</attribute>
-              <attribute name="target">0</attribute>
-            </item>
-            <item>
-              <attribute name="label" translatable="no">_16</attribute>
-              <attribute name="action">main.view.hex-width</attribute>
-              <attribute name="target">16</attribute>
-            </item>
-            <item>
-              <attribute name="label" translatable="no">_24</attribute>
-              <attribute name="action">main.view.hex-width</attribute>
-              <attribute name="target">24</attribute>
-            </item>
-            <item>
-              <attribute name="label" translatable="no">_32</attribute>
-              <attribute name="action">main.view.hex-width</attribute>
-              <attribute name="target">32</attribute>
-            </item>
-          </section>
-        </submenu>
-        <item>
-          <attribute name="label" translatable="yes">Show _index</attribute>
-          <attribute name="action">main.view.index</attribute>
-        </item>
-      </section>
-      <section>
-        <item>
-          <attribute name="label" translatable="yes">_Send hexadecimal data</attribute>
-          <attribute name="action">main.view.send-hex</attribute>
-        </item>
-      </section>
-    </submenu>
-    <submenu>
-      <attribute name="label" translatable="yes">_Help</attribute>
-      <section>
-        <item>
-          <attribute name="label" translatable="yes">_About</attribute>
-          <attribute name="action">main.about</attribute>
-        </item>
-      </section>
-    </submenu>
-  </menu>
-  <menu id='popup-menu'>
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">_Show menu bar</attribute>
-        <attribute name="action">main.menubar-visibility</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Show status _bar</attribute>
-        <attribute name="action">main.statusbar-visibility</attribute>
-      </item>
-    </section>
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">_Reconnect</attribute>
-        <attribute name="action">main.reconnect</attribute>
-      </item>
-    </section>
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">_Copy</attribute>
-        <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;c</attribute>
-        <attribute name="action">main.copy</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_Paste</attribute>
-        <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;v</attribute>
-        <attribute name="action">main.paste</attribute>
-      </item>
-    </section>
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">Select _All</attribute>
-        <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;a</attribute>
-        <attribute name="action">main.select-all</attribute>
-      </item>
-    </section>
-  </menu>
-  <object class="GtkApplicationWindow" id="window-main">
+  <template class="GtMainWindow" parent="GtkApplicationWindow">
     <property name="can_focus">False</property>
+    <property name="default_width">750</property>
+    <property name="default_height">550</property>
     <child>
-      <object class="GtkBox" id="box-main">
+      <object class="GtkBox" id="main_box">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="orientation">vertical</property>
         <child>
-          <placeholder/>
+          <object class="GtkRevealer" id="revealer">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="transition_type">none</property>
+            <property name="reveal_child">True</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScrolledWindow" id="scrolled_window">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox" id="hex_box">
+            <property name="name">hex_box</property>
+            <property name="can_focus">False</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">Hexadecimal data to send (separator : ';' or space) : </property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="padding">5</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="hex_send_entry">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="padding">5</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="padding">2</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkStatusbar" id="status_bar">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="margin_left">10</property>
+            <property name="margin_right">10</property>
+            <property name="margin_start">10</property>
+            <property name="margin_end">10</property>
+            <property name="margin_top">6</property>
+            <property name="margin_bottom">6</property>
+            <property name="spacing">2</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="pack_type">end</property>
+            <property name="position">3</property>
+          </packing>
         </child>
       </object>
     </child>
-  </object>
+  </template>
 </interface>

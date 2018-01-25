@@ -4,6 +4,7 @@
         <file preprocess='xml-stripblanks'>settings-port.ui</file>
         <file preprocess='xml-stripblanks'>settings-window.ui</file>
         <file preprocess='xml-stripblanks'>main-window.ui</file>
+        <file preprocess='xml-stripblanks'>main-menu.ui</file>
         <file preprocess='xml-stripblanks'>macros.ui</file>
         <file preprocess='xml-stripblanks'>transfer-infobar.ui</file>
         <file preprocess='xml-stripblanks'>org.jensge.Sellerie.svg</file>

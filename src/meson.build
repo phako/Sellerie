@@ -4,8 +4,6 @@ sources = [
     'fichier.c',
     'gtkterm.c',
     'fichier.h',
-    'widgets.c',
-    'widgets.h',
     'cmdline.c',
     'cmdline.h',
     'buffer.c',
@@ -20,6 +18,8 @@ sources = [
     'parsecfg.h',
     'serial-port.c',
     'serial-port.h',
+    'main-window.h',
+    'main-window.c',
     resources
 ]
 

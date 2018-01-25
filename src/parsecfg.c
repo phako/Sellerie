@@ -40,49 +40,91 @@
 /* $Id: parsecfg.c,v 1.15 2001/06/27 15:24:00 gm Exp $ */
 
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif
 
-#include "parsecfg.h"
 #include "i18n.h"
+#include "parsecfg.h"
 
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
-#include <errno.h>
 
 #include <glib/gi18n.h>
 
 /* proto type declaration of private functions */
 
-static void cfgFatalFunc(cfgErrorCode, const char *, int, const char *);
-static void (*cfgFatal) (cfgErrorCode, const char *, int, const char *) = cfgFatalFunc;	/* default error handler */
+static void
+cfgFatalFunc (cfgErrorCode, const char *, int, const char *);
+static void (*cfgFatal) (cfgErrorCode, const char *, int, const char *) =
+    cfgFatalFunc; /* default error handler */
 
-static int parse_simple(const char *file, FILE *fp, char *ptr, cfgStruct cfg[], int *line);
-static int parse_values_between_braces(const char *file, FILE *fp, const char *parameter, cfgStruct cfg[], int *line, cfgFileType type, int section, const char *parameter_buf, int parameter_line);
-static char *parse_word(char *ptr, char **word, cfgKeywordValue word_type);
-static int store_value(cfgStruct cfg[], const char *parameter, const char *value, cfgFileType type, int section);
-static int parse_ini(const char *file, FILE *fp, char *ptr, cfgStruct cfg[], int *line, int *section);
-static int alloc_for_new_section(cfgStruct cfg[], int *section);
+static int
+parse_simple (
+    const char *file, FILE *fp, char *ptr, cfgStruct cfg[], int *line);
+static int
+parse_values_between_braces (const char *file,
+                             FILE *fp,
+                             const char *parameter,
+                             cfgStruct cfg[],
+                             int *line,
+                             cfgFileType type,
+                             int section,
+                             const char *parameter_buf,
+                             int parameter_line);
+static char *
+parse_word (char *ptr, char **word, cfgKeywordValue word_type);
+static int
+store_value (cfgStruct cfg[],
+             const char *parameter,
+             const char *value,
+             cfgFileType type,
+             int section);
+static int
+parse_ini (const char *file,
+           FILE *fp,
+           char *ptr,
+           cfgStruct cfg[],
+           int *line,
+           int *section);
+static int
+alloc_for_new_section (cfgStruct cfg[], int *section);
 
-static char *get_single_line_without_first_spaces(FILE *fp, char **gotstr, int *line);
-static char *rm_first_spaces(char *ptr);
-static char *dynamic_fgets(FILE *fp);
+static char *
+get_single_line_without_first_spaces (FILE *fp, char **gotstr, int *line);
+static char *
+rm_first_spaces (char *ptr);
+static char *
+dynamic_fgets (FILE *fp);
 
-static int dump_simple(FILE *fp, cfgStruct cfg[], cfgFileType type);
-static int dump_ini(FILE *fp, cfgStruct cfg[], cfgFileType type, int max);
-static void single_or_double_quote(const char *str, char *ret);
+static int
+dump_simple (FILE *fp, cfgStruct cfg[], cfgFileType type);
+static int
+dump_ini (FILE *fp, cfgStruct cfg[], cfgFileType type, int max);
+static void
+single_or_double_quote (const char *str, char *ret);
 
-static int fetch_simple(const char *file, FILE *fp, char *parameter_name, void *result_value, cfgValueType value_type);
-static int fetch_ini(const char *file, FILE *fp, char *parameter_name, void *result_value, cfgValueType value_type, int section_num, const char *section_name);
-
+static int
+fetch_simple (const char *file,
+              FILE *fp,
+              char *parameter_name,
+              void *result_value,
+              cfgValueType value_type);
+static int
+fetch_ini (const char *file,
+           FILE *fp,
+           char *parameter_name,
+           void *result_value,
+           cfgValueType value_type,
+           int section_num,
+           const char *section_name);
 
 /* static variables */
 
 static char **parsecfg_section_name = NULL;
 static int parsecfg_maximum_section;
-
 
 /*************************************************************/
 /*                      PUBLIC FUCNCTIONS                    */
@@ -94,11 +136,11 @@ static int parsecfg_maximum_section;
    INPUT      f ... pointer to new error handler
    OUTPUT     none
    -------------------------------------------------- */
-void cfgSetFatalFunc(void (*f) (cfgErrorCode, const char *, int, const char *))
+void
+cfgSetFatalFunc (void (*f) (cfgErrorCode, const char *, int, const char *))
 {
-	cfgFatal = f;
+    cfgFatal = f;
 }
-
 
 /* --------------------------------------------------
    NAME       cfgParse
@@ -112,49 +154,52 @@ void cfgSetFatalFunc(void (*f) (cfgErrorCode, const char *, int, const char *))
               (if type==CFG_INI then return 0)
               -1 if an error occured
    -------------------------------------------------- */
-int cfgParse(const char *file, cfgStruct cfg[], cfgFileType type)
+int
+cfgParse (const char *file, cfgStruct cfg[], cfgFileType type)
 {
-	char *line_buf;
-	char *ptr;
-	int line = 0;
-	FILE *fp;
-	int error_code;
-	int max_cfg = -1;
+    char *line_buf;
+    char *ptr;
+    int line = 0;
+    FILE *fp;
+    int error_code;
+    int max_cfg = -1;
 
-	fp = fopen(file, "r");
-	if (fp == NULL) {
-		cfgFatal(CFG_OPEN_FAIL, file, 0, NULL);
-		return (-1);
-	}
+    fp = fopen (file, "r");
+    if (fp == NULL) {
+        cfgFatal (CFG_OPEN_FAIL, file, 0, NULL);
+        return (-1);
+    }
 
-	while ((ptr = get_single_line_without_first_spaces(fp, &line_buf, &line)) != NULL) {
-		switch (type) {
-		case CFG_SIMPLE:
-			if ((error_code = parse_simple(file, fp, ptr, cfg, &line)) != CFG_NO_ERROR) {
-				fclose(fp);
-				cfgFatal(error_code, file, line, line_buf);
-				return (-1);
-			}
-			break;
-		case CFG_INI:
-			if ((error_code = parse_ini(file, fp, ptr, cfg, &line, &max_cfg)) != CFG_NO_ERROR) {
-				fclose(fp);
-				cfgFatal(error_code, file, line, line_buf);
-				return (-1);
-			}
-			break;
-		default:
-			fclose(fp);
-			cfgFatal(CFG_INTERNAL_ERROR, file, 0, NULL);
-			return (-1);
-		}
-		free(line_buf);
-	}
-	fclose(fp);
-	parsecfg_maximum_section = max_cfg + 1;
-	return (parsecfg_maximum_section);
+    while ((ptr = get_single_line_without_first_spaces (
+                fp, &line_buf, &line)) != NULL) {
+        switch (type) {
+        case CFG_SIMPLE:
+            if ((error_code = parse_simple (file, fp, ptr, cfg, &line)) !=
+                CFG_NO_ERROR) {
+                fclose (fp);
+                cfgFatal (error_code, file, line, line_buf);
+                return (-1);
+            }
+            break;
+        case CFG_INI:
+            if ((error_code = parse_ini (
+                     file, fp, ptr, cfg, &line, &max_cfg)) != CFG_NO_ERROR) {
+                fclose (fp);
+                cfgFatal (error_code, file, line, line_buf);
+                return (-1);
+            }
+            break;
+        default:
+            fclose (fp);
+            cfgFatal (CFG_INTERNAL_ERROR, file, 0, NULL);
+            return (-1);
+        }
+        free (line_buf);
+    }
+    fclose (fp);
+    parsecfg_maximum_section = max_cfg + 1;
+    return (parsecfg_maximum_section);
 }
-
 
 /* --------------------------------------------------
    NAME       cfgDump
@@ -168,34 +213,34 @@ int cfgParse(const char *file, cfgStruct cfg[], cfgFileType type)
                               (if type is CFG_INI, this arg is ignored)
    OUTPUT     0 on success and -1 on error
    -------------------------------------------------- */
-int cfgDump(const char *file, cfgStruct cfg[], cfgFileType type, int max_section)
+int
+cfgDump (const char *file, cfgStruct cfg[], cfgFileType type, int max_section)
 {
-	FILE *fp;
-	int retcode;
+    FILE *fp;
+    int retcode;
 
-	fp = fopen(file, "w");
-	if (fp == NULL) {
-		cfgFatal(CFG_CREATE_FAIL, file, 0, NULL);
-		return (-1);
-	}
+    fp = fopen (file, "w");
+    if (fp == NULL) {
+        cfgFatal (CFG_CREATE_FAIL, file, 0, NULL);
+        return (-1);
+    }
 
-	switch (type) {
-	case CFG_SIMPLE:
-		retcode = dump_simple(fp, cfg, type);
-		break;
-	case CFG_INI:
-		retcode = dump_ini(fp, cfg, type, max_section);
-		break;
-	default:
-		fclose(fp);
-		cfgFatal(CFG_INTERNAL_ERROR, file, 0, NULL);
-		return (-1);
-	}
+    switch (type) {
+    case CFG_SIMPLE:
+        retcode = dump_simple (fp, cfg, type);
+        break;
+    case CFG_INI:
+        retcode = dump_ini (fp, cfg, type, max_section);
+        break;
+    default:
+        fclose (fp);
+        cfgFatal (CFG_INTERNAL_ERROR, file, 0, NULL);
+        return (-1);
+    }
 
-	fclose(fp);
-	return (retcode);
+    fclose (fp);
+    return (retcode);
 }
-
 
 /* --------------------------------------------------
    NAME       fetchVarFromCfgFile
@@ -211,38 +256,51 @@ int cfgDump(const char *file, cfgStruct cfg[], cfgFileType type, int max_section
               section_name ... section name (use this if section_num<1)
    OUTPUT     return 0 if successful, -1 otherwise
    -------------------------------------------------- */
-int fetchVarFromCfgFile(const char *file, char *parameter_name, void *result_value, cfgValueType value_type, cfgFileType file_type, int section_num, const char *section_name)
+int
+fetchVarFromCfgFile (const char *file,
+                     char *parameter_name,
+                     void *result_value,
+                     cfgValueType value_type,
+                     cfgFileType file_type,
+                     int section_num,
+                     const char *section_name)
 {
-	FILE *fp;
+    FILE *fp;
 
-	fp = fopen(file, "r");
-	if (fp == NULL) {
-		cfgFatal(CFG_OPEN_FAIL, file, 0, NULL);
-		return (-1);
-	}
+    fp = fopen (file, "r");
+    if (fp == NULL) {
+        cfgFatal (CFG_OPEN_FAIL, file, 0, NULL);
+        return (-1);
+    }
 
-	switch (file_type) {
-	case CFG_SIMPLE:
-		if (fetch_simple(file, fp, parameter_name, result_value, value_type) == 0) {
-			fclose(fp);
-			return (0);
-		}
-		break;
-	case CFG_INI:
-		if (fetch_ini(file, fp, parameter_name, result_value, value_type, section_num, section_name) == 0) {
-			fclose(fp);
-			return (0);
-		}
-		break;
-	default:
-		fclose(fp);
-		cfgFatal(CFG_INTERNAL_ERROR, file, 0, NULL);
-		return (-1);
-	}
-	fclose(fp);
-	return (-1);
+    switch (file_type) {
+    case CFG_SIMPLE:
+        if (fetch_simple (file, fp, parameter_name, result_value, value_type) ==
+            0) {
+            fclose (fp);
+            return (0);
+        }
+        break;
+    case CFG_INI:
+        if (fetch_ini (file,
+                       fp,
+                       parameter_name,
+                       result_value,
+                       value_type,
+                       section_num,
+                       section_name) == 0) {
+            fclose (fp);
+            return (0);
+        }
+        break;
+    default:
+        fclose (fp);
+        cfgFatal (CFG_INTERNAL_ERROR, file, 0, NULL);
+        return (-1);
+    }
+    fclose (fp);
+    return (-1);
 }
-
 
 /* --------------------------------------------------
    NAME       cfgSectionNameToNumber
@@ -251,18 +309,18 @@ int fetchVarFromCfgFile(const char *file, char *parameter_name, void *result_val
    OUTPUT     section number (0,1,2,...)
               if no matching, return -1
    -------------------------------------------------- */
-int cfgSectionNameToNumber(const char *name)
+int
+cfgSectionNameToNumber (const char *name)
 {
-	int i;
+    int i;
 
-	for (i = 0; i < parsecfg_maximum_section; i++) {
-		if (strcasecmp(name, parsecfg_section_name[i]) == 0) {
-			return (i);
-		}
-	}
-	return (-1);
+    for (i = 0; i < parsecfg_maximum_section; i++) {
+        if (strcasecmp (name, parsecfg_section_name[i]) == 0) {
+            return (i);
+        }
+    }
+    return (-1);
 }
-
 
 /* --------------------------------------------------
    NAME       cfgSectionNumberToName
@@ -271,14 +329,14 @@ int cfgSectionNameToNumber(const char *name)
    OUTPUT     pointer to section name
               if no section, return NULL
    -------------------------------------------------- */
-char *cfgSectionNumberToName(int num)
+char *
+cfgSectionNumberToName (int num)
 {
-	if (num > parsecfg_maximum_section - 1 || num < 0) {
-		return (NULL);
-	}
-	return (parsecfg_section_name[num]);
+    if (num > parsecfg_maximum_section - 1 || num < 0) {
+        return (NULL);
+    }
+    return (parsecfg_section_name[num]);
 }
-
 
 /* --------------------------------------------------
    NAME       cfgAllocForNewSection
@@ -288,48 +346,53 @@ char *cfgSectionNumberToName(int num)
    OUTPUT     the maximum number of sections
               -1 if an error occured
    -------------------------------------------------- */
-int cfgAllocForNewSection(cfgStruct cfg[], const char *name)
+int
+cfgAllocForNewSection (cfgStruct cfg[], const char *name)
 {
-	int result;
-	int section;
+    int result;
+    int section;
 
-	section = parsecfg_maximum_section - 1;
+    section = parsecfg_maximum_section - 1;
 
-	result = alloc_for_new_section(cfg, &section);
-	if (result != CFG_NO_ERROR) {
-		cfgFatalFunc(result, "unknown", 0, "");
-		return (-1);
-	}
-	parsecfg_maximum_section = section + 1;
+    result = alloc_for_new_section (cfg, &section);
+    if (result != CFG_NO_ERROR) {
+        cfgFatalFunc (result, "unknown", 0, "");
+        return (-1);
+    }
+    parsecfg_maximum_section = section + 1;
 
-	parsecfg_section_name = realloc(parsecfg_section_name, sizeof(char *) * parsecfg_maximum_section);
-	parsecfg_section_name[parsecfg_maximum_section - 1] = strdup(name);
-	return (parsecfg_maximum_section);
+    parsecfg_section_name = realloc (
+        parsecfg_section_name, sizeof (char *) * parsecfg_maximum_section);
+    parsecfg_section_name[parsecfg_maximum_section - 1] = strdup (name);
+    return (parsecfg_maximum_section);
 }
-
 
 /* --------------------------------------------------
    NAME       cfgStoreValue
    FUNCTION   store the value according to cfg
    INPUT      cfg ......... array of possible variables
               parameter ... parameter
-	      value ....... value
-	      type ........ type of the configuration file
-	      section ..... section number (0,1,2,...)
+          value ....... value
+          type ........ type of the configuration file
+          section ..... section number (0,1,2,...)
    OUTPUT     return 0 if successful, -1 otherwise
    -------------------------------------------------- */
-int cfgStoreValue(cfgStruct cfg[], const char *parameter, const char *value, cfgFileType type, int section)
+int
+cfgStoreValue (cfgStruct cfg[],
+               const char *parameter,
+               const char *value,
+               cfgFileType type,
+               int section)
 {
-	int result;
+    int result;
 
-	result = store_value(cfg, parameter, value, type, section);
-	if (result != CFG_NO_ERROR) {
-		cfgFatalFunc(result, "unknown", 0, "");
-		return (-1);
-	}
-	return (0);
+    result = store_value (cfg, parameter, value, type, section);
+    if (result != CFG_NO_ERROR) {
+        cfgFatalFunc (result, "unknown", 0, "");
+        return (-1);
+    }
+    return (0);
 }
-
 
 /*************************************************************/
 /*                     PRIVATE FUCNCTIONS                    */
@@ -344,51 +407,78 @@ int cfgStoreValue(cfgStruct cfg[], const char *parameter, const char *value, cfg
               str .......... strings at above line
    OUTPUT     none
    -------------------------------------------------- */
-static void cfgFatalFunc(cfgErrorCode error_code, const char *file, int line, const char *str)
+static void
+cfgFatalFunc (cfgErrorCode error_code,
+              const char *file,
+              int line,
+              const char *str)
 {
-	switch (error_code) {
-	case CFG_OPEN_FAIL:
-		i18n_fprintf(stderr, _("Cannot open configuration file `%s'.\n"), file);
-		break;
-	case CFG_CREATE_FAIL:
-		i18n_fprintf(stderr, _("Cannot create configuration file `%s'.\n"), file);
-		break;
-	case CFG_SYNTAX_ERROR:
-		i18n_fprintf(stderr, _("%s(%d): %s\nSyntax error\n"), file, line, str);
-		break;
-	case CFG_WRONG_PARAMETER:
-		i18n_fprintf(stderr, _("%s(%d): %s\nUnrecognized parameter\n"), file, line, str);
-		break;
-	case CFG_INTERNAL_ERROR:
-		i18n_fprintf(stderr, _("%s(%d): %s\nInternal error\n"), file, line, str);
-		break;
-	case CFG_INVALID_NUMBER:
-		i18n_fprintf(stderr, _("%s(%d): %s\nInvalid number\n"), file, line, str);
-		break;
-	case CFG_OUT_OF_RANGE:
-		i18n_fprintf(stderr, _("%s(%d): %s\nOut of range\n"), file, line, str);
-		break;
-	case CFG_MEM_ALLOC_FAIL:
-		i18n_fprintf(stderr, _("%s(%d): %s\nCannot allocate memory.\n"), file, line, str);
-		break;
-	case CFG_BOOL_ERROR:
-		i18n_fprintf(stderr, _("%s(%d): %s\nIt must be specified TRUE or FALSE.\n"), file, line, str);
-		break;
-	case CFG_USED_SECTION:
-		i18n_fprintf(stderr, _("%s(%d): %s\nThe section name is already used.\n"), file, line, str);
-		break;
-	case CFG_NO_CLOSING_BRACE:
-		i18n_fprintf(stderr, _("%s(%d)\nThere is no closing brace.\n"), file, line);
-		break;
-	case CFG_JUST_RETURN_WITHOUT_MSG:
-		break;
+    switch (error_code) {
+    case CFG_OPEN_FAIL:
+        i18n_fprintf (
+            stderr, _ ("Cannot open configuration file `%s'.\n"), file);
+        break;
+    case CFG_CREATE_FAIL:
+        i18n_fprintf (
+            stderr, _ ("Cannot create configuration file `%s'.\n"), file);
+        break;
+    case CFG_SYNTAX_ERROR:
+        i18n_fprintf (
+            stderr, _ ("%s(%d): %s\nSyntax error\n"), file, line, str);
+        break;
+    case CFG_WRONG_PARAMETER:
+        i18n_fprintf (stderr,
+                      _ ("%s(%d): %s\nUnrecognized parameter\n"),
+                      file,
+                      line,
+                      str);
+        break;
+    case CFG_INTERNAL_ERROR:
+        i18n_fprintf (
+            stderr, _ ("%s(%d): %s\nInternal error\n"), file, line, str);
+        break;
+    case CFG_INVALID_NUMBER:
+        i18n_fprintf (
+            stderr, _ ("%s(%d): %s\nInvalid number\n"), file, line, str);
+        break;
+    case CFG_OUT_OF_RANGE:
+        i18n_fprintf (
+            stderr, _ ("%s(%d): %s\nOut of range\n"), file, line, str);
+        break;
+    case CFG_MEM_ALLOC_FAIL:
+        i18n_fprintf (stderr,
+                      _ ("%s(%d): %s\nCannot allocate memory.\n"),
+                      file,
+                      line,
+                      str);
+        break;
+    case CFG_BOOL_ERROR:
+        i18n_fprintf (stderr,
+                      _ ("%s(%d): %s\nIt must be specified TRUE or FALSE.\n"),
+                      file,
+                      line,
+                      str);
+        break;
+    case CFG_USED_SECTION:
+        i18n_fprintf (stderr,
+                      _ ("%s(%d): %s\nThe section name is already used.\n"),
+                      file,
+                      line,
+                      str);
+        break;
+    case CFG_NO_CLOSING_BRACE:
+        i18n_fprintf (
+            stderr, _ ("%s(%d)\nThere is no closing brace.\n"), file, line);
+        break;
+    case CFG_JUST_RETURN_WITHOUT_MSG:
+        break;
     case CFG_NO_ERROR:
         break;
-	default:
-		i18n_fprintf(stderr, _("%s(%d): %s\nUnexplained error\n"), file, line, str);
-	}
+    default:
+        i18n_fprintf (
+            stderr, _ ("%s(%d): %s\nUnexplained error\n"), file, line, str);
+    }
 }
-
 
 /* --------------------------------------------------
    NAME       parse_simple
@@ -400,45 +490,57 @@ static void cfgFatalFunc(cfgErrorCode error_code, const char *file, int line, co
               line .. pointer to current working line
    OUTPUT     error code (no error is CFG_NO_ERROR)
    -------------------------------------------------- */
-static int parse_simple(const char *file, FILE *fp, char *ptr, cfgStruct cfg[], int *line)
+static int
+parse_simple (const char *file, FILE *fp, char *ptr, cfgStruct cfg[], int *line)
 {
-	char *parameter;
-	char *parameter_buf;
-	int parameter_line;
-	char *value;
-	int error_code;
+    char *parameter;
+    char *parameter_buf;
+    int parameter_line;
+    char *value;
+    int error_code;
 
-	parameter_buf = ptr;
-	parameter_line = *line;
+    parameter_buf = ptr;
+    parameter_line = *line;
 
-	if ((ptr = parse_word(ptr, &parameter, CFG_PARAMETER)) == NULL) {	/* malloc parameter */
-		return (CFG_SYNTAX_ERROR);
-	}
-	if (*ptr == '{') {
-		ptr = rm_first_spaces(ptr + 1);
-		if (*ptr != '\0' && *ptr != '#') {
-			free(parameter);
-			return (CFG_SYNTAX_ERROR);
-		}
-		if (parse_values_between_braces(file, fp, parameter, cfg, line, CFG_SIMPLE, 0, parameter_buf, parameter_line) != CFG_NO_ERROR) {
-			return (CFG_JUST_RETURN_WITHOUT_MSG);	/* error handling has already done */
-		}
-	} else {
-		if ((ptr = parse_word(ptr, &value, CFG_VALUE)) == NULL) {	/* malloc value */
-			free(parameter);
-			return (CFG_SYNTAX_ERROR);
-		}
-		if ((error_code = store_value(cfg, parameter, value, CFG_SIMPLE, 0)) != CFG_NO_ERROR) {
-			free(parameter);
-			free(value);
-			return (error_code);
-		}
-		free(parameter);
-		free(value);
-	}
-	return (CFG_NO_ERROR);
+    if ((ptr = parse_word (ptr, &parameter, CFG_PARAMETER)) ==
+        NULL) { /* malloc parameter */
+        return (CFG_SYNTAX_ERROR);
+    }
+    if (*ptr == '{') {
+        ptr = rm_first_spaces (ptr + 1);
+        if (*ptr != '\0' && *ptr != '#') {
+            free (parameter);
+            return (CFG_SYNTAX_ERROR);
+        }
+        if (parse_values_between_braces (file,
+                                         fp,
+                                         parameter,
+                                         cfg,
+                                         line,
+                                         CFG_SIMPLE,
+                                         0,
+                                         parameter_buf,
+                                         parameter_line) != CFG_NO_ERROR) {
+            return (CFG_JUST_RETURN_WITHOUT_MSG); /* error handling has already
+                                                     done */
+        }
+    } else {
+        if ((ptr = parse_word (ptr, &value, CFG_VALUE)) ==
+            NULL) { /* malloc value */
+            free (parameter);
+            return (CFG_SYNTAX_ERROR);
+        }
+        if ((error_code = store_value (cfg, parameter, value, CFG_SIMPLE, 0)) !=
+            CFG_NO_ERROR) {
+            free (parameter);
+            free (value);
+            return (error_code);
+        }
+        free (parameter);
+        free (value);
+    }
+    return (CFG_NO_ERROR);
 }
-
 
 /* --------------------------------------------------
    NAME       parse_word
@@ -452,394 +554,438 @@ static int parse_simple(const char *file, FILE *fp, char *ptr, cfgStruct cfg[], 
                             + CFG_SECTION ..... section
    OUTPUT     new current pointer (on error, return NULL)
 -------------------------------------------------- */
-static char *parse_word(char *ptr, char **word, cfgKeywordValue word_type)
+static char *
+parse_word (char *ptr, char **word, cfgKeywordValue word_type)
 {
-	int len = 0;
-	cfgQuote quote_flag;
+    int len = 0;
+    cfgQuote quote_flag;
 
-	switch (*ptr) {
-	case '\"':
-		quote_flag = CFG_DOUBLE_QUOTE;
-		ptr++;
-		break;
-	case '\'':
-		quote_flag = CFG_SINGLE_QUOTE;
-		ptr++;
-		break;
-	default:
-		quote_flag = CFG_NO_QUOTE;
-	}
+    switch (*ptr) {
+    case '\"':
+        quote_flag = CFG_DOUBLE_QUOTE;
+        ptr++;
+        break;
+    case '\'':
+        quote_flag = CFG_SINGLE_QUOTE;
+        ptr++;
+        break;
+    default:
+        quote_flag = CFG_NO_QUOTE;
+    }
 
-	for (;;) {
-		if (quote_flag == CFG_NO_QUOTE) {
-			if (*(ptr + len) == ' ' || *(ptr + len) == '\t' || *(ptr + len) == '\0' || *(ptr + len) == '#' || (*(ptr + len) == '=' && word_type == CFG_PARAMETER) || (*(ptr + len) == ']' && word_type == CFG_SECTION)) {
-				break;
-			}
-		} else if (quote_flag == CFG_DOUBLE_QUOTE) {
-			if (*(ptr + len) == '\"') {
-				break;
-			}
-		} else if (quote_flag == CFG_SINGLE_QUOTE) {
-			if (*(ptr + len) == '\'') {
-				break;
-			}
-		}
-		if (*(ptr + len) == '\0') {
-			return (NULL);
-		}
-		len++;
-	}
-	if ((*word = malloc(len + 1)) == NULL) {
-		cfgFatalFunc(CFG_MEM_ALLOC_FAIL, "unknown", 0, "");
-		return (NULL);
-	}
-	strncpy(*word, ptr, len);
-	*(*word + len) = '\0';
+    for (;;) {
+        if (quote_flag == CFG_NO_QUOTE) {
+            if (*(ptr + len) == ' ' || *(ptr + len) == '\t' ||
+                *(ptr + len) == '\0' || *(ptr + len) == '#' ||
+                (*(ptr + len) == '=' && word_type == CFG_PARAMETER) ||
+                (*(ptr + len) == ']' && word_type == CFG_SECTION)) {
+                break;
+            }
+        } else if (quote_flag == CFG_DOUBLE_QUOTE) {
+            if (*(ptr + len) == '\"') {
+                break;
+            }
+        } else if (quote_flag == CFG_SINGLE_QUOTE) {
+            if (*(ptr + len) == '\'') {
+                break;
+            }
+        }
+        if (*(ptr + len) == '\0') {
+            return (NULL);
+        }
+        len++;
+    }
+    if ((*word = malloc (len + 1)) == NULL) {
+        cfgFatalFunc (CFG_MEM_ALLOC_FAIL, "unknown", 0, "");
+        return (NULL);
+    }
+    strncpy (*word, ptr, len);
+    *(*word + len) = '\0';
 
-	ptr += (len + (quote_flag == CFG_NO_QUOTE ? 0 : 1));
+    ptr += (len + (quote_flag == CFG_NO_QUOTE ? 0 : 1));
 
-	ptr = rm_first_spaces(ptr);
+    ptr = rm_first_spaces (ptr);
 
-	switch (word_type) {
-	case CFG_PARAMETER:
-		if (*ptr != '=') {
-			free(*word);
-			return (NULL);
-		}
-		ptr++;
-		ptr = rm_first_spaces(ptr);
-		break;
-	case CFG_VALUE:
-		if (*ptr != '\0' && *ptr != '#') {
-			free(*word);
-			return (NULL);
-		}
-		break;
-	case CFG_SECTION:
-		if (*ptr != ']') {
-			free(*word);
-			return (NULL);
-		}
-		break;
-	default:
-		free(*word);
-		return (NULL);
-	}
-	return (ptr);
+    switch (word_type) {
+    case CFG_PARAMETER:
+        if (*ptr != '=') {
+            free (*word);
+            return (NULL);
+        }
+        ptr++;
+        ptr = rm_first_spaces (ptr);
+        break;
+    case CFG_VALUE:
+        if (*ptr != '\0' && *ptr != '#') {
+            free (*word);
+            return (NULL);
+        }
+        break;
+    case CFG_SECTION:
+        if (*ptr != ']') {
+            free (*word);
+            return (NULL);
+        }
+        break;
+    default:
+        free (*word);
+        return (NULL);
+    }
+    return (ptr);
 }
-
 
 /* --------------------------------------------------
    NAME       store_value
    FUNCTION   store the value according to cfg
    INPUT      cfg ......... array of possible variables
               parameter ... parameter
-	      value ....... value
-	      type ........ type of the configuration file
-	      section ..... section number
+          value ....... value
+          type ........ type of the configuration file
+          section ..... section number
    OUTPUT     error code
    -------------------------------------------------- */
-static int store_value(cfgStruct cfg[], const char *parameter, const char *value, cfgFileType type, int section)
+static int
+store_value (cfgStruct cfg[],
+             const char *parameter,
+             const char *value,
+             cfgFileType type,
+             int section)
 {
-	int num;
-	long tmp;
-	unsigned long utmp;
-	float ftmp;
-	float dtmp;
-	char *endptr;
-	char *strptr;
-	cfgList *listptr;
+    int num;
+    long tmp;
+    unsigned long utmp;
+    float ftmp;
+    float dtmp;
+    char *endptr;
+    char *strptr;
+    cfgList *listptr;
 
+    for (num = 0; cfg[num].type != CFG_END; num++) {
+        if (strcasecmp (parameter, cfg[num].parameterName) == 0) {
+            errno = 0;
+            switch (cfg[num].type) {
+            case CFG_BOOL:
+                if (strcasecmp (value, "TRUE") == 0 ||
+                    strcasecmp (value, "YES") == 0 ||
+                    strcasecmp (value, "T") == 0 ||
+                    strcasecmp (value, "Y") == 0 ||
+                    strcasecmp (value, "1") == 0) {
+                    if (type == CFG_INI) {
+                        *(*(int **)(cfg[num].value) + section) = 1;
+                    } else {
+                        *(int *)(cfg[num].value) = 1;
+                    }
+                    return (CFG_NO_ERROR);
+                } else if (strcasecmp (value, "FALSE") == 0 ||
+                           strcasecmp (value, "NO") == 0 ||
+                           strcasecmp (value, "F") == 0 ||
+                           strcasecmp (value, "N") == 0 ||
+                           strcasecmp (value, "0") == 0) {
+                    if (type == CFG_INI) {
+                        *(*(int **)(cfg[num].value) + section) = 0;
+                    } else {
+                        *(int *)(cfg[num].value) = 0;
+                    }
+                    return (CFG_NO_ERROR);
+                }
+                return (CFG_BOOL_ERROR);
 
-	for (num = 0; cfg[num].type != CFG_END; num++) {
-		if (strcasecmp(parameter, cfg[num].parameterName) == 0) {
-			errno = 0;
-			switch (cfg[num].type) {
-			case CFG_BOOL:
-				if (strcasecmp(value, "TRUE") == 0 || strcasecmp(value, "YES") == 0 || strcasecmp(value, "T") == 0 || strcasecmp(value, "Y") == 0 || strcasecmp(value, "1") == 0) {
-					if (type == CFG_INI) {
-						*(*(int **) (cfg[num].value) + section) = 1;
-					} else {
-						*(int *) (cfg[num].value) = 1;
-					}
-					return (CFG_NO_ERROR);
-				} else if (strcasecmp(value, "FALSE") == 0 || strcasecmp(value, "NO") == 0 || strcasecmp(value, "F") == 0 || strcasecmp(value, "N") == 0 || strcasecmp(value, "0") == 0) {
-					if (type == CFG_INI) {
-						*(*(int **) (cfg[num].value) + section) = 0;
-					} else {
-						*(int *) (cfg[num].value) = 0;
-					}
-					return (CFG_NO_ERROR);
-				}
-				return (CFG_BOOL_ERROR);
+            case CFG_STRING:
+                if ((strptr = malloc (strlen (value) + 1)) == NULL) {
+                    return (CFG_MEM_ALLOC_FAIL);
+                }
+                strcpy (strptr, value);
+                if (type == CFG_INI) {
+                    *(*(char ***)(cfg[num].value) + section) = strptr;
+                } else {
+                    *(char **)(cfg[num].value) = strptr;
+                }
+                return (CFG_NO_ERROR);
 
-			case CFG_STRING:
-				if ((strptr = malloc(strlen(value) + 1)) == NULL) {
-					return (CFG_MEM_ALLOC_FAIL);
-				}
-				strcpy(strptr, value);
-				if (type == CFG_INI) {
-					*(*(char ***) (cfg[num].value) + section) = strptr;
-				} else {
-					*(char **) (cfg[num].value) = strptr;
-				}
-				return (CFG_NO_ERROR);
+            case CFG_INT:
+                tmp = strtol (value, &endptr, 0);
+                if (*endptr) {
+                    return (CFG_INVALID_NUMBER);
+                }
+                if (errno == ERANGE || tmp > INT_MAX || tmp < INT_MIN) {
+                    return (CFG_OUT_OF_RANGE);
+                }
+                if (type == CFG_INI) {
+                    *(*(int **)(cfg[num].value) + section) = tmp;
+                } else {
+                    *(int *)(cfg[num].value) = tmp;
+                }
+                return (CFG_NO_ERROR);
 
-			case CFG_INT:
-				tmp = strtol(value, &endptr, 0);
-				if (*endptr) {
-					return (CFG_INVALID_NUMBER);
-				}
-				if (errno == ERANGE || tmp > INT_MAX || tmp < INT_MIN) {
-					return (CFG_OUT_OF_RANGE);
-				}
-				if (type == CFG_INI) {
-					*(*(int **) (cfg[num].value) + section) = tmp;
-				} else {
-					*(int *) (cfg[num].value) = tmp;
-				}
-				return (CFG_NO_ERROR);
+            case CFG_UINT:
+                utmp = strtoul (value, &endptr, 0);
+                if (*endptr) {
+                    return (CFG_INVALID_NUMBER);
+                }
+                if (errno == ERANGE || utmp > UINT_MAX) {
+                    return (CFG_OUT_OF_RANGE);
+                }
+                if (type == CFG_INI) {
+                    *(*(unsigned int **)(cfg[num].value) + section) = utmp;
+                } else {
+                    *(unsigned int *)(cfg[num].value) = utmp;
+                }
+                return (CFG_NO_ERROR);
 
-			case CFG_UINT:
-				utmp = strtoul(value, &endptr, 0);
-				if (*endptr) {
-					return (CFG_INVALID_NUMBER);
-				}
-				if (errno == ERANGE || utmp > UINT_MAX) {
-					return (CFG_OUT_OF_RANGE);
-				}
-				if (type == CFG_INI) {
-					*(*(unsigned int **) (cfg[num].value) + section) = utmp;
-				} else {
-					*(unsigned int *) (cfg[num].value) = utmp;
-				}
-				return (CFG_NO_ERROR);
+            case CFG_LONG:
+                tmp = strtol (value, &endptr, 0);
+                if (*endptr) {
+                    return (CFG_INVALID_NUMBER);
+                }
+                if (errno == ERANGE) {
+                    return (CFG_OUT_OF_RANGE);
+                }
+                if (type == CFG_INI) {
+                    *(*(long **)(cfg[num].value) + section) = tmp;
+                } else {
+                    *(long *)(cfg[num].value) = tmp;
+                }
+                return (CFG_NO_ERROR);
 
-			case CFG_LONG:
-				tmp = strtol(value, &endptr, 0);
-				if (*endptr) {
-					return (CFG_INVALID_NUMBER);
-				}
-				if (errno == ERANGE) {
-					return (CFG_OUT_OF_RANGE);
-				}
-				if (type == CFG_INI) {
-					*(*(long **) (cfg[num].value) + section) = tmp;
-				} else {
-					*(long *) (cfg[num].value) = tmp;
-				}
-				return (CFG_NO_ERROR);
+            case CFG_ULONG:
+                utmp = strtoul (value, &endptr, 0);
+                if (*endptr) {
+                    return (CFG_INVALID_NUMBER);
+                }
+                if (errno == ERANGE) {
+                    return (CFG_OUT_OF_RANGE);
+                }
+                if (type == CFG_INI) {
+                    *(*(unsigned long **)(cfg[num].value) + section) = utmp;
+                } else {
+                    *(unsigned long *)(cfg[num].value) = utmp;
+                }
+                return (CFG_NO_ERROR);
 
-			case CFG_ULONG:
-				utmp = strtoul(value, &endptr, 0);
-				if (*endptr) {
-					return (CFG_INVALID_NUMBER);
-				}
-				if (errno == ERANGE) {
-					return (CFG_OUT_OF_RANGE);
-				}
-				if (type == CFG_INI) {
-					*(*(unsigned long **) (cfg[num].value) + section) = utmp;
-				} else {
-					*(unsigned long *) (cfg[num].value) = utmp;
-				}
-				return (CFG_NO_ERROR);
+            case CFG_STRING_LIST:
+                if (type == CFG_INI) {
+                    listptr = *(*(cfgList ***)(cfg[num].value) + section);
+                } else {
+                    listptr = *(cfgList **)(cfg[num].value);
+                }
+                if (listptr != NULL) {
+                    while (listptr->next != NULL) {
+                        listptr = listptr->next;
+                    }
+                    if ((listptr = listptr->next = malloc (sizeof (cfgList))) ==
+                        NULL) {
+                        return (CFG_MEM_ALLOC_FAIL);
+                    }
+                } else {
+                    if ((listptr = malloc (sizeof (cfgList))) == NULL) {
+                        return (CFG_MEM_ALLOC_FAIL);
+                    }
+                    if (type == CFG_INI) {
+                        *(*(cfgList ***)(cfg[num].value) + section) = listptr;
+                    } else {
+                        *(cfgList **)(cfg[num].value) = listptr;
+                    }
+                }
+                if ((strptr = malloc (strlen (value) + 1)) == NULL) {
+                    return (CFG_MEM_ALLOC_FAIL);
+                }
+                strcpy (strptr, value);
+                listptr->str = strptr;
+                listptr->next = NULL;
+                return (CFG_NO_ERROR);
 
-			case CFG_STRING_LIST:
-				if (type == CFG_INI) {
-					listptr = *(*(cfgList ***) (cfg[num].value) + section);
-				} else {
-					listptr = *(cfgList **) (cfg[num].value);
-				}
-				if (listptr != NULL) {
-					while (listptr->next != NULL) {
-						listptr = listptr->next;
-					}
-					if ((listptr = listptr->next = malloc(sizeof(cfgList))) == NULL) {
-						return (CFG_MEM_ALLOC_FAIL);
-					}
-				} else {
-					if ((listptr = malloc(sizeof(cfgList))) == NULL) {
-						return (CFG_MEM_ALLOC_FAIL);
-					}
-					if (type == CFG_INI) {
-						*(*(cfgList ***) (cfg[num].value) + section) = listptr;
-					} else {
-						*(cfgList **) (cfg[num].value) = listptr;
-					}
-				}
-				if ((strptr = malloc(strlen(value) + 1)) == NULL) {
-					return (CFG_MEM_ALLOC_FAIL);
-				}
-				strcpy(strptr, value);
-				listptr->str = strptr;
-				listptr->next = NULL;
-				return (CFG_NO_ERROR);
+            case CFG_FLOAT:
+                ftmp = strtod (value, &endptr);
+                if (*endptr) {
+                    return (CFG_INVALID_NUMBER);
+                }
+                if (errno == ERANGE) {
+                    return (CFG_OUT_OF_RANGE);
+                }
+                if (type == CFG_INI) {
+                    *(*(float **)(cfg[num].value) + section) = ftmp;
+                } else {
+                    *(float *)(cfg[num].value) = ftmp;
+                }
+                return (CFG_NO_ERROR);
 
-			case CFG_FLOAT:
-				ftmp = strtod(value, &endptr);
-				if (*endptr) {
-					return (CFG_INVALID_NUMBER);
-				}
-				if (errno == ERANGE) {
-					return (CFG_OUT_OF_RANGE);
-				}
-				if (type == CFG_INI) {
-					*(*(float **) (cfg[num].value) + section) = ftmp;
-				} else {
-					*(float *) (cfg[num].value) = ftmp;
-				}
-				return (CFG_NO_ERROR);
-
-			case CFG_DOUBLE:
-				dtmp = strtod(value, &endptr);
-				if (*endptr) {
-					return (CFG_INVALID_NUMBER);
-				}
-				if (errno == ERANGE) {
-					return (CFG_OUT_OF_RANGE);
-				}
-				if (type == CFG_INI) {
-					*(*(double **) (cfg[num].value) + section) = dtmp;
-				} else {
-					*(double *) (cfg[num].value) = dtmp;
-				}
-				return (CFG_NO_ERROR);
+            case CFG_DOUBLE:
+                dtmp = strtod (value, &endptr);
+                if (*endptr) {
+                    return (CFG_INVALID_NUMBER);
+                }
+                if (errno == ERANGE) {
+                    return (CFG_OUT_OF_RANGE);
+                }
+                if (type == CFG_INI) {
+                    *(*(double **)(cfg[num].value) + section) = dtmp;
+                } else {
+                    *(double *)(cfg[num].value) = dtmp;
+                }
+                return (CFG_NO_ERROR);
             case CFG_END:
                 g_assert_not_reached ();
-			default:
-				return (CFG_INTERNAL_ERROR);
-			}
-		}
-	}
-	return (CFG_WRONG_PARAMETER);
+            default:
+                return (CFG_INTERNAL_ERROR);
+            }
+        }
+    }
+    return (CFG_WRONG_PARAMETER);
 }
-
 
 /* --------------------------------------------------
    NAME       parse_values_between_braces
    FUNCTION   parse values between braces
    INPUT      file ....... file name
               fp ......... file pointer to the configuration file
-	      parameter .. parameter
-	      cfg ........ array of possible variables
-	      line ....... pointer to current working line
-	      type ....... file type
-	      section .... section number
-	      parameter_buf ... for error handling
-	      parameter_line .. for error handling
+          parameter .. parameter
+          cfg ........ array of possible variables
+          line ....... pointer to current working line
+          type ....... file type
+          section .... section number
+          parameter_buf ... for error handling
+          parameter_line .. for error handling
    OUTPUT     CFG_NO_ERROR on success, CFG_JUST_RETURN_WITHOUT_MSG otherwise
    -------------------------------------------------- */
-static int parse_values_between_braces(const char *file, FILE *fp, const char *parameter, cfgStruct cfg[], int *line, cfgFileType type, int section, const char *parameter_buf, int parameter_line)
+static int
+parse_values_between_braces (const char *file,
+                             FILE *fp,
+                             const char *parameter,
+                             cfgStruct cfg[],
+                             int *line,
+                             cfgFileType type,
+                             int section,
+                             const char *parameter_buf,
+                             int parameter_line)
 {
-	char *line_buf;
-	char *value;
-	char *ptr;
-	int error_code;
+    char *line_buf;
+    char *value;
+    char *ptr;
+    int error_code;
 
-	while ((ptr = get_single_line_without_first_spaces(fp, &line_buf, line)) != NULL) {
-		if (*ptr == '}') {
-			ptr = rm_first_spaces(ptr + 1);
-			if (*ptr != '\0' && *ptr != '#') {
-				cfgFatal(CFG_SYNTAX_ERROR, file, *line, line_buf);
-				return (CFG_JUST_RETURN_WITHOUT_MSG);
-			}
-			free(line_buf);
-			return (CFG_NO_ERROR);
-		}
-		if (parse_word(ptr, &value, CFG_VALUE) == NULL) {
-			cfgFatal(CFG_SYNTAX_ERROR, file, *line, line_buf);
-			return (CFG_JUST_RETURN_WITHOUT_MSG);
-		}
-		if ((error_code = store_value(cfg, parameter, value, type, section)) != CFG_NO_ERROR) {
-			if (error_code == CFG_WRONG_PARAMETER) {
-				cfgFatal(error_code, file, parameter_line, parameter_buf);
-				return (CFG_JUST_RETURN_WITHOUT_MSG);
-			}
-			cfgFatal(error_code, file, *line, line_buf);
-			return (CFG_JUST_RETURN_WITHOUT_MSG);
-		}
-		free(line_buf);
-		free(value);
-	}
-	cfgFatal(CFG_NO_CLOSING_BRACE, file, *line, NULL);
-	return (CFG_JUST_RETURN_WITHOUT_MSG);
+    while ((ptr = get_single_line_without_first_spaces (fp, &line_buf, line)) !=
+           NULL) {
+        if (*ptr == '}') {
+            ptr = rm_first_spaces (ptr + 1);
+            if (*ptr != '\0' && *ptr != '#') {
+                cfgFatal (CFG_SYNTAX_ERROR, file, *line, line_buf);
+                return (CFG_JUST_RETURN_WITHOUT_MSG);
+            }
+            free (line_buf);
+            return (CFG_NO_ERROR);
+        }
+        if (parse_word (ptr, &value, CFG_VALUE) == NULL) {
+            cfgFatal (CFG_SYNTAX_ERROR, file, *line, line_buf);
+            return (CFG_JUST_RETURN_WITHOUT_MSG);
+        }
+        if ((error_code = store_value (cfg, parameter, value, type, section)) !=
+            CFG_NO_ERROR) {
+            if (error_code == CFG_WRONG_PARAMETER) {
+                cfgFatal (error_code, file, parameter_line, parameter_buf);
+                return (CFG_JUST_RETURN_WITHOUT_MSG);
+            }
+            cfgFatal (error_code, file, *line, line_buf);
+            return (CFG_JUST_RETURN_WITHOUT_MSG);
+        }
+        free (line_buf);
+        free (value);
+    }
+    cfgFatal (CFG_NO_CLOSING_BRACE, file, *line, NULL);
+    return (CFG_JUST_RETURN_WITHOUT_MSG);
 }
-
 
 /* --------------------------------------------------
    NAME       parse_ini
    FUNCTION   parse the configuration file as Windows INI-like file
    INPUT      file .. name of the configuration file
               fp .... file pointer to the configuration file
-	      ptr ... pointer of current parsing strings
-	      cfg ... array of possible variables
-	      line .. pointer to current working line number
-	      section ... pointer to current section number
+          ptr ... pointer of current parsing strings
+          cfg ... array of possible variables
+          line .. pointer to current working line number
+          section ... pointer to current section number
    OUTPUT     error code (no error is CFG_NO_ERROR)
    -------------------------------------------------- */
-static int parse_ini(const char *file, FILE *fp, char *ptr, cfgStruct cfg[], int *line, int *section)
+static int
+parse_ini (const char *file,
+           FILE *fp,
+           char *ptr,
+           cfgStruct cfg[],
+           int *line,
+           int *section)
 {
-	char *parameter;
-	char *parameter_buf;
-	int parameter_line;
-	char *value;
-	int error_code;
-	int i;
+    char *parameter;
+    char *parameter_buf;
+    int parameter_line;
+    char *value;
+    int error_code;
+    int i;
 
-	if (*ptr == '[') {
-		if ((error_code = alloc_for_new_section(cfg, section)) != CFG_NO_ERROR) {
-			return (error_code);
-		}
-		ptr = rm_first_spaces(ptr + 1);
+    if (*ptr == '[') {
+        if ((error_code = alloc_for_new_section (cfg, section)) !=
+            CFG_NO_ERROR) {
+            return (error_code);
+        }
+        ptr = rm_first_spaces (ptr + 1);
 
-		parsecfg_section_name = realloc(parsecfg_section_name, sizeof(char *) * (*section + 1));
+        parsecfg_section_name =
+            realloc (parsecfg_section_name, sizeof (char *) * (*section + 1));
 
-		if ((ptr = parse_word(ptr, &parsecfg_section_name[*section], CFG_SECTION)) == NULL) {
-			return (CFG_SYNTAX_ERROR);
-		}
-		for (i = 0; i < *section; i++) {
-			if (strcasecmp(parsecfg_section_name[*section], parsecfg_section_name[i]) == 0) {
-				return (CFG_USED_SECTION);
-			}
-		}
-		ptr = rm_first_spaces(ptr + 1);
-		if (*ptr != '\0' && *ptr != '#') {
-			return (CFG_SYNTAX_ERROR);
-		}
-		return (CFG_NO_ERROR);
-	} else if (*section == -1) {
-		return (CFG_SYNTAX_ERROR);
-	}
+        if ((ptr = parse_word (
+                 ptr, &parsecfg_section_name[*section], CFG_SECTION)) == NULL) {
+            return (CFG_SYNTAX_ERROR);
+        }
+        for (i = 0; i < *section; i++) {
+            if (strcasecmp (parsecfg_section_name[*section],
+                            parsecfg_section_name[i]) == 0) {
+                return (CFG_USED_SECTION);
+            }
+        }
+        ptr = rm_first_spaces (ptr + 1);
+        if (*ptr != '\0' && *ptr != '#') {
+            return (CFG_SYNTAX_ERROR);
+        }
+        return (CFG_NO_ERROR);
+    } else if (*section == -1) {
+        return (CFG_SYNTAX_ERROR);
+    }
 
-	parameter_buf = ptr;
-	parameter_line = *line;
+    parameter_buf = ptr;
+    parameter_line = *line;
 
-	if ((ptr = parse_word(ptr, &parameter, CFG_PARAMETER)) == NULL) {
-		return (CFG_SYNTAX_ERROR);
-	}
-	if (*ptr == '{') {
-		ptr = rm_first_spaces(ptr + 1);
-		if (*ptr != '\0' && *ptr != '#') {
-			return (CFG_SYNTAX_ERROR);
-		}
-		if (parse_values_between_braces(file, fp, parameter, cfg, line, CFG_INI, *section, parameter_buf, parameter_line) != CFG_NO_ERROR) {
-			return (CFG_JUST_RETURN_WITHOUT_MSG);	/* error handling has already done */
-		}
-		free(parameter);
-	} else {
-		if ((ptr = parse_word(ptr, &value, CFG_VALUE)) == NULL) {
-			return (CFG_SYNTAX_ERROR);
-		}
-		if ((error_code = store_value(cfg, parameter, value, CFG_INI, *section)) != CFG_NO_ERROR) {
-			return (error_code);
-		}
-		free(parameter);
-		free(value);
-	}
-	return (CFG_NO_ERROR);
+    if ((ptr = parse_word (ptr, &parameter, CFG_PARAMETER)) == NULL) {
+        return (CFG_SYNTAX_ERROR);
+    }
+    if (*ptr == '{') {
+        ptr = rm_first_spaces (ptr + 1);
+        if (*ptr != '\0' && *ptr != '#') {
+            return (CFG_SYNTAX_ERROR);
+        }
+        if (parse_values_between_braces (file,
+                                         fp,
+                                         parameter,
+                                         cfg,
+                                         line,
+                                         CFG_INI,
+                                         *section,
+                                         parameter_buf,
+                                         parameter_line) != CFG_NO_ERROR) {
+            return (CFG_JUST_RETURN_WITHOUT_MSG); /* error handling has already
+                                                     done */
+        }
+        free (parameter);
+    } else {
+        if ((ptr = parse_word (ptr, &value, CFG_VALUE)) == NULL) {
+            return (CFG_SYNTAX_ERROR);
+        }
+        if ((error_code = store_value (
+                 cfg, parameter, value, CFG_INI, *section)) != CFG_NO_ERROR) {
+            return (error_code);
+        }
+        free (parameter);
+        free (value);
+    }
+    return (CFG_NO_ERROR);
 }
-
 
 /* --------------------------------------------------
    NAME       alloc_for_new_section
@@ -848,95 +994,101 @@ static int parse_ini(const char *file, FILE *fp, char *ptr, cfgStruct cfg[], int
               section ... pointer to current section number
    OUTPUT     error code
    -------------------------------------------------- */
-static int alloc_for_new_section(cfgStruct cfg[], int *section)
+static int
+alloc_for_new_section (cfgStruct cfg[], int *section)
 {
-	int num;
-	void *ptr;
+    int num;
+    void *ptr;
 
-	(*section)++;
-	for (num = 0; cfg[num].type != CFG_END; num++) {
-		switch (cfg[num].type) {
-		case CFG_BOOL:
-		case CFG_INT:
-		case CFG_UINT:
-			if (*section == 0) {
-				*(int **) (cfg[num].value) = NULL;
-			}
-			if ((ptr = realloc(*(int **) (cfg[num].value), sizeof(int) * (*section + 1))) == NULL) {
-				return (CFG_MEM_ALLOC_FAIL);
-			}
-			*(int **) (cfg[num].value) = ptr;
-			if (cfg[num].type == CFG_BOOL) {
-				*(*((int **) (cfg[num].value)) + *section) = -1;
-			} else {
-				*(*((int **) (cfg[num].value)) + *section) = 0;
-			}
-			break;
+    (*section)++;
+    for (num = 0; cfg[num].type != CFG_END; num++) {
+        switch (cfg[num].type) {
+        case CFG_BOOL:
+        case CFG_INT:
+        case CFG_UINT:
+            if (*section == 0) {
+                *(int **)(cfg[num].value) = NULL;
+            }
+            if ((ptr = realloc (*(int **)(cfg[num].value),
+                                sizeof (int) * (*section + 1))) == NULL) {
+                return (CFG_MEM_ALLOC_FAIL);
+            }
+            *(int **)(cfg[num].value) = ptr;
+            if (cfg[num].type == CFG_BOOL) {
+                *(*((int **)(cfg[num].value)) + *section) = -1;
+            } else {
+                *(*((int **)(cfg[num].value)) + *section) = 0;
+            }
+            break;
 
-		case CFG_LONG:
-		case CFG_ULONG:
-			if (*section == 0) {
-				*(long **) (cfg[num].value) = NULL;
-			}
-			if ((ptr = realloc(*(long **) (cfg[num].value), sizeof(long) * (*section + 1))) == NULL) {
-				return (CFG_MEM_ALLOC_FAIL);
-			}
-			*(long **) (cfg[num].value) = ptr;
-			*(*((long **) (cfg[num].value)) + *section) = 0;
-			break;
+        case CFG_LONG:
+        case CFG_ULONG:
+            if (*section == 0) {
+                *(long **)(cfg[num].value) = NULL;
+            }
+            if ((ptr = realloc (*(long **)(cfg[num].value),
+                                sizeof (long) * (*section + 1))) == NULL) {
+                return (CFG_MEM_ALLOC_FAIL);
+            }
+            *(long **)(cfg[num].value) = ptr;
+            *(*((long **)(cfg[num].value)) + *section) = 0;
+            break;
 
-		case CFG_STRING:
-			if (*section == 0) {
-				*(char ***) (cfg[num].value) = NULL;
-			}
-			if ((ptr = realloc(*(char ***) (cfg[num].value), sizeof(char *) * (*section + 1))) == NULL) {
-				return (CFG_MEM_ALLOC_FAIL);
-			}
-			*(char ***) (cfg[num].value) = ptr;
-			*(*(char ***) (cfg[num].value) + *section) = NULL;
-			break;
+        case CFG_STRING:
+            if (*section == 0) {
+                *(char ***)(cfg[num].value) = NULL;
+            }
+            if ((ptr = realloc (*(char ***)(cfg[num].value),
+                                sizeof (char *) * (*section + 1))) == NULL) {
+                return (CFG_MEM_ALLOC_FAIL);
+            }
+            *(char ***)(cfg[num].value) = ptr;
+            *(*(char ***)(cfg[num].value) + *section) = NULL;
+            break;
 
-		case CFG_STRING_LIST:
-			if (*section == 0) {
-				*(cfgList ***) (cfg[num].value) = NULL;
-			}
-			if ((ptr = realloc(*(cfgList ***) (cfg[num].value), sizeof(cfgList *) * (*section + 1))) == NULL) {
-				return (CFG_MEM_ALLOC_FAIL);
-			}
-			*(cfgList ***) (cfg[num].value) = ptr;
-			*(*(cfgList ***) (cfg[num].value) + *section) = NULL;
-			break;
+        case CFG_STRING_LIST:
+            if (*section == 0) {
+                *(cfgList ***)(cfg[num].value) = NULL;
+            }
+            if ((ptr = realloc (*(cfgList ***)(cfg[num].value),
+                                sizeof (cfgList *) * (*section + 1))) == NULL) {
+                return (CFG_MEM_ALLOC_FAIL);
+            }
+            *(cfgList ***)(cfg[num].value) = ptr;
+            *(*(cfgList ***)(cfg[num].value) + *section) = NULL;
+            break;
 
-		case CFG_FLOAT:
-			if (*section == 0) {
-				*(float **) (cfg[num].value) = NULL;
-			}
-			if ((ptr = realloc(*(float **) (cfg[num].value), sizeof(float) * (*section + 1))) == NULL) {
-				return (CFG_MEM_ALLOC_FAIL);
-			}
-			*(float **) (cfg[num].value) = ptr;
-			*(*((float **) (cfg[num].value)) + *section) = 0;
-			break;
+        case CFG_FLOAT:
+            if (*section == 0) {
+                *(float **)(cfg[num].value) = NULL;
+            }
+            if ((ptr = realloc (*(float **)(cfg[num].value),
+                                sizeof (float) * (*section + 1))) == NULL) {
+                return (CFG_MEM_ALLOC_FAIL);
+            }
+            *(float **)(cfg[num].value) = ptr;
+            *(*((float **)(cfg[num].value)) + *section) = 0;
+            break;
 
-		case CFG_DOUBLE:
-			if (*section == 0) {
-				*(double **) (cfg[num].value) = NULL;
-			}
-			if ((ptr = realloc(*(double **) (cfg[num].value), sizeof(double) * (*section + 1))) == NULL) {
-				return (CFG_MEM_ALLOC_FAIL);
-			}
-			*(double **) (cfg[num].value) = ptr;
-			*(*((double **) (cfg[num].value)) + *section) = 0;
-			break;
+        case CFG_DOUBLE:
+            if (*section == 0) {
+                *(double **)(cfg[num].value) = NULL;
+            }
+            if ((ptr = realloc (*(double **)(cfg[num].value),
+                                sizeof (double) * (*section + 1))) == NULL) {
+                return (CFG_MEM_ALLOC_FAIL);
+            }
+            *(double **)(cfg[num].value) = ptr;
+            *(*((double **)(cfg[num].value)) + *section) = 0;
+            break;
         case CFG_END:
             g_assert_not_reached ();
-		default:
-			return (CFG_INTERNAL_ERROR);
-		}
-	}
-	return (CFG_NO_ERROR);
+        default:
+            return (CFG_INTERNAL_ERROR);
+        }
+    }
+    return (CFG_NO_ERROR);
 }
-
 
 /* --------------------------------------------------
    NAME       rm_first_spaces
@@ -944,14 +1096,14 @@ static int alloc_for_new_section(cfgStruct cfg[], int *section)
    INPUT      ptr ... pointer to string
    OUTPUT     new poniter after removing
    -------------------------------------------------- */
-static char *rm_first_spaces(char *ptr)
+static char *
+rm_first_spaces (char *ptr)
 {
-	while (*ptr == ' ' || *ptr == '\t') {
-		ptr++;
-	}
-	return (ptr);
+    while (*ptr == ' ' || *ptr == '\t') {
+        ptr++;
+    }
+    return (ptr);
 }
-
 
 /* --------------------------------------------------
    NAME       get_single_line_without_first_spaces
@@ -959,26 +1111,26 @@ static char *rm_first_spaces(char *ptr)
               and tabs from file
    INPUT      fp ....... file pointer
               gotptr ... pointer stored got string
-	      line ..... pointer to line number
+          line ..... pointer to line number
    OUTPUT     new pointer after removing
    -------------------------------------------------- */
-static char *get_single_line_without_first_spaces(FILE *fp, char **gotstr, int *line)
+static char *
+get_single_line_without_first_spaces (FILE *fp, char **gotstr, int *line)
 {
-	char *ptr;
+    char *ptr;
 
-	for (;;) {
-		if ((*gotstr = dynamic_fgets(fp)) == NULL) {
-			return (NULL);
-		}
-		(*line)++;
-		ptr = rm_first_spaces(*gotstr);
-		if (*ptr != '#' && *ptr != '\0') {
-			return (ptr);
-		}
-		free(*gotstr);
-	}
+    for (;;) {
+        if ((*gotstr = dynamic_fgets (fp)) == NULL) {
+            return (NULL);
+        }
+        (*line)++;
+        ptr = rm_first_spaces (*gotstr);
+        if (*ptr != '#' && *ptr != '\0') {
+            return (ptr);
+        }
+        free (*gotstr);
+    }
 }
-
 
 /* --------------------------------------------------
    NAME       dynamic_fgets
@@ -987,39 +1139,39 @@ static char *get_single_line_without_first_spaces(FILE *fp, char **gotstr, int *
    OUTPUT     pointer to got strings
               NULL on error
    -------------------------------------------------- */
-static char *dynamic_fgets(FILE *fp)
+static char *
+dynamic_fgets (FILE *fp)
 {
-	char *ptr;
-	char temp[128];
-	int i;
+    char *ptr;
+    char temp[128];
+    int i;
 
-	ptr = malloc(1);
-	if (ptr == NULL) {
-		cfgFatalFunc(CFG_MEM_ALLOC_FAIL, "unknown", 0, "");
-		return (NULL);
-	}
-	*ptr = '\0';
-	for (i = 0;; i++) {
-		if (fgets(temp, 128, fp) == NULL) {
-			if (ferror(fp) != 0 || i == 0) {
-				free(ptr);
-				return (NULL);
-			}
-			return (ptr);
-		}
-		ptr = realloc(ptr, 127 * (i + 1) + 1);
-		if (ptr == NULL) {
-			cfgFatalFunc(CFG_MEM_ALLOC_FAIL, "unknown", 0, "");
-			return (NULL);
-		}
-		strcat(ptr, temp);
-		if (strchr(temp, '\n') != NULL) {
-			*strchr(ptr, '\n') = '\0';
-			return (ptr);
-		}
-	}
+    ptr = malloc (1);
+    if (ptr == NULL) {
+        cfgFatalFunc (CFG_MEM_ALLOC_FAIL, "unknown", 0, "");
+        return (NULL);
+    }
+    *ptr = '\0';
+    for (i = 0;; i++) {
+        if (fgets (temp, 128, fp) == NULL) {
+            if (ferror (fp) != 0 || i == 0) {
+                free (ptr);
+                return (NULL);
+            }
+            return (ptr);
+        }
+        ptr = realloc (ptr, 127 * (i + 1) + 1);
+        if (ptr == NULL) {
+            cfgFatalFunc (CFG_MEM_ALLOC_FAIL, "unknown", 0, "");
+            return (NULL);
+        }
+        strcat (ptr, temp);
+        if (strchr (temp, '\n') != NULL) {
+            *strchr (ptr, '\n') = '\0';
+            return (ptr);
+        }
+    }
 }
-
 
 /* --------------------------------------------------
    NAME       dump_simple
@@ -1027,58 +1179,83 @@ static char *dynamic_fgets(FILE *fp)
    INPUT
    OUTPUT     0 on success, -1 on error
    -------------------------------------------------- */
-static int dump_simple(FILE *fp, cfgStruct cfg[], cfgFileType type)
+static int
+dump_simple (FILE *fp, cfgStruct cfg[], cfgFileType type)
 {
-	int i;
-	char c[2];
-	cfgList *l;
+    int i;
+    char c[2];
+    cfgList *l;
 
-	for (i = 0; cfg[i].type != CFG_END; i++) {
-		switch (cfg[i].type) {
-		case CFG_BOOL:
-			fprintf(fp, "%s\t= %s\n", cfg[i].parameterName, (*(int *) (cfg[i].value)) ? "True" : "False");
-			break;
-		case CFG_INT:
-			fprintf(fp, "%s\t= %d\n", cfg[i].parameterName, *(int *) (cfg[i].value));
-			break;
-		case CFG_UINT:
-			fprintf(fp, "%s\t= %u\n", cfg[i].parameterName, *(unsigned int *) (cfg[i].value));
-			break;
-		case CFG_LONG:
-			fprintf(fp, "%s\t= %ld\n", cfg[i].parameterName, *(long *) (cfg[i].value));
-			break;
-		case CFG_ULONG:
-			fprintf(fp, "%s\t= %lu\n", cfg[i].parameterName, *(unsigned long *) (cfg[i].value));
-			break;
-		case CFG_STRING:
-			if (*(char **) (cfg[i].value) == NULL) {
-				break;
-			}
-			single_or_double_quote(*(char **) (cfg[i].value), c);
-			fprintf(fp, "%s\t= %s%s%s\n", cfg[i].parameterName, c, *(char **) (cfg[i].value), c);
-			break;
-		case CFG_STRING_LIST:
-			for (l = *(cfgList **) (cfg[i].value); l != NULL; l = l->next) {
-				single_or_double_quote(l->str, c);
-				fprintf(fp, "%s\t= %s%s%s\n", cfg[i].parameterName, c, l->str, c);
-			}
-			break;
-		case CFG_FLOAT:
-			fprintf(fp, "%s\t= %f\n", cfg[i].parameterName, *(float *) (cfg[i].value));
-			break;
-		case CFG_DOUBLE:
-			fprintf(fp, "%s\t= %f\n", cfg[i].parameterName, *(double *) (cfg[i].value));
-			break;
+    for (i = 0; cfg[i].type != CFG_END; i++) {
+        switch (cfg[i].type) {
+        case CFG_BOOL:
+            fprintf (fp,
+                     "%s\t= %s\n",
+                     cfg[i].parameterName,
+                     (*(int *)(cfg[i].value)) ? "True" : "False");
+            break;
+        case CFG_INT:
+            fprintf (
+                fp, "%s\t= %d\n", cfg[i].parameterName, *(int *)(cfg[i].value));
+            break;
+        case CFG_UINT:
+            fprintf (fp,
+                     "%s\t= %u\n",
+                     cfg[i].parameterName,
+                     *(unsigned int *)(cfg[i].value));
+            break;
+        case CFG_LONG:
+            fprintf (fp,
+                     "%s\t= %ld\n",
+                     cfg[i].parameterName,
+                     *(long *)(cfg[i].value));
+            break;
+        case CFG_ULONG:
+            fprintf (fp,
+                     "%s\t= %lu\n",
+                     cfg[i].parameterName,
+                     *(unsigned long *)(cfg[i].value));
+            break;
+        case CFG_STRING:
+            if (*(char **)(cfg[i].value) == NULL) {
+                break;
+            }
+            single_or_double_quote (*(char **)(cfg[i].value), c);
+            fprintf (fp,
+                     "%s\t= %s%s%s\n",
+                     cfg[i].parameterName,
+                     c,
+                     *(char **)(cfg[i].value),
+                     c);
+            break;
+        case CFG_STRING_LIST:
+            for (l = *(cfgList **)(cfg[i].value); l != NULL; l = l->next) {
+                single_or_double_quote (l->str, c);
+                fprintf (
+                    fp, "%s\t= %s%s%s\n", cfg[i].parameterName, c, l->str, c);
+            }
+            break;
+        case CFG_FLOAT:
+            fprintf (fp,
+                     "%s\t= %f\n",
+                     cfg[i].parameterName,
+                     *(float *)(cfg[i].value));
+            break;
+        case CFG_DOUBLE:
+            fprintf (fp,
+                     "%s\t= %f\n",
+                     cfg[i].parameterName,
+                     *(double *)(cfg[i].value));
+            break;
         case CFG_END:
-            g_assert_not_reached();
-		default:
-			cfgFatal(CFG_INTERNAL_ERROR, "?", 0, NULL);
-			return (-1);
-		}
-	}
-	return (0);
+            g_assert_not_reached ();
+        default:
+            cfgFatal (CFG_INTERNAL_ERROR, "?", 0, NULL);
+            return (-1);
+        }
+    }
+    return (0);
 }
-
 
 /* --------------------------------------------------
    NAME       dump_ini
@@ -1086,64 +1263,96 @@ static int dump_simple(FILE *fp, cfgStruct cfg[], cfgFileType type)
    INPUT
    OUTPUT     0 on success, -1 on error
    -------------------------------------------------- */
-static int dump_ini(FILE *fp, cfgStruct cfg[], cfgFileType type, int max)
+static int
+dump_ini (FILE *fp, cfgStruct cfg[], cfgFileType type, int max)
 {
-	int i, j;
-	char c[2];
-	cfgList *l;
+    int i, j;
+    char c[2];
+    cfgList *l;
 
-	for (j = 0; j < max; j++) {
-		single_or_double_quote(cfgSectionNumberToName(j), c);
-		fprintf(fp, "[%s%s%s]\n", c, cfgSectionNumberToName(j), c);
+    for (j = 0; j < max; j++) {
+        single_or_double_quote (cfgSectionNumberToName (j), c);
+        fprintf (fp, "[%s%s%s]\n", c, cfgSectionNumberToName (j), c);
 
-		for (i = 0; cfg[i].type != CFG_END; i++) {
-			switch (cfg[i].type) {
-			case CFG_BOOL:
-				fprintf(fp, "%s\t= %s\n", cfg[i].parameterName, (*(int **) (cfg[i].value))[j] ? "True" : "False");
-				break;
-			case CFG_INT:
-				fprintf(fp, "%s\t= %d\n", cfg[i].parameterName, (*(int **) (cfg[i].value))[j]);
-				break;
-			case CFG_UINT:
-				fprintf(fp, "%s\t= %u\n", cfg[i].parameterName, (*(unsigned int **) (cfg[i].value))[j]);
-				break;
-			case CFG_LONG:
-				fprintf(fp, "%s\t= %ld\n", cfg[i].parameterName, (*(long **) (cfg[i].value))[j]);
-				break;
-			case CFG_ULONG:
-				fprintf(fp, "%s\t= %lu\n", cfg[i].parameterName, (*(unsigned long **) (cfg[i].value))[j]);
-				break;
-			case CFG_STRING:
-				if ((*(char ***) (cfg[i].value))[j] == NULL) {
-					break;
-				}
-				single_or_double_quote((*(char ***) (cfg[i].value))[j], c);
-				fprintf(fp, "%s\t= %s%s%s\n", cfg[i].parameterName, c, (*(char ***) (cfg[i].value))[j], c);
-				break;
-			case CFG_STRING_LIST:
-				for (l = (*(cfgList ***) (cfg[i].value))[j]; l != NULL; l = l->next) {
-					single_or_double_quote(l->str, c);
-					fprintf(fp, "%s\t= %s%s%s\n", cfg[i].parameterName, c, l->str, c);
-				}
-				break;
-			case CFG_FLOAT:
-				fprintf(fp, "%s\t= %f\n", cfg[i].parameterName, (*(float **) (cfg[i].value))[j]);
-				break;
-			case CFG_DOUBLE:
-				fprintf(fp, "%s\t= %f\n", cfg[i].parameterName, (*(double **) (cfg[i].value))[j]);
-				break;
+        for (i = 0; cfg[i].type != CFG_END; i++) {
+            switch (cfg[i].type) {
+            case CFG_BOOL:
+                fprintf (fp,
+                         "%s\t= %s\n",
+                         cfg[i].parameterName,
+                         (*(int **)(cfg[i].value))[j] ? "True" : "False");
+                break;
+            case CFG_INT:
+                fprintf (fp,
+                         "%s\t= %d\n",
+                         cfg[i].parameterName,
+                         (*(int **)(cfg[i].value))[j]);
+                break;
+            case CFG_UINT:
+                fprintf (fp,
+                         "%s\t= %u\n",
+                         cfg[i].parameterName,
+                         (*(unsigned int **)(cfg[i].value))[j]);
+                break;
+            case CFG_LONG:
+                fprintf (fp,
+                         "%s\t= %ld\n",
+                         cfg[i].parameterName,
+                         (*(long **)(cfg[i].value))[j]);
+                break;
+            case CFG_ULONG:
+                fprintf (fp,
+                         "%s\t= %lu\n",
+                         cfg[i].parameterName,
+                         (*(unsigned long **)(cfg[i].value))[j]);
+                break;
+            case CFG_STRING:
+                if ((*(char ***)(cfg[i].value))[j] == NULL) {
+                    break;
+                }
+                single_or_double_quote ((*(char ***)(cfg[i].value))[j], c);
+                fprintf (fp,
+                         "%s\t= %s%s%s\n",
+                         cfg[i].parameterName,
+                         c,
+                         (*(char ***)(cfg[i].value))[j],
+                         c);
+                break;
+            case CFG_STRING_LIST:
+                for (l = (*(cfgList ***)(cfg[i].value))[j]; l != NULL;
+                     l = l->next) {
+                    single_or_double_quote (l->str, c);
+                    fprintf (fp,
+                             "%s\t= %s%s%s\n",
+                             cfg[i].parameterName,
+                             c,
+                             l->str,
+                             c);
+                }
+                break;
+            case CFG_FLOAT:
+                fprintf (fp,
+                         "%s\t= %f\n",
+                         cfg[i].parameterName,
+                         (*(float **)(cfg[i].value))[j]);
+                break;
+            case CFG_DOUBLE:
+                fprintf (fp,
+                         "%s\t= %f\n",
+                         cfg[i].parameterName,
+                         (*(double **)(cfg[i].value))[j]);
+                break;
             case CFG_END:
-                g_assert_not_reached();
-			default:
-				cfgFatal(CFG_INTERNAL_ERROR, "?", 0, NULL);
-				return (-1);
-			}
-		}
-		fprintf(fp, "\n");
-	}
-	return (0);
+                g_assert_not_reached ();
+            default:
+                cfgFatal (CFG_INTERNAL_ERROR, "?", 0, NULL);
+                return (-1);
+            }
+        }
+        fprintf (fp, "\n");
+    }
+    return (0);
 }
-
 
 /* --------------------------------------------------
    NAME       single_or_double_quote
@@ -1151,19 +1360,20 @@ static int dump_ini(FILE *fp, cfgStruct cfg[], cfgFileType type, int max)
    INPUT
    OUTPUT     none
    -------------------------------------------------- */
-static void single_or_double_quote(const char *str, char *ret)
+static void
+single_or_double_quote (const char *str, char *ret)
 {
-	ret[1] = '\0';
+    ret[1] = '\0';
 
-	if (strchr(str, '\"') != NULL) {
-		ret[0] = '\'';
-	} else if (strchr(str, '\'') != NULL || strchr(str, '#') != NULL || strchr(str, '\t') != NULL || strchr(str, ' ') != NULL) {
-		ret[0] = '\"';
-	} else {
-		ret[0] = '\0';
-	}
+    if (strchr (str, '\"') != NULL) {
+        ret[0] = '\'';
+    } else if (strchr (str, '\'') != NULL || strchr (str, '#') != NULL ||
+               strchr (str, '\t') != NULL || strchr (str, ' ') != NULL) {
+        ret[0] = '\"';
+    } else {
+        ret[0] = '\0';
+    }
 }
-
 
 /* --------------------------------------------------
    NAME       fetch_simple
@@ -1171,89 +1381,108 @@ static void single_or_double_quote(const char *str, char *ret)
    INPUT
    OUTPUT     0 on success, -1 on error
    -------------------------------------------------- */
-static int fetch_simple(const char *file, FILE *fp, char *parameter_name, void *result_value, cfgValueType value_type)
+static int
+fetch_simple (const char *file,
+              FILE *fp,
+              char *parameter_name,
+              void *result_value,
+              cfgValueType value_type)
 {
-	int store_flag = -1;
-	int error_code;
-	int line;
-	char *line_buf;
-	char *ptr;
-	char *read_parameter;
-	char *read_value;
-	cfgStruct fetch_cfg[] = {
-		{parameter_name, value_type, result_value},
-		{NULL, CFG_END, NULL}
-	};
+    int store_flag = -1;
+    int error_code;
+    int line;
+    char *line_buf;
+    char *ptr;
+    char *read_parameter;
+    char *read_value;
+    cfgStruct fetch_cfg[] = {{parameter_name, value_type, result_value},
+                             {NULL, CFG_END, NULL}};
 
-	while ((ptr = get_single_line_without_first_spaces(fp, &line_buf, &line)) != NULL) {	/* malloc line_buf */
-		if ((ptr = parse_word(ptr, &read_parameter, CFG_PARAMETER)) == NULL) {	/* malloc read_parameter */
-			cfgFatal(CFG_SYNTAX_ERROR, file, line, line_buf);
-			free(line_buf);
-            free(read_parameter);
-			return (-1);
-		}
-		if (strcasecmp(read_parameter, parameter_name) == 0) {
-			if (*ptr == '{') {
-				ptr = rm_first_spaces(ptr + 1);
-				if (*ptr != '\0' && *ptr != '#') {
-					cfgFatal(CFG_SYNTAX_ERROR, file, line, line_buf);
-					free(line_buf);
-					free(read_parameter);
-					return (-1);
-				}
-				if (parse_values_between_braces(file, fp, parameter_name, fetch_cfg, &line, CFG_SIMPLE, 0, line_buf, line) != CFG_NO_ERROR) {
-					free(line_buf);
-					free(read_parameter);
-					return (-1);
-				}
-			} else {
-				if ((ptr = parse_word(ptr, &read_value, CFG_VALUE)) == NULL) {	/* malloc read_value */
-					cfgFatal(CFG_SYNTAX_ERROR, file, line, line_buf);
-					free(line_buf);
-					free(read_parameter);
-					return (-1);
-				}
-				if ((error_code = store_value(fetch_cfg, parameter_name, read_value, CFG_SIMPLE, 0)) != CFG_NO_ERROR) {
-					cfgFatal(error_code, file, line, line_buf);
-					free(read_value);
-					free(line_buf);
-					free(read_parameter);
-					return (-1);
-				}
-				free(read_value);	/* free */
-			}
-			store_flag = 0;
-			free(line_buf);
-		} else {
-			if (*ptr == '{') {
-				ptr = rm_first_spaces(ptr + 1);
-				if (*ptr != '\0' && *ptr != '#') {
-					cfgFatal(CFG_SYNTAX_ERROR, file, line, line_buf);
-					free(line_buf);
-					free(read_parameter);
-					return (-1);
-				}
-				free(line_buf);
-				while ((ptr = get_single_line_without_first_spaces(fp, &line_buf, &line)) != NULL) {	/* malloc line_buf */
-					if (*ptr == '}') {
-						ptr = rm_first_spaces(ptr + 1);
-						if (*ptr != '\0' && *ptr != '#') {
-							cfgFatal(CFG_SYNTAX_ERROR, file, line, line_buf);
-							free(line_buf);
-							free(read_parameter);
-							return (-1);
-						}
-						break;
-					}
-					free(line_buf);
-				}
-			}
-		}
-		free(read_parameter);
-	}
-	return (store_flag);
+    while ((ptr = get_single_line_without_first_spaces (
+                fp, &line_buf, &line)) != NULL) { /* malloc line_buf */
+        if ((ptr = parse_word (ptr, &read_parameter, CFG_PARAMETER)) ==
+            NULL) { /* malloc read_parameter */
+            cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
+            free (line_buf);
+            free (read_parameter);
+            return (-1);
+        }
+        if (strcasecmp (read_parameter, parameter_name) == 0) {
+            if (*ptr == '{') {
+                ptr = rm_first_spaces (ptr + 1);
+                if (*ptr != '\0' && *ptr != '#') {
+                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
+                    free (line_buf);
+                    free (read_parameter);
+                    return (-1);
+                }
+                if (parse_values_between_braces (file,
+                                                 fp,
+                                                 parameter_name,
+                                                 fetch_cfg,
+                                                 &line,
+                                                 CFG_SIMPLE,
+                                                 0,
+                                                 line_buf,
+                                                 line) != CFG_NO_ERROR) {
+                    free (line_buf);
+                    free (read_parameter);
+                    return (-1);
+                }
+            } else {
+                if ((ptr = parse_word (ptr, &read_value, CFG_VALUE)) ==
+                    NULL) { /* malloc read_value */
+                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
+                    free (line_buf);
+                    free (read_parameter);
+                    return (-1);
+                }
+                if ((error_code = store_value (fetch_cfg,
+                                               parameter_name,
+                                               read_value,
+                                               CFG_SIMPLE,
+                                               0)) != CFG_NO_ERROR) {
+                    cfgFatal (error_code, file, line, line_buf);
+                    free (read_value);
+                    free (line_buf);
+                    free (read_parameter);
+                    return (-1);
+                }
+                free (read_value); /* free */
+            }
+            store_flag = 0;
+            free (line_buf);
+        } else {
+            if (*ptr == '{') {
+                ptr = rm_first_spaces (ptr + 1);
+                if (*ptr != '\0' && *ptr != '#') {
+                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
+                    free (line_buf);
+                    free (read_parameter);
+                    return (-1);
+                }
+                free (line_buf);
+                while ((ptr = get_single_line_without_first_spaces (
+                            fp, &line_buf, &line)) !=
+                       NULL) { /* malloc line_buf */
+                    if (*ptr == '}') {
+                        ptr = rm_first_spaces (ptr + 1);
+                        if (*ptr != '\0' && *ptr != '#') {
+                            cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
+                            free (line_buf);
+                            free (read_parameter);
+                            return (-1);
+                        }
+                        break;
+                    }
+                    free (line_buf);
+                }
+            }
+        }
+        free (read_parameter);
+    }
+    return (store_flag);
 }
-
 
 /* --------------------------------------------------
    NAME       fetch_ini
@@ -1261,119 +1490,143 @@ static int fetch_simple(const char *file, FILE *fp, char *parameter_name, void *
    INPUT
    OUTPUT     0 on success, -1 on error
    -------------------------------------------------- */
-static int fetch_ini(const char *file, FILE *fp, char *parameter_name, void *result_value, cfgValueType value_type, int section_num, const char *section_name)
+static int
+fetch_ini (const char *file,
+           FILE *fp,
+           char *parameter_name,
+           void *result_value,
+           cfgValueType value_type,
+           int section_num,
+           const char *section_name)
 {
-	int store_flag = -1;
-	int section_flag = -1;
-	int error_code;
-	int line;
-	char *line_buf;
-	char *ptr;
-	char *read_parameter;
-	char *read_value;
-	char *read_section_name;
-	int current_section_number = 0;
+    int store_flag = -1;
+    int section_flag = -1;
+    int error_code;
+    int line;
+    char *line_buf;
+    char *ptr;
+    char *read_parameter;
+    char *read_value;
+    char *read_section_name;
+    int current_section_number = 0;
 
-	cfgStruct fetch_cfg[] = {
-		{parameter_name, value_type, result_value},
-		{NULL, CFG_END, NULL}
-	};
+    cfgStruct fetch_cfg[] = {{parameter_name, value_type, result_value},
+                             {NULL, CFG_END, NULL}};
 
-	while ((ptr = get_single_line_without_first_spaces(fp, &line_buf, &line)) != NULL) {	/* malloc line_buf */
-		if (*ptr == '[') {
-			if (section_flag == 0) {
-				free(line_buf);
-				return (store_flag);
-			}
-			ptr = rm_first_spaces(ptr + 1);
-			if ((ptr = parse_word(ptr, &read_section_name, CFG_SECTION)) == NULL) {	/* malloc read_section_name */
-				free(line_buf);
-				return (CFG_SYNTAX_ERROR);
-			}
-			ptr = rm_first_spaces(ptr + 1);
-			if (*ptr != '\0' && *ptr != '#') {
-				free(line_buf);
-				free(read_section_name);
-				return (CFG_SYNTAX_ERROR);
-			}
-			current_section_number++;
-			if ((section_num > 0 && current_section_number == section_num) || (section_num <= 0 && strcasecmp(read_section_name, section_name) == 0)) {
-				section_flag = 0;
-				free(line_buf);
-				free(read_section_name);
-				continue;
-			}
-			free(read_section_name);
-		}
-		if (section_flag == -1) {
-			free(line_buf);
-			continue;
-		}
+    while ((ptr = get_single_line_without_first_spaces (
+                fp, &line_buf, &line)) != NULL) { /* malloc line_buf */
+        if (*ptr == '[') {
+            if (section_flag == 0) {
+                free (line_buf);
+                return (store_flag);
+            }
+            ptr = rm_first_spaces (ptr + 1);
+            if ((ptr = parse_word (ptr, &read_section_name, CFG_SECTION)) ==
+                NULL) { /* malloc read_section_name */
+                free (line_buf);
+                return (CFG_SYNTAX_ERROR);
+            }
+            ptr = rm_first_spaces (ptr + 1);
+            if (*ptr != '\0' && *ptr != '#') {
+                free (line_buf);
+                free (read_section_name);
+                return (CFG_SYNTAX_ERROR);
+            }
+            current_section_number++;
+            if ((section_num > 0 && current_section_number == section_num) ||
+                (section_num <= 0 &&
+                 strcasecmp (read_section_name, section_name) == 0)) {
+                section_flag = 0;
+                free (line_buf);
+                free (read_section_name);
+                continue;
+            }
+            free (read_section_name);
+        }
+        if (section_flag == -1) {
+            free (line_buf);
+            continue;
+        }
 
-		if ((ptr = parse_word(ptr, &read_parameter, CFG_PARAMETER)) == NULL) {	/* malloc read_parameter */
-			cfgFatal(CFG_SYNTAX_ERROR, file, line, line_buf);
-			free(line_buf);
-			return (-1);
-		}
-		if (strcasecmp(read_parameter, parameter_name) == 0) {
-			if (*ptr == '{') {
-				ptr = rm_first_spaces(ptr + 1);
-				if (*ptr != '\0' && *ptr != '#') {
-					cfgFatal(CFG_SYNTAX_ERROR, file, line, line_buf);
-					free(line_buf);
-					free(read_parameter);
-					return (-1);
-				}
-				if (parse_values_between_braces(file, fp, parameter_name, fetch_cfg, &line, CFG_SIMPLE, 0, line_buf, line) != CFG_NO_ERROR) {
-					free(line_buf);
-					free(read_parameter);
-					return (-1);
-				}
-			} else {
-				if ((ptr = parse_word(ptr, &read_value, CFG_VALUE)) == NULL) {	/* malloc read_value */
-					cfgFatal(CFG_SYNTAX_ERROR, file, line, line_buf);
-					free(line_buf);
-					free(read_parameter);
-					return (-1);
-				}
-				if ((error_code = store_value(fetch_cfg, parameter_name, read_value, CFG_SIMPLE, 0)) != CFG_NO_ERROR) {
-					cfgFatal(error_code, file, line, line_buf);
-					free(line_buf);
-					free(read_parameter);
-					free(read_value);
-					return (-1);
-				}
-				free(read_value);
-			}
-			store_flag = 0;
-			free(line_buf);
-		} else {
-			if (*ptr == '{') {
-				ptr = rm_first_spaces(ptr + 1);
-				if (*ptr != '\0' && *ptr != '#') {
-					cfgFatal(CFG_SYNTAX_ERROR, file, line, line_buf);
-					free(line_buf);
-					free(read_parameter);
-					return (-1);
-				}
-				free(line_buf);
-				while ((ptr = get_single_line_without_first_spaces(fp, &line_buf, &line)) != NULL) {
-					if (*ptr == '}') {
-						ptr = rm_first_spaces(ptr + 1);
-						if (*ptr != '\0' && *ptr != '#') {
-							cfgFatal(CFG_SYNTAX_ERROR, file, line, line_buf);
-							free(line_buf);
-							free(read_parameter);
-							return (-1);
-						}
-						free(line_buf);
-						break;
-					}
-					free(line_buf);
-				}
-			}
-		}
-		free(read_parameter);
-	}
-	return (store_flag);
+        if ((ptr = parse_word (ptr, &read_parameter, CFG_PARAMETER)) ==
+            NULL) { /* malloc read_parameter */
+            cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
+            free (line_buf);
+            return (-1);
+        }
+        if (strcasecmp (read_parameter, parameter_name) == 0) {
+            if (*ptr == '{') {
+                ptr = rm_first_spaces (ptr + 1);
+                if (*ptr != '\0' && *ptr != '#') {
+                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
+                    free (line_buf);
+                    free (read_parameter);
+                    return (-1);
+                }
+                if (parse_values_between_braces (file,
+                                                 fp,
+                                                 parameter_name,
+                                                 fetch_cfg,
+                                                 &line,
+                                                 CFG_SIMPLE,
+                                                 0,
+                                                 line_buf,
+                                                 line) != CFG_NO_ERROR) {
+                    free (line_buf);
+                    free (read_parameter);
+                    return (-1);
+                }
+            } else {
+                if ((ptr = parse_word (ptr, &read_value, CFG_VALUE)) ==
+                    NULL) { /* malloc read_value */
+                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
+                    free (line_buf);
+                    free (read_parameter);
+                    return (-1);
+                }
+                if ((error_code = store_value (fetch_cfg,
+                                               parameter_name,
+                                               read_value,
+                                               CFG_SIMPLE,
+                                               0)) != CFG_NO_ERROR) {
+                    cfgFatal (error_code, file, line, line_buf);
+                    free (line_buf);
+                    free (read_parameter);
+                    free (read_value);
+                    return (-1);
+                }
+                free (read_value);
+            }
+            store_flag = 0;
+            free (line_buf);
+        } else {
+            if (*ptr == '{') {
+                ptr = rm_first_spaces (ptr + 1);
+                if (*ptr != '\0' && *ptr != '#') {
+                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
+                    free (line_buf);
+                    free (read_parameter);
+                    return (-1);
+                }
+                free (line_buf);
+                while ((ptr = get_single_line_without_first_spaces (
+                            fp, &line_buf, &line)) != NULL) {
+                    if (*ptr == '}') {
+                        ptr = rm_first_spaces (ptr + 1);
+                        if (*ptr != '\0' && *ptr != '#') {
+                            cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
+                            free (line_buf);
+                            free (read_parameter);
+                            return (-1);
+                        }
+                        free (line_buf);
+                        break;
+                    }
+                    free (line_buf);
+                }
+            }
+        }
+        free (read_parameter);
+    }
+    return (store_flag);
 }

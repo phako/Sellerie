@@ -29,14 +29,14 @@ G_DECLARE_FINAL_TYPE (GtBuffer, gt_buffer, GT, BUFFER, GObject)
 
 typedef struct _GtBuffer GtBuffer;
 
-typedef void (*GtBufferFunc) (char *, unsigned int);
+typedef void (*GtBufferFunc) (char *, unsigned int, gpointer);
 
 GtBuffer *gt_buffer_new (void);
 void gt_buffer_put_chars (GtBuffer *, char *, unsigned int, gboolean);
 void gt_buffer_clear (GtBuffer *);
 void gt_buffer_write (GtBuffer *);
-void gt_buffer_write_with_func (GtBuffer *, GtBufferFunc);
-void gt_buffer_set_display_func (GtBuffer *, GtBufferFunc);
+void gt_buffer_write_with_func (GtBuffer *, GtBufferFunc, gpointer);
+void gt_buffer_set_display_func (GtBuffer *, GtBufferFunc, gpointer);
 void gt_buffer_unset_display_func (GtBuffer *);
 
 G_END_DECLS

@@ -27,8 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <glib/gi18n.h>
 #include <glib.h>
+#include <glib/gi18n.h>
 
 #define BUFFER_SIZE (128 * 1024)
 
@@ -39,6 +39,7 @@ typedef struct {
     char *current_buffer;
     gboolean overlapped;
     GtBufferFunc write_func;
+    gpointer user_data;
 } GtBufferPrivate;
 
 struct _GtBuffer {
@@ -100,43 +101,32 @@ gt_buffer_put_chars (GtBuffer *self,
     char *characters = NULL;
 
     g_return_if_fail (self != NULL);
- 
-    /* If the auto CR LF mode on, read the buffer to add \r before \n */ 
-    if (crlf_auto)
-    {
+
+    /* If the auto CR LF mode on, read the buffer to add \r before \n */
+    if (crlf_auto) {
         /* BUFFER_RECEPTION*2 for worst case scenario, all \n or \r chars */
-        char out_buffer[BUFFER_RECEPTION*2];
+        char out_buffer[BUFFER_RECEPTION * 2];
         unsigned int i, out_size = 0;
 
-        for (i = 0; i < size; i++)
-        {
-            if (chars[i] == '\r')
-            {
+        for (i = 0; i < size; i++) {
+            if (chars[i] == '\r') {
                 /* If the previous character was a CR too, insert a newline */
-                if (priv->cr_received)
-                {
+                if (priv->cr_received) {
                     out_buffer[out_size] = '\n';
                     out_size++;
                 }
                 priv->cr_received = TRUE;
-            }
-            else
-            {
-                if (chars[i] == '\n')
-                {
+            } else {
+                if (chars[i] == '\n') {
                     /* If we get a newline without a CR first, insert a CR */
-                    if (!priv->cr_received)
-                    {
+                    if (!priv->cr_received) {
                         out_buffer[out_size] = '\r';
                         out_size++;
                     }
-                }
-                else
-                {
+                } else {
                     /* If we receive a normal char, and the previous one was a
                        CR insert a newline */
-                    if (priv->cr_received)
-                    {
+                    if (priv->cr_received) {
                         out_buffer[out_size] = '\n';
                         out_size++;
                     }
@@ -151,34 +141,28 @@ gt_buffer_put_chars (GtBuffer *self,
         size = out_size;
     }
 
-    if (size > BUFFER_SIZE)
-    {
+    if (size > BUFFER_SIZE) {
         characters = chars + (size - BUFFER_SIZE);
         size = BUFFER_SIZE;
-    }
-    else
-    {
+    } else {
         characters = chars;
     }
 
-    if ((size + priv->pointer) >= BUFFER_SIZE)
-    {
+    if ((size + priv->pointer) >= BUFFER_SIZE) {
         memcpy (priv->current_buffer, characters, BUFFER_SIZE - priv->pointer);
         chars = characters + BUFFER_SIZE - priv->pointer;
         priv->pointer = size - (BUFFER_SIZE - priv->pointer);
         memcpy (priv->buffer, chars, priv->pointer);
         priv->current_buffer = priv->buffer + priv->pointer;
         priv->overlapped = TRUE;
-    }
-    else
-    {
+    } else {
         memcpy (priv->current_buffer, characters, size);
         priv->pointer += size;
         priv->current_buffer += size;
     }
 
     if (priv->write_func != NULL)
-        priv->write_func (characters, size);
+        priv->write_func (characters, size, priv->user_data);
 }
 
 void
@@ -198,37 +182,44 @@ gt_buffer_write (GtBuffer *self)
 {
     GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
 
-    if (priv->write_func == NULL)
-    {
+    if (priv->write_func == NULL) {
         return;
     }
 
     /* Write the second half of the ringbuffer first (contains start of data) */
-    if (priv->overlapped)
-    {
-        priv->write_func (priv->current_buffer, BUFFER_SIZE - priv->pointer);
+    if (priv->overlapped) {
+        priv->write_func (
+            priv->current_buffer, BUFFER_SIZE - priv->pointer, priv->user_data);
     }
-    priv->write_func (priv->buffer, priv->pointer);
+    priv->write_func (priv->buffer, priv->pointer, priv->user_data);
 }
 
 void
-gt_buffer_write_with_func (GtBuffer *self, GtBufferFunc write_func)
+gt_buffer_write_with_func (GtBuffer *self,
+                           GtBufferFunc write_func,
+                           gpointer user_data)
 {
     GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
-    GtBufferFunc old_write_func;
+    GtBufferFunc old_write_func = priv->write_func;
+    gpointer old_user_data = priv->user_data;
 
-    old_write_func = priv->write_func;
     priv->write_func = write_func;
+    priv->user_data = user_data;
     gt_buffer_write (self);
+
     priv->write_func = old_write_func;
+    priv->user_data = old_user_data;
 }
 
 void
-gt_buffer_set_display_func (GtBuffer *self, GtBufferFunc write_func)
+gt_buffer_set_display_func (GtBuffer *self,
+                            GtBufferFunc write_func,
+                            gpointer user_data)
 {
     GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
 
     priv->write_func = write_func;
+    priv->user_data = user_data;
 }
 
 void
@@ -238,4 +229,3 @@ gt_buffer_unset_display_func (GtBuffer *self)
 
     priv->write_func = NULL;
 }
-

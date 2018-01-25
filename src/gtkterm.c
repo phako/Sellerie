@@ -19,113 +19,119 @@
 #include <config.h>
 #endif
 
-#include "widgets.h"
-#include "serial-port.h"
-#include "term_config.h"
-#include "cmdline.h"
-#include "parsecfg.h"
 #include "buffer.h"
-#include "macros.h"
+#include "cmdline.h"
 #include "fichier.h"
 #include "logging.h"
+#include "macros.h"
+#include "main-window.h"
+#include "parsecfg.h"
+#include "serial-port.h"
+#include "term_config.h"
 
 #include <stdlib.h>
 
-#include <gtk/gtk.h>
 #include <gdk/gdk.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
 
-GtSerialPort *serial_port;
 extern struct configuration_port config;
-GtBuffer *buffer;
 
 extern char *default_file;
 extern char *config_port;
+GtSerialPort *serial_port;
+GtBuffer *buffer;
+GtLogging *logger;
+GtkWidget *Fenetre;
+GtkWidget *display;
 
 static int
 on_gtk_application_local_options (GApplication *app,
                                   GVariantDict *options,
-                                  gpointer      user_data)
+                                  gpointer user_data)
 {
     if (default_file != NULL) {
         gt_file_set_default (default_file);
     }
 
-    if (config_port != NULL)
-    {
+    if (config_port != NULL) {
         strncpy (config.port, config_port, sizeof (config.port));
     }
-    Verify_configuration();
+    Verify_configuration ();
 
     return -1;
 }
 
 static void
-on_gtk_application_startup (GApplication *app,
-                            gpointer      user_data)
+on_gtk_application_startup (GApplication *app, gpointer user_data)
 {
-    GtkBuilder *builder = gtk_builder_new_from_resource ("/org/jensge/Sellerie/main-window.ui");
-  GMenuModel *menu_model = G_MENU_MODEL (gtk_builder_get_object (builder, "window-menu"));
+    GtkBuilder *builder =
+        gtk_builder_new_from_resource ("/org/jensge/Sellerie/main-menu.ui");
+    GMenuModel *menu_model =
+        G_MENU_MODEL (gtk_builder_get_object (builder, "window-menu"));
 
-  gtk_application_set_menubar (GTK_APPLICATION (app), menu_model);
+    gtk_application_set_menubar (GTK_APPLICATION (app), menu_model);
 
-  g_object_unref (builder);
+    g_object_unref (builder);
 }
 
 static void
-on_gtk_application_activate (GApplication *app,
-                             gpointer      user_data)
+on_gtk_application_activate (GApplication *app, gpointer user_data)
 {
-    g_debug ("activate");
-    create_main_window(GTK_APPLICATION (app));
-    update_vte_config();
+    GtkWidget *main_window = gt_main_window_new ();
+    gtk_widget_show_all (main_window);
 
-    gt_serial_port_config (serial_port, &config);
+    Fenetre = main_window;
 
-    add_shortcuts();
+    gtk_window_set_application (GTK_WINDOW (main_window),
+                                GTK_APPLICATION (app));
+    gtk_application_add_window (GTK_APPLICATION (app),
+                                GTK_WINDOW (main_window));
 
-    set_view(ASCII_VIEW);
+    update_vte_config ();
+
+    buffer = GT_MAIN_WINDOW (main_window)->buffer;
+    serial_port = GT_MAIN_WINDOW (main_window)->serial_port;
+    logger = GT_MAIN_WINDOW (main_window)->logger;
+    display = GT_MAIN_WINDOW (Fenetre)->display;
+
+    gt_serial_port_config (GT_MAIN_WINDOW (main_window)->serial_port, &config);
+
+    add_shortcuts ();
 }
 
-GtLogging *logger;
-
-int main(int argc, char *argv[])
+int
+main (int argc, char *argv[])
 {
-  char *config_file;
-  GtkApplication *app = NULL;
-  int status;
+    char *config_file;
+    GtkApplication *app = NULL;
+    int status;
 
-    logger = gt_logging_new();
+    config_file = g_strdup_printf ("%s/.gtktermrc", getenv ("HOME"));
+    gt_config_set_file_path (config_file);
+    g_free (config_file);
 
-  buffer = gt_buffer_new ();
-  serial_port = gt_serial_port_new ();
-  gt_serial_port_set_buffer (serial_port, buffer);
-  g_object_unref (G_OBJECT (buffer));
+    bindtextdomain (PACKAGE, LOCALEDIR);
+    bind_textdomain_codeset (PACKAGE, "UTF-8");
+    textdomain (PACKAGE);
 
-  config_file = g_strdup_printf("%s/.gtktermrc", getenv("HOME"));
-  gt_config_set_file_path (config_file);
-  g_free (config_file);
+    gtk_init (&argc, &argv);
+    Check_configuration_file ();
 
-  bindtextdomain(PACKAGE, LOCALEDIR);
-  bind_textdomain_codeset(PACKAGE, "UTF-8");
-  textdomain(PACKAGE);
+    app = gtk_application_new ("org.jensge.Sellerie", G_APPLICATION_NON_UNIQUE);
+    add_option_group (G_APPLICATION (app));
 
-  gtk_init(&argc, &argv);
-  Check_configuration_file();
+    g_signal_connect (
+        app, "activate", G_CALLBACK (on_gtk_application_activate), NULL);
+    g_signal_connect (
+        app, "startup", G_CALLBACK (on_gtk_application_startup), NULL);
+    g_signal_connect (app,
+                      "handle-local-options",
+                      G_CALLBACK (on_gtk_application_local_options),
+                      NULL);
 
-  app = gtk_application_new ("org.jensge.Sellerie",
-                             G_APPLICATION_NON_UNIQUE);
-  add_option_group (G_APPLICATION (app));
+    status = g_application_run (G_APPLICATION (app), argc, argv);
+    g_object_unref (app);
 
-  g_signal_connect (app, "activate", G_CALLBACK (on_gtk_application_activate), NULL);
-  g_signal_connect (app, "startup", G_CALLBACK (on_gtk_application_startup), NULL);
-  g_signal_connect (app, "handle-local-options", G_CALLBACK (on_gtk_application_local_options), NULL);
-
-  status = g_application_run (G_APPLICATION (app), argc, argv);
-  g_object_unref (app);
-
-  gt_serial_port_close_and_unlock (serial_port);
-  g_object_unref (serial_port);
-
-  return status;
+    return status;
 }

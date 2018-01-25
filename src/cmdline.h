@@ -15,5 +15,9 @@
  *   along with Sellerie.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
+#include <gio/gio.h>
+
 int read_command_line(int argc, char **argv);
 void add_option_group (GApplication *app);

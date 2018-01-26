@@ -620,7 +620,7 @@ void help_about_callback(GtkAction *action, gpointer data)
                         "authors", authors,
                         "website", "https://github.com/phako/gtkterm",
                         "website-label", "https://github.com/phako/gtkterm",
-                        "license-type", GTK_LICENSE_LGPL_3_0,
+                        "license-type", GTK_LICENSE_GPL_3_0,
                         "logo", logo,
                         NULL);
   g_object_unref (logo);

@@ -642,7 +642,7 @@ gboolean gt_serial_port_lock (GtSerialPort *self, char *port, GError **error)
         if (res < 0)
             i18n_fprintf(stderr, "Fail");
 
-        snprintf(buf, sizeof(buf), "%10ld gtkterm %.20s\n", (long)getpid(), username);
+        snprintf(buf, sizeof(buf), "%10ld sellerie %.20s\n", (long)getpid(), username);
         res = write(fd, buf, strlen(buf));
         if (res < 0)
             i18n_fprintf(stderr, "Fail");

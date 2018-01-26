@@ -1,18 +1,18 @@
 /*
- *   This file is part of GtkTerm.
+ *   This file is part of Sellerie.
  *
- *   GtkTerm is free software: you can redistribute it and/or modify
+ *   Sellerie is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   GtkTerm is distributed in the hope that it will be useful,
+ *   Sellerie is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with GtkTerm.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Sellerie.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -64,7 +64,7 @@ static void
 on_gtk_application_startup (GApplication *app,
                             gpointer      user_data)
 {
-    GtkBuilder *builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/main-window.ui");
+    GtkBuilder *builder = gtk_builder_new_from_resource ("/org/jensge/Sellerie/main-window.ui");
   GMenuModel *menu_model = G_MENU_MODEL (gtk_builder_get_object (builder, "window-menu"));
 
   gtk_application_set_menubar (GTK_APPLICATION (app), menu_model);
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
   gtk_init(&argc, &argv);
   Check_configuration_file();
 
-  app = gtk_application_new ("org.jensge.GtkTerm",
+  app = gtk_application_new ("org.jensge.Sellerie",
                              G_APPLICATION_NON_UNIQUE);
   add_option_group (G_APPLICATION (app));
 

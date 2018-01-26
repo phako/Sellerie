@@ -1,18 +1,18 @@
 /*
- *   This file is part of GtkTerm.
+ *   This file is part of Sellerie.
  *
- *   GtkTerm is free software: you can redistribute it and/or modify
+ *   Sellerie is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   GtkTerm is distributed in the hope that it will be useful,
+ *   Sellerie is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with GtkTerm.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Sellerie.  If not, see <http://www.gnu.org/licenses/>.
  */
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -376,7 +376,7 @@ void create_main_window(GtkApplication *app)
                                    G_N_ELEMENTS (menu_actions),
                                    NULL);
 
-  builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/main-window.ui");
+  builder = gtk_builder_new_from_resource ("/org/jensge/Sellerie/main-window.ui");
 
   Fenetre = GTK_WIDGET (gtk_builder_get_object (builder, "window-main"));
 
@@ -404,7 +404,7 @@ void create_main_window(GtkApplication *app)
   gtk_window_add_accel_group(GTK_WINDOW(Fenetre), GTK_ACCEL_GROUP(shortcuts));
 
   
-  Set_window_title("GtkTerm");
+  Set_window_title("Sellerie");
 
   main_vbox = GTK_WIDGET (gtk_builder_get_object (builder, "box-main"));
 
@@ -609,13 +609,13 @@ void help_about_callback(GtkAction *action, gpointer data)
   const gchar *authors[] = {"Julien Schimtt", "Zach Davis", "Jens Georg", NULL};
   GdkPixbuf *logo = NULL;
 
-  logo = gdk_pixbuf_new_from_resource_at_scale ("/org/jensge/GtkTerm/org.jensge.GtkTerm.svg",
+  logo = gdk_pixbuf_new_from_resource_at_scale ("/org/jensge/Sellerie/org.jensge.Sellerie.svg",
                                                 128, 128, TRUE, NULL);
 
   gtk_show_about_dialog(GTK_WINDOW(Fenetre),
-                        "program-name", "GTKTerm-lzr",
+                        "program-name", "Sellerie",
                         "version", VERSION,
-                        "comments", _("GTKTerm-lzr is a simple GTK+ terminal used to communicate with the serial port."),
+                        "comments", _("Sellerie is a simple GTK+ terminal used to communicate with the serial port."),
                         "copyright", "Copyright © Julien Schmitt",
                         "authors", authors,
                         "website", "https://github.com/phako/gtkterm",
@@ -706,7 +706,7 @@ void gt_main_window_remove_info_bar (GtkWidget *widget)
 
 void Set_window_title(const gchar *msg)
 {
-    gchar* header = g_strdup_printf("GtkTerm - %s", msg);
+    gchar* header = g_strdup_printf("Sellerie - %s", msg);
     gtk_window_set_title(GTK_WINDOW(Fenetre), header);
     g_free(header);
 }

@@ -1,4 +1,4 @@
-project('GtkTerm', 'c', version: '1.0.0', default_options : ['c_std=gnu11'])
+project('Sellerie', 'c', version: '1.0.0', default_options : ['c_std=gnu11'])
 
 i18n = import('i18n')
 gnome = import('gnome')
@@ -33,7 +33,7 @@ endif
 
 configure_file(output : 'config.h', configuration : conf)
 config = declare_dependency(include_directories : include_directories('.'))
-install_man('gtkterm.1')
+install_man('sellerie.1')
 
 subdir('data')
 subdir('src')

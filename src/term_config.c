@@ -1,18 +1,18 @@
 /*
- *   This file is part of GtkTerm.
+ *   This file is part of Sellerie.
  *
- *   GtkTerm is free software: you can redistribute it and/or modify
+ *   Sellerie is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   GtkTerm is distributed in the hope that it will be useful,
+ *   Sellerie is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with GtkTerm.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Sellerie.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -161,7 +161,7 @@ void Config_Port_Fenetre(GtkWindow *parent)
                     "Enter a different device path in the 'Port' box.\n"), MSG_WRN);
     }
 
-    builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/settings-port.ui");
+    builder = gtk_builder_new_from_resource ("/org/jensge/Sellerie/settings-port.ui");
     dialog = GTK_DIALOG (gtk_builder_get_object (builder, "dialog-settings-port"));
     gtk_window_set_transient_for (GTK_WINDOW (dialog), parent);
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-device"));
@@ -1158,7 +1158,7 @@ void Config_Terminal(GtkAction *action, gpointer data)
 
     GtkBuilder *builder;
 
-    builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/settings-window.ui");
+    builder = gtk_builder_new_from_resource ("/org/jensge/Sellerie/settings-window.ui");
 
     dialog = GTK_WIDGET (gtk_builder_get_object (builder, "dialog-settings-window"));
 

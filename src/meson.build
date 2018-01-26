@@ -24,6 +24,6 @@ sources = [
 ]
 
 all_deps = [gtk_deps, vte_deps, udev_deps, config]
-gtkterm = executable('gtkterm', sources,
-                     install : true,
-                     dependencies : all_deps)
+sellerie = executable('sellerie', sources,
+                      install : true,
+                      dependencies : all_deps)

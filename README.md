@@ -1,5 +1,6 @@
-# GTKTerm: A GTK+ serial port terminal
+# Sellerie: A GTK+ serial port terminal
 
+ * Based on GTKTerm
  * Original code &copy; Julien Schmitt <http://www.jls-info.com/julien/linux>
  * Improvements by Zach Davis <https://fedorahosted.org/gtkterm/>
 
@@ -34,10 +35,10 @@
     --echo or -e : switch on local echo
 
 ## Keyboard shortcuts
-As Gtkterm is often used like a terminal emulator,
+As Sellerie is often used like a terminal emulator,
 the shortcut keys are assigned to `<ctrl><shift>`, rather than just
 `<ctrl>`.  This allows the user to send keystrokes of the form `<ctrl>X`
-and not have Gtkterm intercept them.
+and not have Sellerie intercept them.
 
  * `<ctrl><shift>L` -- Clear screen
  * `<ctrl><shift>R` -- Send file
@@ -56,7 +57,7 @@ limitation to user space programs.
 
 
 ## Building:
-GtkTerm has a few dependencies:
+Sellerie has a few dependencies:
 
   * Gtk+3 (version 3.14 or higher)
   * vte 2.91 (version 0.44 or higher)
@@ -70,7 +71,7 @@ And to install:
 
     ninja -C build install
 
-If you wish to install Gtkterm someplace other than the default directory, use:
+If you wish to install Sellerie someplace other than the default directory, use:
 
     meson build -Dprefix=/install/directory
     

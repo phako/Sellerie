@@ -4,11 +4,11 @@
          xmlns:gnome="http://api.gnome.org/doap-extensions#"
          xmlns="http://usefulinc.com/ns/doap#">
 
-  <name xml:lang="en">GtLazarus</name>
+  <name xml:lang="en">Sellerie</name>
   <category rdf:resource="http://api.gnome.org/doap-extensions#apps" />
   <programming-language>C</programming-language>
-  <shortdesc xml:lang="en">GtLazarus, a serial terminal emulator</shortdesc>
-  <description>GtLazarus is a serial terminal emulator written in GTK+, a
+  <shortdesc xml:lang="en">Sellerie, a serial terminal emulator</shortdesc>
+  <description>Sellerie is a serial terminal emulator written in GTK+, a
   ressurection project of the original GtkTerm</description>
 
   <homepage

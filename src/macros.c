@@ -1,18 +1,18 @@
 /*
- *   This file is part of GtkTerm.
+ *   This file is part of Sellerie.
  *
- *   GtkTerm is free software: you can redistribute it and/or modify
+ *   Sellerie is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   GtkTerm is distributed in the hope that it will be useful,
+ *   Sellerie is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with GtkTerm.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Sellerie.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -427,7 +427,7 @@ void Config_macros(GtkWindow *parent)
     GtkCellRenderer *renderer = NULL;
     GtkTreeViewColumn *column = NULL;
 
-    builder = gtk_builder_new_from_resource ("/org/jensge/GtkTerm/macros.ui");
+    builder = gtk_builder_new_from_resource ("/org/jensge/Sellerie/macros.ui");
     gtk_builder_connect_signals (builder, NULL);
     window = GTK_WIDGET (gtk_builder_get_object (builder, "dialog-macros"));
     gtk_window_set_transient_for (GTK_WINDOW (window), parent);

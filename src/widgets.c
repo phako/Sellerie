@@ -98,7 +98,6 @@ GtkWidget *Fenetre;
 
 /* Variables for hexadecimal display */
 static guint bytes_per_line = 16;
-static gchar blank_data[128];
 static guint total_bytes;
 static gboolean show_index = FALSE;
 
@@ -482,8 +481,6 @@ void create_main_window(GtkApplication *app)
 void initialize_hexadecimal_display(void)
 {
   total_bytes = 0;
-  memset(blank_data, ' ', 128);
-  blank_data[bytes_per_line * 3 + 5] = 0;
 }
 
 void put_hexadecimal(gchar *string, guint size)

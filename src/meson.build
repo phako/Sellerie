@@ -25,5 +25,6 @@ sources = [
 
 all_deps = [gtk_deps, vte_deps, udev_deps, config]
 sellerie = executable('sellerie', sources,
+                      link_args : '-rdynamic',
                       install : true,
                       dependencies : all_deps)

@@ -24,4 +24,4 @@ args = [
         '--flag=g_set_error:4:c-format',
 ]
 
-i18n.gettext('gtkterm', languages : langs, args: args)
+i18n.gettext('sellerie', languages : langs, args: args)

@@ -7,7 +7,7 @@ Comment=Connect to serial consoles
 Keywords=serial;console;terminal;
 # Translators: Do NOT translate or transliterate this text (this is an icon file name)!
 Icon=org.jensge.Sellerie
-Exec=gtkterm
+Exec=sellerie
 Terminal=false
 Type=Application
 Categories=GNOME;GTK;Utility;System

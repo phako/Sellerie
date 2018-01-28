@@ -18,8 +18,8 @@ udev_deps = dependency('gudev-1.0', version: '>= 230', required: false)
 
 conf = configuration_data()
 conf.set('VERSION', '"@0@"'.format(meson.project_version()))
-conf.set('GETTEXT_PACKAGE', '"gtkterm"')
-conf.set('PACKAGE', '"gtkterm"')
+conf.set('GETTEXT_PACKAGE', '"sellerie"')
+conf.set('PACKAGE', '"sellerie"')
 conf.set('LOCALEDIR', '"@0@/@1@"'.format(prefix, get_option('localedir')))
 conf.set('P_LOCK', '"@0@"'.format(get_option('lockdir')))
 

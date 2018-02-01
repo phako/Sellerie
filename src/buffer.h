@@ -38,6 +38,7 @@ void gt_buffer_write (GtBuffer *);
 void gt_buffer_write_with_func (GtBuffer *, GtBufferFunc, gpointer);
 void gt_buffer_set_display_func (GtBuffer *, GtBufferFunc, gpointer);
 void gt_buffer_unset_display_func (GtBuffer *);
+gboolean gt_buffer_write_to_file (GtBuffer *, const char *, GError **);
 
 G_END_DECLS
 

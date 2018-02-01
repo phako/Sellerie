@@ -55,7 +55,6 @@ static gboolean waiting_for_char = FALSE;
 static gboolean waiting_for_timer = FALSE;
 static gboolean input_running = FALSE;
 static gchar *str = NULL;
-static FILE *Fic;
 
 /* Local functions prototype */
 static void
@@ -70,8 +69,6 @@ static gboolean
 timer (gpointer pointer);
 static void
 remove_input (void);
-static void
-write_file (char *, unsigned int, gpointer);
 
 extern struct configuration_port config;
 
@@ -311,25 +308,21 @@ on_infobar_response (GtkInfoBar *bar, gint response_id, gpointer user_data)
     close_all ();
 }
 
-static void
-write_file (char *data, unsigned int size, gpointer Fic)
-{
-    fwrite (data, size, 1, (FILE *)Fic);
-}
-
 void
 save_raw_file (GtkWindow *parent)
 {
-    GtkWidget *file_select;
+    char *fileName = NULL;
+    char *msg = NULL;
 
-    file_select = gtk_file_chooser_dialog_new (_ ("Save RAW File"),
-                                               parent,
-                                               GTK_FILE_CHOOSER_ACTION_SAVE,
-                                               _ ("_Cancel"),
-                                               GTK_RESPONSE_CANCEL,
-                                               _ ("_OK"),
-                                               GTK_RESPONSE_ACCEPT,
-                                               NULL);
+    GtkWidget *file_select =
+        gtk_file_chooser_dialog_new (_ ("Save RAW File"),
+                                     parent,
+                                     GTK_FILE_CHOOSER_ACTION_SAVE,
+                                     _ ("_Cancel"),
+                                     GTK_RESPONSE_CANCEL,
+                                     _ ("_OK"),
+                                     GTK_RESPONSE_ACCEPT,
+                                     NULL);
     gtk_file_chooser_set_do_overwrite_confirmation (
         GTK_FILE_CHOOSER (file_select), TRUE);
 
@@ -337,41 +330,39 @@ save_raw_file (GtkWindow *parent)
         gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (file_select),
                                        fic_defaut);
 
-    if (gtk_dialog_run (GTK_DIALOG (file_select)) == GTK_RESPONSE_ACCEPT) {
-        gchar *fileName;
-        gchar *msg;
+    gint result = gtk_dialog_run (GTK_DIALOG (file_select));
+    gtk_widget_hide (file_select);
 
+    if (result == GTK_RESPONSE_ACCEPT) {
         fileName =
             gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_select));
         if ((!fileName || (strcmp (fileName, ""))) == 0) {
             msg = g_strdup_printf (_ ("File error\n"));
             gt_main_window_show_message (
                 GT_MAIN_WINDOW (Fenetre), msg, GT_MESSAGE_TYPE_ERROR);
-            g_free (msg);
-            g_free (fileName);
-            gtk_widget_destroy (file_select);
-            return;
+
+            goto out;
         }
 
-        Fic = fopen (fileName, "w");
-        if (Fic == NULL) {
-            msg = g_strdup_printf (
-                _ ("Cannot open file %s: %s\n"), fileName, strerror (errno));
+        GError *error = NULL;
+        gt_buffer_write_to_file (
+            GT_MAIN_WINDOW (parent)->buffer, fileName, &error);
+
+        if (error != NULL) {
+            msg = g_strdup_printf (_ ("Failed to write buffer to file %s: %s"),
+                                   fileName,
+                                   error->message);
             gt_main_window_show_message (
                 GT_MAIN_WINDOW (Fenetre), msg, GT_MESSAGE_TYPE_ERROR);
-            g_free (msg);
-        } else {
             GtBuffer *buffer = NULL;
 
-            gt_file_set_default (fileName);
             buffer = gt_serial_port_get_buffer (serial_port);
-
-            gt_buffer_write_with_func (buffer, write_file, Fic);
-
-            fclose (Fic);
         }
-        g_free (fileName);
     }
+
+out:
+    g_free (msg);
+    g_free (fileName);
     gtk_widget_destroy (file_select);
 }
 

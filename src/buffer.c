@@ -52,6 +52,12 @@ struct _GtBufferClass {
 
 G_DEFINE_TYPE_WITH_PRIVATE (GtBuffer, gt_buffer, G_TYPE_OBJECT)
 
+typedef struct {
+    const char *file_name;
+    gboolean result;
+    GError **error;
+} GtBufferSaveClosure;
+
 /* GObject overrides */
 static void
 gt_buffer_finalize (GObject *object);
@@ -228,4 +234,23 @@ gt_buffer_unset_display_func (GtBuffer *self)
     GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
 
     priv->write_func = NULL;
+}
+
+static void
+on_write_to_file (char *buffer, unsigned int size, gpointer user_data)
+{
+    GtBufferSaveClosure *closure = (GtBufferSaveClosure *)user_data;
+
+    closure->result = g_file_set_contents (
+        closure->file_name, buffer, (gssize)size, closure->error);
+}
+
+gboolean
+gt_buffer_write_to_file (GtBuffer *self, const char *file_name, GError **error)
+{
+    GtBufferSaveClosure closure = {file_name, FALSE, error};
+
+    gt_buffer_write_with_func (self, on_write_to_file, &closure);
+
+    return closure.result;
 }

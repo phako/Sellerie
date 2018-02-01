@@ -920,13 +920,15 @@ on_selection_changed (VteTerminal *terminal, gpointer data)
 void
 on_local_echo_changed (GObject *gobject, GParamSpec *pspec, gpointer user_data)
 {
-    config.echo = gt_serial_port_get_local_echo (GT_SERIAL_PORT (user_data));
+    config.echo =
+        gt_serial_port_get_local_echo (GT_MAIN_WINDOW (user_data)->serial_port);
 }
 
 void
 on_crlf_changed (GObject *gobject, GParamSpec *pspec, gpointer user_data)
 {
-    config.crlfauto = gt_serial_port_get_crlfauto (GT_SERIAL_PORT (user_data));
+    config.crlfauto =
+        gt_serial_port_get_crlfauto (GT_MAIN_WINDOW (user_data)->serial_port);
 }
 
 void

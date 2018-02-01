@@ -616,8 +616,8 @@ gt_main_window_set_view (GtMainWindow *self, GtMainWindowViewType type)
         gt_buffer_set_display_func (self->buffer, on_write_ascii, self);
         break;
     case GT_MAIN_WINDOW_VIEW_TYPE_HEX:
-        g_simple_action_set_enabled (G_SIMPLE_ACTION (show_index), FALSE);
-        g_simple_action_set_enabled (G_SIMPLE_ACTION (hex_width), FALSE);
+        g_simple_action_set_enabled (G_SIMPLE_ACTION (show_index), TRUE);
+        g_simple_action_set_enabled (G_SIMPLE_ACTION (hex_width), TRUE);
         gt_buffer_set_display_func (self->buffer, on_write_hex, self);
         break;
     default:

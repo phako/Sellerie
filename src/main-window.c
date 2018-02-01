@@ -630,7 +630,6 @@ gt_main_window_set_view (GtMainWindow *self, GtMainWindowViewType type)
 void
 gt_main_window_clear_display (GtMainWindow *self)
 {
-    gt_buffer_clear (self->buffer);
     self->hex_display.total_bytes = 0;
     vte_terminal_reset (VTE_TERMINAL (self->display), TRUE, TRUE);
 }
@@ -1020,6 +1019,7 @@ on_clear_buffer (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
 
+    gt_buffer_clear (self->buffer);
     gt_main_window_clear_display (self);
 }
 

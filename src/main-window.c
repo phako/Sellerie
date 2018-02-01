@@ -1195,8 +1195,54 @@ on_save_raw_file (GSimpleAction *action,
                   gpointer user_data)
 {
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
+    char *fileName = NULL;
+    char *msg = NULL;
+    const char *default_file = gt_file_get_default ();
 
-    save_raw_file (GTK_WINDOW (self));
+    GtkWidget *file_select =
+        gtk_file_chooser_dialog_new (_ ("Save RAW File"),
+                                     GTK_WINDOW (self),
+                                     GTK_FILE_CHOOSER_ACTION_SAVE,
+                                     _ ("_Cancel"),
+                                     GTK_RESPONSE_CANCEL,
+                                     _ ("_OK"),
+                                     GTK_RESPONSE_ACCEPT,
+                                     NULL);
+    gtk_file_chooser_set_do_overwrite_confirmation (
+        GTK_FILE_CHOOSER (file_select), TRUE);
+
+    if (default_file != NULL)
+        gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (file_select),
+                                       default_file);
+
+    gint result = gtk_dialog_run (GTK_DIALOG (file_select));
+    gtk_widget_hide (file_select);
+
+    if (result == GTK_RESPONSE_ACCEPT) {
+        fileName =
+            gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_select));
+        if ((!fileName || (strcmp (fileName, ""))) == 0) {
+            msg = g_strdup_printf (_ ("File error\n"));
+            gt_main_window_show_message (self, msg, GT_MESSAGE_TYPE_ERROR);
+
+            goto out;
+        }
+
+        GError *error = NULL;
+        gt_buffer_write_to_file (self->buffer, fileName, &error);
+
+        if (error != NULL) {
+            msg = g_strdup_printf (_ ("Failed to write buffer to file %s: %s"),
+                                   fileName,
+                                   error->message);
+            gt_main_window_show_message (self, msg, GT_MESSAGE_TYPE_ERROR);
+        }
+    }
+
+out:
+    g_free (msg);
+    g_free (fileName);
+    gtk_widget_destroy (file_select);
 }
 
 void

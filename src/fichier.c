@@ -308,9 +308,6 @@ on_infobar_response (GtkInfoBar *bar, gint response_id, gpointer user_data)
     close_all ();
 }
 
-            GtBuffer *buffer = NULL;
-
-            buffer = gt_serial_port_get_buffer (serial_port);
 gboolean
 gt_file_get_waiting_for_char (void)
 {

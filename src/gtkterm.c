@@ -78,13 +78,10 @@ on_gtk_application_startup (GApplication *app, gpointer user_data)
 static void
 on_gtk_application_activate (GApplication *app, gpointer user_data)
 {
-    GtkWidget *main_window = gt_main_window_new ();
-    gtk_widget_show_all (main_window);
+    GtkWidget *main_window = gt_main_window_new (GTK_APPLICATION (app));
 
     Fenetre = main_window;
 
-    gtk_window_set_application (GTK_WINDOW (main_window),
-                                GTK_APPLICATION (app));
     gtk_application_add_window (GTK_APPLICATION (app),
                                 GTK_WINDOW (main_window));
 
@@ -98,6 +95,8 @@ on_gtk_application_activate (GApplication *app, gpointer user_data)
     gt_serial_port_config (GT_MAIN_WINDOW (main_window)->serial_port, &config);
 
     add_shortcuts ();
+    gtk_window_present (GTK_WINDOW (main_window));
+    gtk_widget_show_all (main_window);
 }
 
 int

@@ -68,7 +68,7 @@ typedef enum _GtMessageType GtMessageType;
 
 G_DECLARE_FINAL_TYPE (GtMainWindow, gt_main_window, GT, MAIN_WINDOW, GtkApplicationWindow)
 
-GtkWidget *gt_main_window_new (void);
+GtkWidget *gt_main_window_new (GtkApplication *app);
 void gt_main_window_set_status (GtMainWindow *self, const char *msg);
 void gt_main_window_push_status (GtMainWindow *self, const char *msg);
 void gt_main_window_pop_status (GtMainWindow *self);

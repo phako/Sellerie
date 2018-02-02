@@ -271,9 +271,9 @@ static const GActionEntry actions[] = {
 // static GParamSpec *properties[N_PROPS];
 
 GtkWidget *
-gt_main_window_new (void)
+gt_main_window_new (GtkApplication *app)
 {
-    return GTK_WIDGET (g_object_new (GT_TYPE_MAIN_WINDOW, NULL));
+    return GTK_WIDGET (g_object_new (GT_TYPE_MAIN_WINDOW, "application", app, NULL));
 }
 
 static void
@@ -356,6 +356,7 @@ static void
 gt_main_window_init (GtMainWindow *self)
 {
     gtk_widget_init_template (GTK_WIDGET (self));
+    gtk_application_window_set_show_menubar (GTK_APPLICATION_WINDOW (self), TRUE);
 
     GActionGroup *group = G_ACTION_GROUP (g_simple_action_group_new ());
     g_action_map_add_action_entries (

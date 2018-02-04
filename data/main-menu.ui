@@ -12,7 +12,7 @@
           <attribute name="action">main.clear</attribute>
         </item>
         <item>
-          <attribute name="label" translatable="yes">Send _RAW file</attribute>
+          <attribute name="label" translatable="yes">Send _Text file</attribute>
           <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;r</attribute>
           <attribute name="action">main.send-file</attribute>
         </item>

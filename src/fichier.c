@@ -73,7 +73,7 @@ remove_input (void);
 extern struct configuration_port config;
 
 void
-send_raw_file (GtkWindow *parent)
+send_ascii_file (GtkWindow *parent)
 {
     GtkWidget *file_select;
 
@@ -85,6 +85,8 @@ send_raw_file (GtkWindow *parent)
                                                _ ("_OK"),
                                                GTK_RESPONSE_ACCEPT,
                                                NULL);
+    gtk_dialog_set_default_response (GTK_DIALOG (file_select),
+                                     GTK_RESPONSE_ACCEPT);
 
     if (fic_defaut != NULL)
         gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (file_select),
@@ -93,6 +95,8 @@ send_raw_file (GtkWindow *parent)
     if (gtk_dialog_run (GTK_DIALOG (file_select)) == GTK_RESPONSE_ACCEPT) {
         gchar *fileName;
         gchar *msg;
+
+        gtk_widget_hide (file_select);
 
         fileName =
             gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_select));

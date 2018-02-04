@@ -187,6 +187,10 @@ on_send_raw_file (GSimpleAction *action,
                   GVariant *parameter,
                   gpointer user_data);
 static void
+on_send_ascii_file (GSimpleAction *action,
+                    GVariant *parameter,
+                    gpointer user_data);
+static void
 on_save_raw_file (GSimpleAction *action,
                   GVariant *parameter,
                   gpointer user_data);
@@ -215,6 +219,8 @@ on_config_profile_delete (GSimpleAction *action,
 static const GActionEntry actions[] = {
     /* File menu */
     {"clear", on_clear_buffer},
+    {"send-file", on_send_ascii_file},
+    {"save-file", on_save_raw_file},
     {"quit", on_quit},
 
     /* Edit menu */
@@ -255,9 +261,6 @@ static const GActionEntry actions[] = {
     {"reconnect", on_reconnect},
 
     /* File menu */
-    {"send-file", on_send_raw_file},
-    {"save-file", on_save_raw_file},
-
     {"config.terminal", on_config_terminal},
 
     {"config.macros", on_config_macros},
@@ -273,7 +276,8 @@ static const GActionEntry actions[] = {
 GtkWidget *
 gt_main_window_new (GtkApplication *app)
 {
-    return GTK_WIDGET (g_object_new (GT_TYPE_MAIN_WINDOW, "application", app, NULL));
+    return GTK_WIDGET (
+        g_object_new (GT_TYPE_MAIN_WINDOW, "application", app, NULL));
 }
 
 static void
@@ -356,7 +360,8 @@ static void
 gt_main_window_init (GtMainWindow *self)
 {
     gtk_widget_init_template (GTK_WIDGET (self));
-    gtk_application_window_set_show_menubar (GTK_APPLICATION_WINDOW (self), TRUE);
+    gtk_application_window_set_show_menubar (GTK_APPLICATION_WINDOW (self),
+                                             TRUE);
 
     GActionGroup *group = G_ACTION_GROUP (g_simple_action_group_new ());
     g_action_map_add_action_entries (
@@ -1181,13 +1186,21 @@ on_write_ascii (gchar *string, guint size, gpointer user_data)
 }
 
 void
+on_send_ascii_file (GSimpleAction *action,
+                    GVariant *parameter,
+                    gpointer user_data)
+{
+    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
+
+    send_ascii_file (GTK_WINDOW (self));
+}
+
+void
 on_send_raw_file (GSimpleAction *action,
                   GVariant *parameter,
                   gpointer user_data)
 {
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
-
-    send_raw_file (GTK_WINDOW (self));
 }
 
 void

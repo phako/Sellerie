@@ -21,8 +21,7 @@
 
 #include "infobar.h"
 
-struct _GtInfobar
-{
+struct _GtInfobar {
     GtkInfoBar parent_instance;
     GtkProgressBar *progress;
     GtkLabel *label;
@@ -30,12 +29,9 @@ struct _GtInfobar
 
 G_DEFINE_TYPE (GtInfobar, gt_infobar, GTK_TYPE_INFO_BAR)
 
-enum {
-    PROP_0,
-    N_PROPS
-};
+enum { PROP_0, N_PROPS };
 
-//static GParamSpec *properties [N_PROPS];
+// static GParamSpec *properties [N_PROPS];
 
 GtkWidget *
 gt_infobar_new (void)
@@ -46,39 +42,37 @@ gt_infobar_new (void)
 static void
 gt_infobar_finalize (GObject *object)
 {
-    //GtInfobar *self = (GtInfobar *)object;
+    // GtInfobar *self = (GtInfobar *)object;
 
     G_OBJECT_CLASS (gt_infobar_parent_class)->finalize (object);
 }
 
 static void
-gt_infobar_get_property (GObject    *object,
-                         guint       prop_id,
-                         GValue     *value,
+gt_infobar_get_property (GObject *object,
+                         guint prop_id,
+                         GValue *value,
                          GParamSpec *pspec)
 {
-    //GtInfobar *self = GT_INFOBAR (object);
+    // GtInfobar *self = GT_INFOBAR (object);
 
-    switch (prop_id)
-      {
-      default:
+    switch (prop_id) {
+    default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      }
+    }
 }
 
 static void
-gt_infobar_set_property (GObject      *object,
-                         guint         prop_id,
+gt_infobar_set_property (GObject *object,
+                         guint prop_id,
                          const GValue *value,
-                         GParamSpec   *pspec)
+                         GParamSpec *pspec)
 {
-    //GtInfobar *self = GT_INFOBAR (object);
+    // GtInfobar *self = GT_INFOBAR (object);
 
-    switch (prop_id)
-      {
-      default:
+    switch (prop_id) {
+    default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      }
+    }
 }
 
 static void
@@ -87,7 +81,8 @@ gt_infobar_class_init (GtInfobarClass *klass)
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
     GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-    gtk_widget_class_set_template_from_resource (widget_class, "/org/jensge/Sellerie/transfer-infobar.ui");
+    gtk_widget_class_set_template_from_resource (
+        widget_class, "/org/jensge/Sellerie/transfer-infobar.ui");
     gtk_widget_class_bind_template_child (widget_class, GtInfobar, progress);
     gtk_widget_class_bind_template_child (widget_class, GtInfobar, label);
 

@@ -67,6 +67,19 @@ gboolean gt_serial_port_connect (GtSerialPort *self);
 GtBuffer *gt_serial_port_get_buffer (GtSerialPort *self);
 GList *gt_serial_port_detect_devices (void);
 
+void
+gt_serial_port_write_async (GtSerialPort *self,
+                            guint8 *buffer,
+                            gsize length,
+                            GCancellable *cancellable,
+                            GAsyncReadyCallback callback,
+                            gpointer user_data);
+gsize
+gt_serial_port_write_finish (GtSerialPort *self,
+                             GAsyncResult *result,
+                             GError **error);
+
+
 #define BUFFER_RECEPTION 8192
 #define BUFFER_EMISSION 4096
 #define LINE_FEED 0x0A

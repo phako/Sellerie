@@ -316,6 +316,15 @@ gt_serial_port_termios_from_config (GtSerialPort *self,
     return TRUE;
 }
 
+gsize
+gt_serial_port_write (GtSerialPort *self,
+                      const char *data,
+                      gsize length,
+                      GError **error)
+{
+    return gt_serial_port_send_chars (self, (char *)data, (int)length);
+}
+
 int
 gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
 {
@@ -1022,6 +1031,103 @@ gt_serial_port_get_buffer (GtSerialPort *self)
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
 
     return priv->buffer;
+}
+
+static gboolean
+on_serial_io_async_write (GIOChannel *source,
+                          GIOCondition condition,
+                          gpointer data)
+{
+    GTask *task = G_TASK (data);
+
+    if (g_task_return_error_if_cancelled (task)) {
+        g_object_unref (task);
+
+        return FALSE;
+    }
+
+    if (condition == G_IO_ERR) {
+        g_task_return_new_error (task,
+                                 G_IO_ERROR,
+                                 G_IO_ERROR_FAILED,
+                                 _ ("Serial port went to error"));
+        g_object_unref (task);
+
+        return FALSE;
+    }
+
+    GtSerialPort *self = GT_SERIAL_PORT (g_task_get_source_object (task));
+    GBytes *bytes = g_task_get_task_data (task);
+    gsize length = 0;
+    gconstpointer buffer = g_bytes_get_data (bytes, &length);
+
+    GError *write_error = NULL;
+    int bytes_written =
+        gt_serial_port_write (self, (const char *)buffer, length, &write_error);
+    if (write_error != NULL) {
+        g_task_return_error (task, write_error);
+        g_object_unref (task);
+
+        return FALSE;
+    }
+
+    if (bytes_written == 0 && length > 0) {
+        g_task_return_new_error (task,
+                                 G_IO_ERROR,
+                                 G_IO_ERROR_FAILED,
+                                 _ ("Failed to write data to serial port"));
+        g_object_unref (task);
+
+        return FALSE;
+    }
+
+    // Partial write; continue
+    if (bytes_written < length) {
+        g_debug ("=> underwrite... setting up new slice");
+        GBytes *new_data = g_bytes_new_from_bytes (
+            bytes, bytes_written, length - bytes_written);
+        g_task_set_task_data (task, new_data, (GDestroyNotify)g_bytes_unref);
+
+        return TRUE;
+    }
+
+    g_task_return_int (task, bytes_written);
+    g_object_unref (task);
+
+    return FALSE;
+}
+
+void
+gt_serial_port_write_async (GtSerialPort *self,
+                            guint8 *buffer,
+                            gsize length,
+                            GCancellable *cancellable,
+                            GAsyncReadyCallback callback,
+                            gpointer user_data)
+{
+    GBytes *data = g_bytes_new_static (buffer, length);
+
+    GIOChannel *channel = g_io_channel_unix_new (gt_serial_port_get_fd (self));
+
+    GTask *task = g_task_new (self, cancellable, callback, user_data);
+    g_task_set_task_data (task, data, (GDestroyNotify)g_bytes_unref);
+
+    g_io_add_watch_full (channel,
+                         G_PRIORITY_DEFAULT + 10,
+                         G_IO_OUT | G_IO_ERR,
+                         (GIOFunc)on_serial_io_async_write,
+                         task,
+                         NULL);
+}
+
+gsize
+gt_serial_port_write_finish (GtSerialPort *self,
+                             GAsyncResult *result,
+                             GError **error)
+{
+    g_return_val_if_fail (g_task_is_valid (G_TASK (result), self), 0);
+
+    return (gsize)g_task_propagate_int (G_TASK (result), error);
 }
 
 #ifdef HAVE_GUDEV

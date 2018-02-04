@@ -11,13 +11,23 @@
           <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;l</attribute>
           <attribute name="action">main.clear</attribute>
         </item>
+      </section>
+      <section>
         <item>
           <attribute name="label" translatable="yes">Send _Text file</attribute>
           <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;r</attribute>
           <attribute name="action">main.send-file</attribute>
         </item>
+      </section>
+      <section>
+        <item>
+          <attribute name="label" translatable="yes">Send RAW file</attribute>
+          <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;w</attribute>
+          <attribute name="action">main.send-raw-file</attribute>
+        </item>
         <item>
           <attribute name="label" translatable="yes">_Save RAW file</attribute>
+          <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;f</attribute>
           <attribute name="action">main.save-file</attribute>
         </item>
       </section>

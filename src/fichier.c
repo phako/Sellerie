@@ -21,10 +21,10 @@
 
 #include "buffer.h"
 #include "fichier.h"
+#include "infobar.h"
 #include "main-window.h"
 #include "serial-port.h"
 #include "term_config.h"
-#include "infobar.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -169,7 +169,7 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
     }
 
     gt_infobar_set_progress (GT_INFOBAR (Window),
-                             (gdouble) car_written / (gdouble) nb_car);
+                             (gdouble)car_written / (gdouble)nb_car);
 
     if (car_written < nb_car) {
         /* Read the file only if buffer totally sent or if buffer empty */
@@ -226,7 +226,7 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
         current_buffer += bytes_written;
 
         gt_infobar_set_progress (GT_INFOBAR (Window),
-                             (gdouble) car_written / (gdouble) nb_car);
+                                 (gdouble)car_written / (gdouble)nb_car);
 
         if (config.delai != 0 && *car == LINE_FEED) {
             remove_input ();

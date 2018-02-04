@@ -24,6 +24,7 @@
 #include "main-window.h"
 #include "serial-port.h"
 #include "term_config.h"
+#include "infobar.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -46,7 +47,6 @@ static gint nb_car;
 static gint car_written;
 static gint current_buffer_position;
 static gint bytes_read;
-static GtkWidget *ProgressBar;
 static gint Fichier;
 static guint callback_handler;
 static gchar *fic_defaut = NULL;
@@ -123,18 +123,7 @@ send_ascii_file (GtkWindow *parent)
             nb_car = lseek (Fichier, 0L, SEEK_END);
             lseek (Fichier, 0L, SEEK_SET);
 
-            GtkBuilder *builder = gtk_builder_new_from_resource (
-                "/org/jensge/Sellerie/transfer-infobar.ui");
-
-            Window = GTK_WIDGET (
-                g_object_ref (gtk_builder_get_object (builder, "infobar")));
-            GtkWidget *label =
-                GTK_WIDGET (gtk_builder_get_object (builder, "label"));
-            gtk_label_set_text (GTK_LABEL (label), msg);
-            ProgressBar =
-                GTK_WIDGET (gtk_builder_get_object (builder, "progress-bar"));
-            g_object_unref (builder);
-
+            Window = gt_infobar_new ();
             gt_main_window_set_info_bar (GT_MAIN_WINDOW (Fenetre), Window);
             g_signal_connect (G_OBJECT (Window),
                               "close",
@@ -144,6 +133,8 @@ send_ascii_file (GtkWindow *parent)
                               "response",
                               G_CALLBACK (on_infobar_response),
                               NULL);
+            gt_infobar_set_label (GT_INFOBAR (Window), msg);
+            g_free (msg);
 
             gtk_widget_show_all (Window);
 
@@ -177,8 +168,8 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
         return FALSE;
     }
 
-    gtk_progress_bar_set_fraction (GTK_PROGRESS_BAR (ProgressBar),
-                                   (gfloat)car_written / (gfloat)nb_car);
+    gt_infobar_set_progress (GT_INFOBAR (Window),
+                             (gdouble) car_written / (gdouble) nb_car);
 
     if (car_written < nb_car) {
         /* Read the file only if buffer totally sent or if buffer empty */
@@ -234,8 +225,8 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
         current_buffer_position += bytes_written;
         current_buffer += bytes_written;
 
-        gtk_progress_bar_set_fraction (GTK_PROGRESS_BAR (ProgressBar),
-                                       (gfloat)car_written / (gfloat)nb_car);
+        gt_infobar_set_progress (GT_INFOBAR (Window),
+                             (gdouble) car_written / (gdouble) nb_car);
 
         if (config.delai != 0 && *car == LINE_FEED) {
             remove_input ();

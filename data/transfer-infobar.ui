@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Generated with glade 3.20.0 -->
-<interface>
-  <requires lib="gtk+" version="3.20"/>
-  <object class="GtkInfoBar" id="infobar">
+<interface domain="sellerie">
+  <requires lib="gtk+" version="3.18"/>
+  <template class="GtInfobar" parent="GtkInfoBar">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <child internal-child="action_area">
@@ -64,7 +64,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkProgressBar" id="progress-bar">
+              <object class="GtkProgressBar" id="progress">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
               </object>
@@ -100,5 +100,5 @@
     <child>
       <placeholder/>
     </child>
-  </object>
+  </template>
 </interface>

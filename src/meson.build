@@ -20,6 +20,8 @@ sources = [
     'serial-port.h',
     'main-window.h',
     'main-window.c',
+    'infobar.h',
+    'infobar.c',
     resources
 ]
 

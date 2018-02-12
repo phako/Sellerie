@@ -1223,10 +1223,20 @@ on_serial_port_write_ready (GObject *source_object,
     gsize size =
         gt_serial_port_write_finish (buffer->self->serial_port, res, &error);
     if (error != NULL) {
+        gt_main_window_remove_info_bar (GT_MAIN_WINDOW (buffer->self),
+                                        buffer->bar);
+
+        if (error->code != G_IO_ERROR_CANCELLED) {
+            char *msg = g_strdup_printf ("Failed to send data to port: %s",
+                                         error->message);
+            g_warning (msg);
+            gt_main_window_show_message (
+                GT_MAIN_WINDOW (buffer->self), msg, GT_MESSAGE_TYPE_ERROR);
+            g_free (msg);
+        }
         g_object_unref (buffer->stream);
         g_object_unref (buffer->cancellable);
         g_slice_free (GtRawSendBuffer, buffer);
-        g_warning ("Failed to send data to port: %s", error->message);
 
         g_error_free (error);
 
@@ -1234,6 +1244,7 @@ on_serial_port_write_ready (GObject *source_object,
     }
 
     if (size == 0) {
+        gtk_widget_destroy (buffer->bar);
         g_object_unref (buffer->stream);
         g_object_unref (buffer->cancellable);
         g_slice_free (GtRawSendBuffer, buffer);
@@ -1268,7 +1279,12 @@ on_send_raw_file_input_ready (GObject *source_object,
         G_INPUT_STREAM (source_object), res, &error);
     if (error != NULL) {
         if (error->code != G_IO_ERROR_CANCELLED) {
-            g_warning ("Failed to read from file: %s", error->message);
+            char *msg = g_strdup_printf ("Failed to read from file: %s",
+                                         error->message);
+            g_warning (msg);
+            gt_main_window_show_message (
+                GT_MAIN_WINDOW (buffer->self), msg, GT_MESSAGE_TYPE_ERROR);
+            g_free (msg);
         }
         gt_main_window_remove_info_bar (GT_MAIN_WINDOW (buffer->self),
                                         buffer->bar);

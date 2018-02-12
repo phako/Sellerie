@@ -1033,12 +1033,17 @@ gt_serial_port_get_buffer (GtSerialPort *self)
     return priv->buffer;
 }
 
+typedef struct {
+    GBytes *data;
+    GIOChannel *channel;
+} GtSerialAsyncWriteData;
+
 static gboolean
 on_serial_io_async_write (GIOChannel *source,
                           GIOCondition condition,
-                          gpointer data)
+                          gpointer user_data)
 {
-    GTask *task = G_TASK (data);
+    GTask *task = G_TASK (user_data);
 
     if (g_task_return_error_if_cancelled (task)) {
         g_object_unref (task);
@@ -1057,9 +1062,9 @@ on_serial_io_async_write (GIOChannel *source,
     }
 
     GtSerialPort *self = GT_SERIAL_PORT (g_task_get_source_object (task));
-    GBytes *bytes = g_task_get_task_data (task);
+    GtSerialAsyncWriteData *data = g_task_get_task_data (task);
     gsize length = 0;
-    gconstpointer buffer = g_bytes_get_data (bytes, &length);
+    gconstpointer buffer = g_bytes_get_data (data->data, &length);
 
     GError *write_error = NULL;
     int bytes_written =
@@ -1085,8 +1090,9 @@ on_serial_io_async_write (GIOChannel *source,
     if (bytes_written < length) {
         g_debug ("=> underwrite... setting up new slice");
         GBytes *new_data = g_bytes_new_from_bytes (
-            bytes, bytes_written, length - bytes_written);
-        g_task_set_task_data (task, new_data, (GDestroyNotify)g_bytes_unref);
+            data->data, bytes_written, length - bytes_written);
+        g_bytes_unref (data->data);
+        data->data = new_data;
 
         return TRUE;
     }
@@ -1098,6 +1104,14 @@ on_serial_io_async_write (GIOChannel *source,
 }
 
 void
+gt_serial_async_write_data_free (GtSerialAsyncWriteData *data)
+{
+    g_clear_pointer (&data->data, g_bytes_unref);
+    g_clear_pointer (&data->channel, g_io_channel_unref);
+    g_slice_free (GtSerialAsyncWriteData, data);
+}
+
+void
 gt_serial_port_write_async (GtSerialPort *self,
                             guint8 *buffer,
                             gsize length,
@@ -1105,14 +1119,16 @@ gt_serial_port_write_async (GtSerialPort *self,
                             GAsyncReadyCallback callback,
                             gpointer user_data)
 {
-    GBytes *data = g_bytes_new_static (buffer, length);
+    GtSerialAsyncWriteData *data = g_slice_new0 (GtSerialAsyncWriteData);
+    data->data = g_bytes_new_static (buffer, length);
 
-    GIOChannel *channel = g_io_channel_unix_new (gt_serial_port_get_fd (self));
+    data->channel = g_io_channel_unix_new (gt_serial_port_get_fd (self));
 
     GTask *task = g_task_new (self, cancellable, callback, user_data);
-    g_task_set_task_data (task, data, (GDestroyNotify)g_bytes_unref);
+    g_task_set_task_data (
+        task, data, (GDestroyNotify)gt_serial_async_write_data_free);
 
-    g_io_add_watch_full (channel,
+    g_io_add_watch_full (data->channel,
                          G_PRIORITY_DEFAULT + 10,
                          G_IO_OUT | G_IO_ERR,
                          (GIOFunc)on_serial_io_async_write,

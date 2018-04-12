@@ -1229,7 +1229,7 @@ on_serial_port_write_ready (GObject *source_object,
         if (error->code != G_IO_ERROR_CANCELLED) {
             char *msg = g_strdup_printf ("Failed to send data to port: %s",
                                          error->message);
-            g_warning (msg);
+            g_warning ("%s", msg);
             gt_main_window_show_message (
                 GT_MAIN_WINDOW (buffer->self), msg, GT_MESSAGE_TYPE_ERROR);
             g_free (msg);
@@ -1256,7 +1256,9 @@ on_serial_port_write_ready (GObject *source_object,
     gt_infobar_set_progress (GT_INFOBAR (buffer->bar),
                              (double)buffer->written / (double)buffer->size);
     // GtSerialPort tries to write all data given to it
-    g_debug ("Written %llu of %llu", buffer->written, buffer->size);
+    g_debug ("Written %" G_GSIZE_FORMAT " of %" G_GSIZE_FORMAT,
+             buffer->written,
+             buffer->size);
 
     g_input_stream_read_async (buffer->stream,
                                buffer->buffer,
@@ -1281,7 +1283,7 @@ on_send_raw_file_input_ready (GObject *source_object,
         if (error->code != G_IO_ERROR_CANCELLED) {
             char *msg = g_strdup_printf ("Failed to read from file: %s",
                                          error->message);
-            g_warning (msg);
+            g_warning ("%s", msg);
             gt_main_window_show_message (
                 GT_MAIN_WINDOW (buffer->self), msg, GT_MESSAGE_TYPE_ERROR);
             g_free (msg);

@@ -349,7 +349,7 @@ Grise_Degrise (GtkWidget *bouton, gpointer pointeur)
 void
 read_font_button (GtkFontButton *fontButton)
 {
-    const char *font_name = gtk_font_button_get_font_name (fontButton);
+    char *font_name = gtk_font_chooser_get_font (GTK_FONT_CHOOSER (fontButton));
     PangoFontDescription *old_font = term_conf.font;
 
     if (font_name == NULL) {
@@ -363,6 +363,8 @@ read_font_button (GtkFontButton *fontButton)
     } else {
         term_conf.font = old_font;
     }
+
+    g_free (font_name);
 }
 
 void

@@ -886,8 +886,12 @@ on_edit_copy_callback (GSimpleAction *action,
                        gpointer user_data)
 {
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
-
+#if VTE_CHECK_VERSION(0, 50, 0)
+    vte_terminal_copy_clipboard_format (VTE_TERMINAL (self->display),
+                                        VTE_FORMAT_TEXT);
+#else
     vte_terminal_copy_clipboard (VTE_TERMINAL (self->display));
+#endif
 }
 
 void

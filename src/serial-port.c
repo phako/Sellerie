@@ -88,7 +88,7 @@ typedef struct {
     GIOChannel *err_channel;
     guint callback_handler_err;
     gboolean callback_activated;
-    char lockfile[128];
+    char lockfile[256];
 
     GtSerialPortState state;
     GError *last_error;

@@ -1,4 +1,10 @@
-project('Sellerie', 'c', version: '1.0.0', default_options : ['c_std=gnu11'])
+project(
+    'Sellerie',
+    'c',
+    version: '1.0.0',
+    default_options : ['c_std=gnu11'],
+    meson_version : '>= 0.45.0'
+)
 
 i18n = import('i18n')
 gnome = import('gnome')

@@ -29,14 +29,6 @@ G_BEGIN_DECLS
 
 #define SIGNAL_COUNT 6
 
-struct _GtHexDisplay {
-    guint bytes_per_line;
-    guint total_bytes;
-    gboolean show_index;
-};
-
-typedef struct _GtHexDisplay GtHexDisplay;
-
 struct _GtMainWindow
 {
     GtkApplicationWindow parent_instance;
@@ -54,7 +46,6 @@ struct _GtMainWindow
     GtkWidget *revealer;
     GtLogging *logger;
     GtkAccelGroup *shortcuts;
-    GtHexDisplay hex_display;
 };
 
 enum _GtMessageType {

@@ -22,6 +22,8 @@ sources = [
     'main-window.c',
     'infobar.h',
     'infobar.c',
+    'serial-view.h',
+    'serial-view.c',
     resources
 ]
 

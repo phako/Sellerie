@@ -31,16 +31,24 @@ G_BEGIN_DECLS
 
 GType gt_serial_view_get_type (void);
 #define GT_TYPE_SERIAL_VIEW (gt_serial_view_get_type ())
-#define GT_SERIAL_VIEW(obj) (G_TYPE_CHECK_INSTANCE_CAST (obj), GT_TYPE_SERIAL_VIEW, GtSerialView)
-#define GT_SERIAL_VIEW_CLASS(klass) (GTYPE_CHECK_CLASS_CAST (klass), GT_TYPE_SERIAL_VIEW, GtSerialViewClass)
-#define GT_IS_SERIAL_VIEW(obj) (G_TYPE_CHECK_INSTANCE_TYPE (obj), GT_TYPE_SERIAL_VIEW)
-#define GT_IS_SERIAL_VIEW_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE (klass), GT_TYPE_SERIAL_VIEW)
 
-typedef struct _GtSerialView GtSerialView;
-typedef struct _GtSerialViewClass GtSerialViewClass;
+G_DECLARE_FINAL_TYPE (GtSerialView, gt_serial_view, GT, SERIAL_VIEW, VteTerminal)
 
 GtkWidget *gt_serial_view_new (void);
+void gt_serial_view_clear (GtSerialView *self);
+void gt_serial_view_set_show_index (GtSerialView *self,
+                                    gboolean      show);
+gboolean gt_serial_view_get_show_index (GtSerialView *self);
 
+void gt_serial_view_set_bytes_per_line (GtSerialView *self,
+                                        guint         bytes_per_line);
+
+guint gt_serial_view_get_bytes_per_line (GtSerialView *self);
+
+void gt_serial_view_inc_total_bytes (GtSerialView *self,
+                                     guint         bytes);
+
+guint gt_serial_view_get_total_bytes (GtSerialView *self);
 G_END_DECLS
 
 #endif /* SERIAL_VIEW_H */

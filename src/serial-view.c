@@ -18,9 +18,17 @@
 
 #include "serial-view.h"
 
+struct _GtHexDisplay {
+    guint bytes_per_line;
+    guint total_bytes;
+    gboolean show_index;
+};
+typedef struct _GtHexDisplay GtHexDisplay;
+
+
 typedef struct
 {
-    void *something;
+    GtHexDisplay hex_display;
 } GtSerialViewPrivate;
 
 struct _GtSerialView {
@@ -106,4 +114,69 @@ gt_serial_view_class_init (GtSerialViewClass *klass)
 static void
 gt_serial_view_init (GtSerialView *self)
 {
+    GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+    priv->hex_display.total_bytes = 0;
+    priv->hex_display.bytes_per_line = 16;
+    priv->hex_display.show_index = FALSE;
 }
+
+void
+gt_serial_view_clear (GtSerialView *self)
+{
+    GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+    priv->hex_display.total_bytes = 0;
+    vte_terminal_reset (VTE_TERMINAL (self), TRUE, TRUE);
+}
+
+gboolean
+gt_serial_view_get_show_index (GtSerialView *self)
+{
+  GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+  return priv->hex_display.show_index;
+}
+
+
+void
+gt_serial_view_set_show_index (GtSerialView *self,
+                               gboolean      show)
+{
+  GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+  priv->hex_display.show_index = show;
+}
+
+guint
+gt_serial_view_get_bytes_per_line (GtSerialView *self)
+{
+  GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+  return priv->hex_display.bytes_per_line;
+}
+
+void
+gt_serial_view_set_bytes_per_line (GtSerialView *self,
+                                   guint         bytes_per_line)
+{
+  GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+  priv->hex_display.bytes_per_line = bytes_per_line;
+}
+
+void gt_serial_view_inc_total_bytes (GtSerialView *self,
+                                     guint         bytes)
+{
+  GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+  priv->hex_display.total_bytes += bytes;
+}
+
+guint gt_serial_view_get_total_bytes (GtSerialView *self)
+{
+  GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+  return priv->hex_display.total_bytes;
+}
+

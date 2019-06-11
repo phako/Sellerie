@@ -24,11 +24,11 @@
 #include "macros.h"
 #include "main-window.h"
 #include "term_config.h"
+#include "serial-view.h"
 
 #include <stdlib.h>
 
 #include <glib/gi18n.h>
-#include <vte/vte.h>
 
 #if defined(__linux__)
 #include <asm/termios.h> /* For control signals */
@@ -393,16 +393,8 @@ gt_main_window_init (GtMainWindow *self)
                       G_CALLBACK (on_crlf_changed),
                       self);
 
-    self->display = vte_terminal_new ();
+    self->display = gt_serial_view_new ();
 
-    /* set terminal properties, these could probably be made user configurable
-     */
-    vte_terminal_set_scroll_on_output (VTE_TERMINAL (self->display), FALSE);
-    vte_terminal_set_scroll_on_keystroke (VTE_TERMINAL (self->display), TRUE);
-    vte_terminal_set_mouse_autohide (VTE_TERMINAL (self->display), TRUE);
-    vte_terminal_set_backspace_binding (VTE_TERMINAL (self->display),
-                                        VTE_ERASE_ASCII_BACKSPACE);
-    vte_terminal_reset (VTE_TERMINAL (self->display), TRUE, TRUE);
     g_signal_connect_after (
         G_OBJECT (self->display), "commit", G_CALLBACK (on_vte_commit), self);
 
@@ -505,10 +497,6 @@ gt_main_window_init (GtMainWindow *self)
     self->shortcuts = gtk_accel_group_new ();
     gtk_window_add_accel_group (GTK_WINDOW (self),
                                 GTK_ACCEL_GROUP (self->shortcuts));
-
-    self->hex_display.total_bytes = 0;
-    self->hex_display.bytes_per_line = 16;
-    self->hex_display.show_index = FALSE;
 
     gt_main_window_set_view (self, GT_MAIN_WINDOW_VIEW_TYPE_ASCII);
 }
@@ -638,8 +626,7 @@ gt_main_window_set_view (GtMainWindow *self, GtMainWindowViewType type)
 void
 gt_main_window_clear_display (GtMainWindow *self)
 {
-    self->hex_display.total_bytes = 0;
-    vte_terminal_reset (VTE_TERMINAL (self->display), TRUE, TRUE);
+    gt_serial_view_clear (GT_SERIAL_VIEW (self->display));
 }
 
 void
@@ -1042,7 +1029,7 @@ on_view_index_change_state (GSimpleAction *action,
 {
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
 
-    self->hex_display.show_index = g_variant_get_boolean (parameter);
+    gt_serial_view_set_show_index (GT_SERIAL_VIEW (self->display), g_variant_get_boolean (parameter));
     gt_main_window_set_view (self, GT_MAIN_WINDOW_VIEW_TYPE_HEX);
     g_simple_action_set_state (action, parameter);
 }
@@ -1081,7 +1068,7 @@ on_view_hex_width_change_state (GSimpleAction *action,
     const char *value = g_variant_get_string (parameter, &length);
     gint current_value = atoi (value);
 
-    self->hex_display.bytes_per_line = current_value;
+    gt_serial_view_set_bytes_per_line (GT_SERIAL_VIEW (self->display), current_value);
     gt_main_window_set_view (self, GT_MAIN_WINDOW_VIEW_TYPE_HEX);
 
     g_simple_action_set_state (action, parameter);
@@ -1109,11 +1096,11 @@ on_write_hex (gchar *string, guint size, gpointer user_data)
         vte_terminal_get_cursor_position (
             VTE_TERMINAL (self->display), &column, &row);
 
-        if (self->hex_display.show_index) {
+        if (gt_serial_view_get_show_index (GT_SERIAL_VIEW (self->display))) {
             if (column == 0)
             /* First byte on line */
             {
-                sprintf (data, "%6d: ", self->hex_display.total_bytes);
+                sprintf (data, "%6d: ", gt_serial_view_get_total_bytes (GT_SERIAL_VIEW (self->display)));
                 vte_terminal_feed (
                     VTE_TERMINAL (self->display), data, strlen (data));
                 bytes = 0;
@@ -1126,7 +1113,8 @@ on_write_hex (gchar *string, guint size, gpointer user_data)
         /* Print hexadecimal characters */
         data[0] = 0;
 
-        while (bytes < self->hex_display.bytes_per_line && i < size) {
+        guint bytes_per_line = gt_serial_view_get_bytes_per_line (GT_SERIAL_VIEW (self->display));
+        while (bytes < bytes_per_line && i < size) {
             gint avance = 0;
             gchar ascii[1];
 
@@ -1143,7 +1131,7 @@ on_write_hex (gchar *string, guint size, gpointer user_data)
             }
             vte_terminal_feed (VTE_TERMINAL (self->display), data_byte, 3);
 
-            avance = (self->hex_display.bytes_per_line - bytes) * 3 + bytes + 2;
+            avance = (bytes_per_line - bytes) * 3 + bytes + 2;
 
             /* Move forward */
             sprintf (data_byte, "%c[%dC", 27, avance);
@@ -1159,7 +1147,7 @@ on_write_hex (gchar *string, guint size, gpointer user_data)
             vte_terminal_feed (
                 VTE_TERMINAL (self->display), data_byte, strlen (data_byte));
 
-            if (bytes == self->hex_display.bytes_per_line / 2 - 1)
+            if (bytes == bytes_per_line / 2 - 1)
                 vte_terminal_feed (
                     VTE_TERMINAL (self->display), "- ", strlen ("- "));
 
@@ -1167,9 +1155,9 @@ on_write_hex (gchar *string, guint size, gpointer user_data)
             i++;
 
             /* End of line ? */
-            if (bytes == self->hex_display.bytes_per_line) {
+            if (bytes == bytes_per_line) {
                 vte_terminal_feed (VTE_TERMINAL (self->display), "\r\n", 2);
-                self->hex_display.total_bytes += bytes;
+                gt_serial_view_inc_total_bytes (GT_SERIAL_VIEW (self->display), bytes);
             }
         }
     }

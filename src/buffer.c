@@ -50,6 +50,14 @@ struct _GtBufferClass {
     GObjectClass parent_class;
 };
 
+enum {
+    SIGNAL_NEW_BUFFER,
+    SIGNAL_CLEARED,
+    SIGNAL_COUNT,
+} GtBufferSignals;
+
+static guint SIGNALS[SIGNAL_COUNT] = {0};
+
 G_DEFINE_TYPE_WITH_PRIVATE (GtBuffer, gt_buffer, G_TYPE_OBJECT)
 
 typedef struct {
@@ -66,6 +74,28 @@ static void
 gt_buffer_class_init (GtBufferClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+    SIGNALS[SIGNAL_NEW_BUFFER] = g_signal_new ("buffer-updated",
+                                               GT_TYPE_BUFFER,
+                                               G_SIGNAL_RUN_FIRST,
+                                               0,
+                                               NULL,
+                                               NULL,
+                                               NULL,
+                                               G_TYPE_NONE,
+                                               2,
+                                               G_TYPE_POINTER,
+                                               G_TYPE_UINT);
+
+    SIGNALS[SIGNAL_CLEARED] = g_signal_new ("cleared",
+                                            GT_TYPE_BUFFER,
+                                            G_SIGNAL_RUN_FIRST,
+                                            0,
+                                            NULL,
+                                            NULL,
+                                            NULL,
+                                            G_TYPE_NONE,
+                                            0);
 
     object_class->finalize = gt_buffer_finalize;
 }
@@ -167,8 +197,9 @@ gt_buffer_put_chars (GtBuffer *self,
         priv->current_buffer += size;
     }
 
-    if (priv->write_func != NULL)
-        priv->write_func (characters, size, priv->user_data);
+    g_signal_emit (self, SIGNALS[SIGNAL_NEW_BUFFER], 0, characters, size);
+    /*if (priv->write_func != NULL)
+        priv->write_func (characters, size, priv->user_data); */
 }
 
 void
@@ -194,10 +225,18 @@ gt_buffer_write (GtBuffer *self)
 
     /* Write the second half of the ringbuffer first (contains start of data) */
     if (priv->overlapped) {
-        priv->write_func (
+        g_signal_emit (self,
+                       SIGNALS[SIGNAL_NEW_BUFFER],
+                       0,
+                       priv->current_buffer,
+                       BUFFER_SIZE - priv->pointer);
+        /*priv->write_func (
             priv->current_buffer, BUFFER_SIZE - priv->pointer, priv->user_data);
+         */
     }
-    priv->write_func (priv->buffer, priv->pointer, priv->user_data);
+    // priv->write_func (priv->buffer, priv->pointer, priv->user_data);
+    g_signal_emit (
+        self, SIGNALS[SIGNAL_NEW_BUFFER], 0, priv->buffer, priv->pointer);
 }
 
 void

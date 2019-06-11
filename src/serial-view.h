@@ -23,9 +23,15 @@
 #include <config.h>
 #endif
 
+#include "buffer.h"
+
 #include <glib-object.h>
 #include <gtk/gtk.h>
 #include <vte/vte.h>
+
+enum _GtSerialViewMode { GT_SERIAL_VIEW_TEXT, GT_SERIAL_VIEW_HEX };
+
+typedef enum _GtSerialViewMode GtSerialViewMode;
 
 G_BEGIN_DECLS
 
@@ -34,7 +40,8 @@ GType gt_serial_view_get_type (void);
 
 G_DECLARE_FINAL_TYPE (GtSerialView, gt_serial_view, GT, SERIAL_VIEW, VteTerminal)
 
-GtkWidget *gt_serial_view_new (void);
+GtkWidget *
+gt_serial_view_new (GtBuffer *buffer);
 void gt_serial_view_clear (GtSerialView *self);
 void gt_serial_view_set_show_index (GtSerialView *self,
                                     gboolean      show);
@@ -49,6 +56,10 @@ void gt_serial_view_inc_total_bytes (GtSerialView *self,
                                      guint         bytes);
 
 guint gt_serial_view_get_total_bytes (GtSerialView *self);
+
+void
+gt_serial_view_set_display_mode (GtSerialView *self, GtSerialViewMode mode);
+
 G_END_DECLS
 
 #endif /* SERIAL_VIEW_H */

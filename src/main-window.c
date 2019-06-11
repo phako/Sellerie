@@ -178,12 +178,6 @@ on_view_hex_width_change_state (GSimpleAction *action,
                                 gpointer user_data);
 
 static void
-on_write_ascii (gchar *string, guint size, gpointer user_data);
-
-void
-on_write_hex (gchar *string, guint size, gpointer user_data);
-
-static void
 on_send_raw_file (GSimpleAction *action,
                   GVariant *parameter,
                   gpointer user_data);
@@ -393,7 +387,7 @@ gt_main_window_init (GtMainWindow *self)
                       G_CALLBACK (on_crlf_changed),
                       self);
 
-    self->display = gt_serial_view_new ();
+    self->display = gt_serial_view_new (self->buffer);
 
     g_signal_connect_after (
         G_OBJECT (self->display), "commit", G_CALLBACK (on_vte_commit), self);
@@ -603,18 +597,20 @@ gt_main_window_set_view (GtMainWindow *self, GtMainWindowViewType type)
     GAction *hex_width =
         g_action_map_lookup_action (G_ACTION_MAP (group), "view.hex-width");
 
-    gt_main_window_clear_display (self);
-
     switch (type) {
     case GT_MAIN_WINDOW_VIEW_TYPE_ASCII:
         g_simple_action_set_enabled (G_SIMPLE_ACTION (show_index), FALSE);
         g_simple_action_set_enabled (G_SIMPLE_ACTION (hex_width), FALSE);
-        gt_buffer_set_display_func (self->buffer, on_write_ascii, self);
+        gt_serial_view_set_display_mode (GT_SERIAL_VIEW (self->display),
+                                         GT_SERIAL_VIEW_TEXT);
+        // gt_buffer_set_display_func (self->buffer, on_write_ascii, self);
         break;
     case GT_MAIN_WINDOW_VIEW_TYPE_HEX:
         g_simple_action_set_enabled (G_SIMPLE_ACTION (show_index), TRUE);
         g_simple_action_set_enabled (G_SIMPLE_ACTION (hex_width), TRUE);
-        gt_buffer_set_display_func (self->buffer, on_write_hex, self);
+        gt_serial_view_set_display_mode (GT_SERIAL_VIEW (self->display),
+                                         GT_SERIAL_VIEW_HEX);
+        // gt_buffer_set_display_func (self->buffer, on_write_hex, self);
         break;
     default:
         g_assert_not_reached ();
@@ -1072,111 +1068,6 @@ on_view_hex_width_change_state (GSimpleAction *action,
     gt_main_window_set_view (self, GT_MAIN_WINDOW_VIEW_TYPE_HEX);
 
     g_simple_action_set_state (action, parameter);
-}
-
-void
-on_write_hex (gchar *string, guint size, gpointer user_data)
-{
-    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
-
-    static gchar data[128];
-    static gchar data_byte[6];
-    static guint bytes;
-
-    glong column, row;
-
-    guint i = 0;
-
-    if (size == 0)
-        return;
-
-    while (i < size) {
-        while (gtk_events_pending ())
-            gtk_main_iteration ();
-        vte_terminal_get_cursor_position (
-            VTE_TERMINAL (self->display), &column, &row);
-
-        if (gt_serial_view_get_show_index (GT_SERIAL_VIEW (self->display))) {
-            if (column == 0)
-            /* First byte on line */
-            {
-                sprintf (data, "%6d: ", gt_serial_view_get_total_bytes (GT_SERIAL_VIEW (self->display)));
-                vte_terminal_feed (
-                    VTE_TERMINAL (self->display), data, strlen (data));
-                bytes = 0;
-            }
-        } else {
-            if (column == 0)
-                bytes = 0;
-        }
-
-        /* Print hexadecimal characters */
-        data[0] = 0;
-
-        guint bytes_per_line = gt_serial_view_get_bytes_per_line (GT_SERIAL_VIEW (self->display));
-        while (bytes < bytes_per_line && i < size) {
-            gint avance = 0;
-            gchar ascii[1];
-
-            sprintf (data_byte, "%02X ", (guchar)string[i]);
-
-            {
-                GError *error = NULL;
-                gt_logging_log (self->logger, data_byte, 3, NULL);
-                if (error != NULL) {
-                    gt_main_window_show_message (
-                        self, error->message, GT_MESSAGE_TYPE_ERROR);
-                    g_error_free (error);
-                }
-            }
-            vte_terminal_feed (VTE_TERMINAL (self->display), data_byte, 3);
-
-            avance = (bytes_per_line - bytes) * 3 + bytes + 2;
-
-            /* Move forward */
-            sprintf (data_byte, "%c[%dC", 27, avance);
-            vte_terminal_feed (
-                VTE_TERMINAL (self->display), data_byte, strlen (data_byte));
-
-            /* Print ascii characters */
-            ascii[0] = (string[i] > 0x1F) ? string[i] : '.';
-            vte_terminal_feed (VTE_TERMINAL (self->display), ascii, 1);
-
-            /* Move backward */
-            sprintf (data_byte, "%c[%dD", 27, avance + 1);
-            vte_terminal_feed (
-                VTE_TERMINAL (self->display), data_byte, strlen (data_byte));
-
-            if (bytes == bytes_per_line / 2 - 1)
-                vte_terminal_feed (
-                    VTE_TERMINAL (self->display), "- ", strlen ("- "));
-
-            bytes++;
-            i++;
-
-            /* End of line ? */
-            if (bytes == bytes_per_line) {
-                vte_terminal_feed (VTE_TERMINAL (self->display), "\r\n", 2);
-                gt_serial_view_inc_total_bytes (GT_SERIAL_VIEW (self->display), bytes);
-            }
-        }
-    }
-}
-
-void
-on_write_ascii (gchar *string, guint size, gpointer user_data)
-{
-    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
-    GError *error = NULL;
-
-    gt_logging_log (self->logger, string, size, &error);
-    if (error != NULL) {
-        gt_main_window_show_message (
-            self, error->message, GT_MESSAGE_TYPE_ERROR);
-        g_error_free (error);
-    }
-
-    vte_terminal_feed (VTE_TERMINAL (self->display), string, size);
 }
 
 void

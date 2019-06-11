@@ -28,6 +28,8 @@ typedef struct _GtHexDisplay GtHexDisplay;
 
 typedef struct
 {
+    GtSerialViewMode mode;
+    GtBuffer *buffer;
     GtHexDisplay hex_display;
 } GtSerialViewPrivate;
 
@@ -42,33 +44,55 @@ struct _GtSerialViewClass {
 
 G_DEFINE_TYPE_WITH_PRIVATE (GtSerialView, gt_serial_view, VTE_TYPE_TERMINAL)
 
-/*
-enum {
-        PROP_0,
-        N_PROPS
-};
+enum { PROP_0, PROP_BUFFER, N_PROPS };
 
 static GParamSpec *properties [N_PROPS];
-*/
+
+void
+on_write_hex (GtSerialView *self, gchar *string, guint size);
+
+void
+on_write_ascii (GtSerialView *self, gchar *string, guint size);
+
+static void
+on_buffer_updated (GtSerialView *self,
+                   gpointer data,
+                   guint size,
+                   gpointer user_data)
+{
+    GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+    if (priv->mode == GT_SERIAL_VIEW_HEX)
+        on_write_hex (self, (gchar *)data, size);
+    else
+        on_write_ascii (self, (gchar *)data, size);
+}
 
 GtkWidget *
-gt_serial_view_new (void)
+gt_serial_view_new (GtBuffer *buffer)
 {
     return g_object_new (GT_TYPE_SERIAL_VIEW,
-                          "scroll-on-keystroke", TRUE,
-                          "scroll-on-output", FALSE,
-                          "pointer-autohide", TRUE,
-                          "backspace-binding", VTE_ERASE_ASCII_BACKSPACE,
-                          NULL);
+                         "buffer",
+                         buffer,
+                         "scroll-on-keystroke",
+                         TRUE,
+                         "scroll-on-output",
+                         FALSE,
+                         "pointer-autohide",
+                         TRUE,
+                         "backspace-binding",
+                         VTE_ERASE_ASCII_BACKSPACE,
+                         NULL);
 }
 
 static void
 gt_serial_view_finalize (GObject *object)
 {
-//        GtSerialView *self = (GtSerialView *)object;
-//        GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+    GtSerialView *self = (GtSerialView *)object;
+    GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
 
-        G_OBJECT_CLASS (gt_serial_view_parent_class)->finalize (object);
+    g_clear_object (&priv->buffer);
+
+    G_OBJECT_CLASS (gt_serial_view_parent_class)->finalize (object);
 }
 
 static void
@@ -77,12 +101,15 @@ gt_serial_view_get_property (GObject    *object,
                              GValue     *value,
                              GParamSpec *pspec)
 {
-//        GtSerialView *self = GT_TYPE_SERIAL_VIEW (object);
+    GtSerialView *self = GT_SERIAL_VIEW (object);
+    GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
 
-        switch (prop_id)
-          {
-          default:
-            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    switch (prop_id) {
+    case PROP_BUFFER:
+        g_value_set_object (value, priv->buffer);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
           }
 }
 
@@ -92,13 +119,29 @@ gt_serial_view_set_property (GObject      *object,
                              const GValue *value,
                              GParamSpec   *pspec)
 {
-//        GtSerialView *self = GT_TYPE_SERIAL_VIEW (object);
+    GtSerialView *self = GT_SERIAL_VIEW (object);
+    GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
 
-        switch (prop_id)
-          {
-          default:
-            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    switch (prop_id) {
+    case PROP_BUFFER:
+        priv->buffer = g_value_dup_object (value);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
           }
+}
+
+static void
+gt_serial_view_constructed (GObject *object)
+{
+    GtSerialView *self = GT_SERIAL_VIEW (object);
+    GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+    g_signal_connect_swapped (
+        priv->buffer, "clear", G_CALLBACK (gt_serial_view_clear), self);
+    g_signal_connect_swapped (
+        priv->buffer, "buffer-updated", G_CALLBACK (on_buffer_updated), self);
+    G_OBJECT_CLASS (gt_serial_view_parent_class)->constructed (object);
 }
 
 static void
@@ -106,6 +149,16 @@ gt_serial_view_class_init (GtSerialViewClass *klass)
 {
         GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+        properties[PROP_BUFFER] =
+            g_param_spec_object ("buffer",
+                                 "buffer",
+                                 "buffer",
+                                 GT_TYPE_BUFFER,
+                                 G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
+                                     G_PARAM_STATIC_STRINGS);
+        g_object_class_install_properties (object_class, N_PROPS, properties);
+
+        object_class->constructed = gt_serial_view_constructed;
         object_class->finalize = gt_serial_view_finalize;
         object_class->get_property = gt_serial_view_get_property;
         object_class->set_property = gt_serial_view_set_property;
@@ -116,6 +169,7 @@ gt_serial_view_init (GtSerialView *self)
 {
     GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
 
+    priv->mode = GT_SERIAL_VIEW_TEXT;
     priv->hex_display.total_bytes = 0;
     priv->hex_display.bytes_per_line = 16;
     priv->hex_display.show_index = FALSE;
@@ -180,3 +234,115 @@ guint gt_serial_view_get_total_bytes (GtSerialView *self)
   return priv->hex_display.total_bytes;
 }
 
+void
+gt_serial_view_set_display_mode (GtSerialView *self, GtSerialViewMode mode)
+{
+    GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+    gt_serial_view_clear (self);
+
+    priv->mode = mode;
+}
+
+void
+on_write_hex (GtSerialView *self, gchar *string, guint size)
+{
+    GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+    static gchar data[128];
+    static gchar data_byte[6];
+    static guint bytes;
+
+    glong column, row;
+
+    guint i = 0;
+
+    if (size == 0)
+        return;
+
+    while (i < size) {
+        while (gtk_events_pending ())
+            gtk_main_iteration ();
+        vte_terminal_get_cursor_position (VTE_TERMINAL (self), &column, &row);
+
+        if (priv->hex_display.show_index) {
+            if (column == 0)
+            /* First byte on line */
+            {
+                sprintf (data, "%6d: ", priv->hex_display.total_bytes);
+                vte_terminal_feed (VTE_TERMINAL (self), data, strlen (data));
+                bytes = 0;
+            }
+        } else {
+            if (column == 0)
+                bytes = 0;
+        }
+
+        /* Print hexadecimal characters */
+        data[0] = 0;
+
+        guint bytes_per_line = priv->hex_display.bytes_per_line;
+        while (bytes < bytes_per_line && i < size) {
+            gint avance = 0;
+            gchar ascii[1];
+
+            sprintf (data_byte, "%02X ", (guchar)string[i]);
+
+#if 0
+            {
+                GError *error = NULL;
+                gt_logging_log (self->logger, data_byte, 3, NULL);
+                if (error != NULL) {
+                    gt_main_window_show_message (
+                        self, error->message, GT_MESSAGE_TYPE_ERROR);
+                    g_error_free (error);
+                }
+            }
+#endif
+            vte_terminal_feed (VTE_TERMINAL (self), data_byte, 3);
+
+            avance = (bytes_per_line - bytes) * 3 + bytes + 2;
+
+            /* Move forward */
+            sprintf (data_byte, "%c[%dC", 27, avance);
+            vte_terminal_feed (
+                VTE_TERMINAL (self), data_byte, strlen (data_byte));
+
+            /* Print ascii characters */
+            ascii[0] = (string[i] > 0x1F) ? string[i] : '.';
+            vte_terminal_feed (VTE_TERMINAL (self), ascii, 1);
+
+            /* Move backward */
+            sprintf (data_byte, "%c[%dD", 27, avance + 1);
+            vte_terminal_feed (
+                VTE_TERMINAL (self), data_byte, strlen (data_byte));
+
+            if (bytes == bytes_per_line / 2 - 1)
+                vte_terminal_feed (VTE_TERMINAL (self), "- ", strlen ("- "));
+
+            bytes++;
+            i++;
+
+            /* End of line ? */
+            if (bytes == bytes_per_line) {
+                vte_terminal_feed (VTE_TERMINAL (self), "\r\n", 2);
+                priv->hex_display.total_bytes += bytes;
+            }
+        }
+    }
+}
+
+void
+on_write_ascii (GtSerialView *self, gchar *string, guint size)
+{
+    /*    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
+        GError *error = NULL;
+
+        gt_logging_log (self->logger, string, size, &error);
+        if (error != NULL) {
+            gt_main_window_show_message (
+                self, error->message, GT_MESSAGE_TYPE_ERROR);
+            g_error_free (error);
+        }
+    */
+    vte_terminal_feed (VTE_TERMINAL (self), string, size);
+}

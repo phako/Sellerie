@@ -38,7 +38,6 @@ typedef struct {
     unsigned int pointer;
     char *current_buffer;
     gboolean overlapped;
-    GtBufferFunc write_func;
     gpointer user_data;
 } GtBufferPrivate;
 
@@ -198,8 +197,6 @@ gt_buffer_put_chars (GtBuffer *self,
     }
 
     g_signal_emit (self, SIGNALS[SIGNAL_NEW_BUFFER], 0, characters, size);
-    /*if (priv->write_func != NULL)
-        priv->write_func (characters, size, priv->user_data); */
 }
 
 void
@@ -219,10 +216,6 @@ gt_buffer_write (GtBuffer *self)
 {
     GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
 
-    if (priv->write_func == NULL) {
-        return;
-    }
-
     /* Write the second half of the ringbuffer first (contains start of data) */
     if (priv->overlapped) {
         g_signal_emit (self,
@@ -230,66 +223,44 @@ gt_buffer_write (GtBuffer *self)
                        0,
                        priv->current_buffer,
                        BUFFER_SIZE - priv->pointer);
-        /*priv->write_func (
-            priv->current_buffer, BUFFER_SIZE - priv->pointer, priv->user_data);
-         */
     }
-    // priv->write_func (priv->buffer, priv->pointer, priv->user_data);
     g_signal_emit (
         self, SIGNALS[SIGNAL_NEW_BUFFER], 0, priv->buffer, priv->pointer);
-}
-
-void
-gt_buffer_write_with_func (GtBuffer *self,
-                           GtBufferFunc write_func,
-                           gpointer user_data)
-{
-    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
-    GtBufferFunc old_write_func = priv->write_func;
-    gpointer old_user_data = priv->user_data;
-
-    priv->write_func = write_func;
-    priv->user_data = user_data;
-    gt_buffer_write (self);
-
-    priv->write_func = old_write_func;
-    priv->user_data = old_user_data;
-}
-
-void
-gt_buffer_set_display_func (GtBuffer *self,
-                            GtBufferFunc write_func,
-                            gpointer user_data)
-{
-    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
-
-    priv->write_func = write_func;
-    priv->user_data = user_data;
-}
-
-void
-gt_buffer_unset_display_func (GtBuffer *self)
-{
-    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
-
-    priv->write_func = NULL;
-}
-
-static void
-on_write_to_file (char *buffer, unsigned int size, gpointer user_data)
-{
-    GtBufferSaveClosure *closure = (GtBufferSaveClosure *)user_data;
-
-    closure->result = g_file_set_contents (
-        closure->file_name, buffer, (gssize)size, closure->error);
 }
 
 gboolean
 gt_buffer_write_to_file (GtBuffer *self, const char *file_name, GError **error)
 {
-    GtBufferSaveClosure closure = {file_name, FALSE, error};
+    GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
+    GFile *file = g_file_new_for_commandline_arg (file_name);
+    gboolean retval = TRUE;
 
-    gt_buffer_write_with_func (self, on_write_to_file, &closure);
+    GFileIOStream *stream = g_file_replace_readwrite (
+        file, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION, NULL, error);
+    g_object_unref (&file);
 
-    return closure.result;
+    if (stream == NULL) {
+        return FALSE;
+    }
+    GOutputStream *os = g_io_stream_get_output_stream (G_IO_STREAM (stream));
+
+    /* Write the second half of the ringbuffer first (contains start of data) */
+    if (priv->overlapped) {
+        retval = g_output_stream_write_all (os,
+                                            priv->current_buffer,
+                                            BUFFER_SIZE - priv->pointer,
+                                            NULL,
+                                            NULL,
+                                            error);
+        if (!retval) {
+            goto out;
+        }
+    }
+    retval = g_output_stream_write_all (
+        os, priv->buffer, priv->pointer, NULL, NULL, error);
+
+out:
+    g_object_unref (stream);
+
+    return retval;
 }

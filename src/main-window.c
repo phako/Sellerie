@@ -603,20 +603,16 @@ gt_main_window_set_view (GtMainWindow *self, GtMainWindowViewType type)
         g_simple_action_set_enabled (G_SIMPLE_ACTION (hex_width), FALSE);
         gt_serial_view_set_display_mode (GT_SERIAL_VIEW (self->display),
                                          GT_SERIAL_VIEW_TEXT);
-        // gt_buffer_set_display_func (self->buffer, on_write_ascii, self);
         break;
     case GT_MAIN_WINDOW_VIEW_TYPE_HEX:
         g_simple_action_set_enabled (G_SIMPLE_ACTION (show_index), TRUE);
         g_simple_action_set_enabled (G_SIMPLE_ACTION (hex_width), TRUE);
         gt_serial_view_set_display_mode (GT_SERIAL_VIEW (self->display),
                                          GT_SERIAL_VIEW_HEX);
-        // gt_buffer_set_display_func (self->buffer, on_write_hex, self);
         break;
     default:
         g_assert_not_reached ();
     }
-
-    gt_buffer_write (self->buffer);
 }
 
 void

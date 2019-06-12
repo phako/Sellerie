@@ -46,7 +46,7 @@ G_DEFINE_TYPE_WITH_PRIVATE (GtSerialView, gt_serial_view, VTE_TYPE_TERMINAL)
 
 enum { PROP_0, PROP_BUFFER, N_PROPS };
 
-static GParamSpec *properties [N_PROPS];
+static GParamSpec *properties[N_PROPS] = {0};
 
 void
 on_write_hex (GtSerialView *self, gchar *string, guint size);
@@ -138,7 +138,7 @@ gt_serial_view_constructed (GObject *object)
     GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
 
     g_signal_connect_swapped (
-        priv->buffer, "clear", G_CALLBACK (gt_serial_view_clear), self);
+        priv->buffer, "cleared", G_CALLBACK (gt_serial_view_clear), self);
     g_signal_connect_swapped (
         priv->buffer, "buffer-updated", G_CALLBACK (on_buffer_updated), self);
     G_OBJECT_CLASS (gt_serial_view_parent_class)->constructed (object);
@@ -149,6 +149,11 @@ gt_serial_view_class_init (GtSerialViewClass *klass)
 {
         GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+        object_class->constructed = gt_serial_view_constructed;
+        object_class->finalize = gt_serial_view_finalize;
+        object_class->get_property = gt_serial_view_get_property;
+        object_class->set_property = gt_serial_view_set_property;
+
         properties[PROP_BUFFER] =
             g_param_spec_object ("buffer",
                                  "buffer",
@@ -157,11 +162,6 @@ gt_serial_view_class_init (GtSerialViewClass *klass)
                                  G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
                                      G_PARAM_STATIC_STRINGS);
         g_object_class_install_properties (object_class, N_PROPS, properties);
-
-        object_class->constructed = gt_serial_view_constructed;
-        object_class->finalize = gt_serial_view_finalize;
-        object_class->get_property = gt_serial_view_get_property;
-        object_class->set_property = gt_serial_view_set_property;
 }
 
 static void
@@ -241,6 +241,9 @@ gt_serial_view_set_display_mode (GtSerialView *self, GtSerialViewMode mode)
     gt_serial_view_clear (self);
 
     priv->mode = mode;
+
+    // Trigger re-display
+    gt_buffer_write (priv->buffer);
 }
 
 void

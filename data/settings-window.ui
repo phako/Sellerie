@@ -16,8 +16,8 @@
     <child internal-child="vbox">
       <object class="GtkBox">
         <property name="can_focus">False</property>
-        <property name="margin_left">6</property>
-        <property name="margin_right">6</property>
+        <property name="margin_start">6</property>
+        <property name="margin_end">6</property>
         <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
@@ -77,7 +77,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="margin_left">12</property>
+                <property name="margin_start">12</property>
                 <property name="hexpand">True</property>
                 <property name="font">Sans 12</property>
                 <property name="preview_text"/>
@@ -133,7 +133,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="halign">end</property>
-                <property name="margin_left">12</property>
+                <property name="margin_start">12</property>
                 <property name="label" translatable="yes">Background</property>
               </object>
               <packing>
@@ -173,7 +173,7 @@
               <object class="GtkSpinButton" id="spin-scrollback">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="margin_left">12</property>
+                <property name="margin_start">12</property>
                 <property name="input_purpose">number</property>
                 <property name="adjustment">adjustment6</property>
                 <property name="numeric">True</property>

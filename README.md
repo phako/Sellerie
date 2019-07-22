@@ -83,4 +83,3 @@ for an already existing build.
 
 Then build and install as usual.
 
-See INSTALL for more detailed build and install options.

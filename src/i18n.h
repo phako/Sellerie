@@ -23,6 +23,5 @@
 int i18n_printf(const char *, ...);
 int i18n_fprintf(FILE *, const char *, ...);
 void i18n_perror(const char *);
-char *strerror_utf8(int);
 
 #endif

@@ -23,7 +23,6 @@
 
 #include "buffer.h"
 #include "fichier.h"
-#include "i18n.h"
 #include "term_config.h"
 
 #include <errno.h>
@@ -528,12 +527,15 @@ gt_serial_port_set_signals (GtSerialPort *self, guint param)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     int stat_;
+    int saved_errno = 0;
 
     if (priv->serial_port_fd == -1)
         return;
 
     if (ioctl (priv->serial_port_fd, TIOCMGET, &stat_) == -1) {
-        i18n_perror (_ ("Control signals read"));
+        int saved_errno = errno;
+
+        g_critical (_ ("Control signals read: %s"), g_strerror (saved_errno));
         return;
     }
 
@@ -543,8 +545,10 @@ gt_serial_port_set_signals (GtSerialPort *self, guint param)
             stat_ &= ~TIOCM_DTR;
         else
             stat_ |= TIOCM_DTR;
-        if (ioctl (priv->serial_port_fd, TIOCMSET, &stat_) == -1)
-            i18n_perror (_ ("DTR write"));
+        if (ioctl (priv->serial_port_fd, TIOCMSET, &stat_) == -1) {
+            saved_errno = errno;
+            g_critical (_ ("DTR write: %s"), g_strerror (saved_errno));
+        }
     }
     /* RTS */
     else if (param == 1) {
@@ -553,7 +557,7 @@ gt_serial_port_set_signals (GtSerialPort *self, guint param)
         else
             stat_ |= TIOCM_RTS;
         if (ioctl (priv->serial_port_fd, TIOCMSET, &stat_) == -1)
-            i18n_perror (_ ("RTS write"));
+            g_critical (_ ("RTS write: %s"), g_strerror (saved_errno));
     }
 }
 
@@ -669,8 +673,7 @@ gt_serial_port_lock (GtSerialPort *self, char *port, GError **error)
                 sscanf (buf, "%d", &pid);
             }
             if (pid > 0 && kill ((pid_t)pid, 0) < 0 && errno == ESRCH) {
-                i18n_fprintf (stderr,
-                              _ ("Lockfile is stale. Overriding it…\n"));
+                g_warning (_ ("Lockfile is stale. Overriding it…"));
                 sleep (1);
                 unlink (priv->lockfile);
             } else
@@ -683,7 +686,7 @@ gt_serial_port_lock (GtSerialPort *self, char *port, GError **error)
                                             G_IO_ERROR_FAILED,
                                             _ ("Device %s is locked."),
                                             port));
-            i18n_fprintf (stderr, _ ("Device %s is locked.\n"), port);
+            g_critical (_ ("Device %s is locked."), port);
             priv->lockfile[0] = 0;
 
             return FALSE;
@@ -695,23 +698,28 @@ gt_serial_port_lock (GtSerialPort *self, char *port, GError **error)
         mask = umask (022);
         if ((fd = open (priv->lockfile, O_WRONLY | O_CREAT | O_EXCL, 0666)) <
             0) {
+            int saved_errno = errno;
             GError *inner_error = NULL;
 
             inner_error = g_error_new (G_IO_ERROR,
-                                       g_io_error_from_errno (errno),
+                                       g_io_error_from_errno (saved_errno),
                                        _ ("Cannot create lockfile: %s"),
-                                       g_strerror (errno));
+                                       g_strerror (saved_errno));
 
             g_propagate_error (error, inner_error);
-            i18n_fprintf (stderr, _ ("Cannot create lockfile. Sorry.\n"));
+            g_critical (_ ("Cannot create lockfile. Sorry."));
             priv->lockfile[0] = 0;
 
             return FALSE;
         }
+
         (void)umask (mask);
         res = chown (priv->lockfile, real_uid, real_gid);
-        if (res < 0)
-            i18n_fprintf (stderr, "Fail");
+        if (res < 0) {
+            int saved_errno = errno;
+            g_warning (_ ("Lockfile chown failed: %s"),
+                       g_strerror (saved_errno));
+        }
 
         snprintf (buf,
                   sizeof (buf),
@@ -719,8 +727,11 @@ gt_serial_port_lock (GtSerialPort *self, char *port, GError **error)
                   (long)getpid (),
                   username);
         res = write (fd, buf, strlen (buf));
-        if (res < 0)
-            i18n_fprintf (stderr, "Fail");
+        if (res < 0) {
+            int saved_errno = errno;
+            g_warning (_ ("Lockfile write failed: %s"),
+                       g_strerror (saved_errno));
+        }
         close (fd);
     }
 

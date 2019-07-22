@@ -45,8 +45,10 @@ struct _GtSerialViewClass {
 G_DEFINE_TYPE_WITH_PRIVATE (GtSerialView, gt_serial_view, VTE_TYPE_TERMINAL)
 
 enum { PROP_0, PROP_BUFFER, N_PROPS };
+static GParamSpec *properties[N_PROPS] = {NULL};
 
-static GParamSpec *properties[N_PROPS] = {0};
+enum { SIGNAL_NEW_DATA, SIGNAL_COUNT };
+static guint SIGNALS[SIGNAL_COUNT] = {0};
 
 void
 on_write_hex (GtSerialView *self, gchar *string, guint size);
@@ -154,6 +156,18 @@ gt_serial_view_class_init (GtSerialViewClass *klass)
         object_class->get_property = gt_serial_view_get_property;
         object_class->set_property = gt_serial_view_set_property;
 
+        SIGNALS[SIGNAL_NEW_DATA] = g_signal_new ("updated",
+                                                 GT_TYPE_SERIAL_VIEW,
+                                                 G_SIGNAL_RUN_FIRST,
+                                                 0,
+                                                 NULL,
+                                                 NULL,
+                                                 NULL,
+                                                 G_TYPE_NONE,
+                                                 2,
+                                                 G_TYPE_STRING,
+                                                 G_TYPE_UINT64);
+
         properties[PROP_BUFFER] =
             g_param_spec_object ("buffer",
                                  "buffer",
@@ -250,6 +264,7 @@ void
 on_write_hex (GtSerialView *self, gchar *string, guint size)
 {
     GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+    VteTerminal *term = VTE_TERMINAL (self);
 
     static gchar data[128];
     static gchar data_byte[6];
@@ -265,14 +280,14 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
     while (i < size) {
         while (gtk_events_pending ())
             gtk_main_iteration ();
-        vte_terminal_get_cursor_position (VTE_TERMINAL (self), &column, &row);
+        vte_terminal_get_cursor_position (term, &column, &row);
 
         if (priv->hex_display.show_index) {
             if (column == 0)
             /* First byte on line */
             {
                 sprintf (data, "%6d: ", priv->hex_display.total_bytes);
-                vte_terminal_feed (VTE_TERMINAL (self), data, strlen (data));
+                vte_terminal_feed (term, data, strlen (data));
                 bytes = 0;
             }
         } else {
@@ -289,45 +304,33 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
             gchar ascii[1];
 
             sprintf (data_byte, "%02X ", (guchar)string[i]);
+            g_signal_emit (self, SIGNALS[SIGNAL_NEW_DATA], 0, data_byte, 3);
 
-#if 0
-            {
-                GError *error = NULL;
-                gt_logging_log (self->logger, data_byte, 3, NULL);
-                if (error != NULL) {
-                    gt_main_window_show_message (
-                        self, error->message, GT_MESSAGE_TYPE_ERROR);
-                    g_error_free (error);
-                }
-            }
-#endif
-            vte_terminal_feed (VTE_TERMINAL (self), data_byte, 3);
+            vte_terminal_feed (term, data_byte, 3);
 
             avance = (bytes_per_line - bytes) * 3 + bytes + 2;
 
             /* Move forward */
             sprintf (data_byte, "%c[%dC", 27, avance);
-            vte_terminal_feed (
-                VTE_TERMINAL (self), data_byte, strlen (data_byte));
+            vte_terminal_feed (term, data_byte, strlen (data_byte));
 
             /* Print ascii characters */
             ascii[0] = (string[i] > 0x1F) ? string[i] : '.';
-            vte_terminal_feed (VTE_TERMINAL (self), ascii, 1);
+            vte_terminal_feed (term, ascii, 1);
 
             /* Move backward */
             sprintf (data_byte, "%c[%dD", 27, avance + 1);
-            vte_terminal_feed (
-                VTE_TERMINAL (self), data_byte, strlen (data_byte));
+            vte_terminal_feed (term, data_byte, strlen (data_byte));
 
             if (bytes == bytes_per_line / 2 - 1)
-                vte_terminal_feed (VTE_TERMINAL (self), "- ", strlen ("- "));
+                vte_terminal_feed (term, "- ", strlen ("- "));
 
             bytes++;
             i++;
 
             /* End of line ? */
             if (bytes == bytes_per_line) {
-                vte_terminal_feed (VTE_TERMINAL (self), "\r\n", 2);
+                vte_terminal_feed (term, "\r\n", 2);
                 priv->hex_display.total_bytes += bytes;
             }
         }
@@ -337,15 +340,6 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
 void
 on_write_ascii (GtSerialView *self, gchar *string, guint size)
 {
-    /*    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
-        GError *error = NULL;
-
-        gt_logging_log (self->logger, string, size, &error);
-        if (error != NULL) {
-            gt_main_window_show_message (
-                self, error->message, GT_MESSAGE_TYPE_ERROR);
-            g_error_free (error);
-        }
-    */
     vte_terminal_feed (VTE_TERMINAL (self), string, size);
+    g_signal_emit (self, SIGNALS[SIGNAL_NEW_DATA], 0, string, size);
 }

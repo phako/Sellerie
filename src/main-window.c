@@ -88,6 +88,12 @@ static void
 on_vte_commit (VteTerminal *widget, gchar *text, guint length, gpointer ptr);
 
 static void
+on_display_updated (GtMainWindow *self,
+                    gchar *text,
+                    guint length,
+                    gpointer user_data);
+
+static void
 on_action_about (GSimpleAction *action,
                  GVariant *parameter,
                  gpointer user_data);
@@ -391,6 +397,10 @@ gt_main_window_init (GtMainWindow *self)
 
     g_signal_connect_after (
         G_OBJECT (self->display), "commit", G_CALLBACK (on_vte_commit), self);
+    g_signal_connect_swapped (G_OBJECT (self->display),
+                              "updated",
+                              G_CALLBACK (on_display_updated),
+                              self);
 
     gtk_scrolled_window_set_vadjustment (
         GTK_SCROLLED_WINDOW (self->scrolled_window),
@@ -1389,4 +1399,20 @@ on_config_profile_delete (GSimpleAction *action,
                           gpointer user_data)
 {
     delete_config_callback (NULL, NULL);
+}
+
+static void
+on_display_updated (GtMainWindow *self,
+                    gchar *text,
+                    guint length,
+                    gpointer user_data)
+{
+    GError *error = NULL;
+
+    gt_logging_log (self->logger, text, length, &error);
+    if (error != NULL) {
+        gt_main_window_show_message (
+            self, error->message, GT_MESSAGE_TYPE_ERROR);
+        g_error_free (error);
+    }
 }

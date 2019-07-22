@@ -254,10 +254,11 @@ gt_serial_port_termios_from_config (GtSerialPort *self,
         gt_serial_port_set_custom_speed (self, priv->config.vitesse);
         termios_p->c_cflag |= B38400;
 #else
-        g_propagate_error (error,
-                           g_error_new_literal (G_IO_ERROR,
-                                                G_IO_ERROR_FAILED,
-                                                _("Arbitrary baud rates not supported"));
+        g_propagate_error (
+            error,
+            g_error_new_literal (G_IO_ERROR,
+                                 G_IO_ERROR_FAILED,
+                                 _ ("Arbitrary baud rates not supported")));
         return FALSE;
 #endif
     }

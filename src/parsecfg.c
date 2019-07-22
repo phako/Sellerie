@@ -37,7 +37,7 @@
 /*                                                                        */
 /**************************************************************************/
 
-/* $Id: parsecfg.c,v 1.15 2001/06/27 15:24:00 gm Exp $ */
+/* $Id: parsecfg.c,v 1.21 2001/08/06 15:07:10 gm Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -120,6 +120,14 @@ fetch_ini (const char *file,
            cfgValueType value_type,
            int section_num,
            const char *section_name);
+static int
+fetch_value (const char *file,
+             int *line,
+             char *line_buf,
+             FILE *fp,
+             int *store_flag,
+             char *ptr,
+             cfgStruct *fetch_cfg);
 
 /* static variables */
 
@@ -174,6 +182,16 @@ cfgParse (const char *file, cfgStruct cfg[], cfgFileType type)
                 fp, &line_buf, &line)) != NULL) {
         switch (type) {
         case CFG_SIMPLE:
+#if 0
+			/* proceed even if there is unrecognized parameter */
+			if ((error_code = parse_simple(file, fp, ptr, cfg, &line)) == CFG_WRONG_PARAMETER) {
+				cfgFatal(error_code, file, line, line_buf);
+			} else if (error_code != CFG_NO_ERROR) {
+				fclose(fp);
+				cfgFatal(error_code, file, line, line_buf);
+				return (-1);
+			}
+#endif
             if ((error_code = parse_simple (file, fp, ptr, cfg, &line)) !=
                 CFG_NO_ERROR) {
                 fclose (fp);
@@ -521,6 +539,7 @@ parse_simple (const char *file, FILE *fp, char *ptr, cfgStruct cfg[], int *line)
                                          0,
                                          parameter_buf,
                                          parameter_line) != CFG_NO_ERROR) {
+            free (parameter);
             return (CFG_JUST_RETURN_WITHOUT_MSG); /* error handling has already
                                                      done */
         }
@@ -536,9 +555,9 @@ parse_simple (const char *file, FILE *fp, char *ptr, cfgStruct cfg[], int *line)
             free (value);
             return (error_code);
         }
-        free (parameter);
         free (value);
     }
+    free (parameter);
     return (CFG_NO_ERROR);
 }
 
@@ -655,7 +674,7 @@ store_value (cfgStruct cfg[],
     long tmp;
     unsigned long utmp;
     float ftmp;
-    float dtmp;
+    double dtmp;
     char *endptr;
     char *strptr;
     cfgList *listptr;
@@ -1389,97 +1408,29 @@ fetch_simple (const char *file,
               cfgValueType value_type)
 {
     int store_flag = -1;
-    int error_code;
     int line;
     char *line_buf;
     char *ptr;
-    char *read_parameter;
-    char *read_value;
-    cfgStruct fetch_cfg[] = {{parameter_name, value_type, result_value},
-                             {NULL, CFG_END, NULL}};
+
+#if 0
+	/* for GNU extensions */
+	cfgStruct fetch_cfg[] = {
+		{parameter_name, value_type, result_value},
+		{NULL, CFG_END, NULL}
+	};
+#endif
+
+    cfgStruct fetch_cfg[] = {{NULL, CFG_END, NULL}, {NULL, CFG_END, NULL}};
+    fetch_cfg[0].parameterName = parameter_name;
+    fetch_cfg[0].type = value_type;
+    fetch_cfg[0].value = result_value;
 
     while ((ptr = get_single_line_without_first_spaces (
                 fp, &line_buf, &line)) != NULL) { /* malloc line_buf */
-        if ((ptr = parse_word (ptr, &read_parameter, CFG_PARAMETER)) ==
-            NULL) { /* malloc read_parameter */
-            cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
-            free (line_buf);
-            free (read_parameter);
+        if (fetch_value (
+                file, &line, line_buf, fp, &store_flag, ptr, fetch_cfg) == -1) {
             return (-1);
         }
-        if (strcasecmp (read_parameter, parameter_name) == 0) {
-            if (*ptr == '{') {
-                ptr = rm_first_spaces (ptr + 1);
-                if (*ptr != '\0' && *ptr != '#') {
-                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
-                    free (line_buf);
-                    free (read_parameter);
-                    return (-1);
-                }
-                if (parse_values_between_braces (file,
-                                                 fp,
-                                                 parameter_name,
-                                                 fetch_cfg,
-                                                 &line,
-                                                 CFG_SIMPLE,
-                                                 0,
-                                                 line_buf,
-                                                 line) != CFG_NO_ERROR) {
-                    free (line_buf);
-                    free (read_parameter);
-                    return (-1);
-                }
-            } else {
-                if ((ptr = parse_word (ptr, &read_value, CFG_VALUE)) ==
-                    NULL) { /* malloc read_value */
-                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
-                    free (line_buf);
-                    free (read_parameter);
-                    return (-1);
-                }
-                if ((error_code = store_value (fetch_cfg,
-                                               parameter_name,
-                                               read_value,
-                                               CFG_SIMPLE,
-                                               0)) != CFG_NO_ERROR) {
-                    cfgFatal (error_code, file, line, line_buf);
-                    free (read_value);
-                    free (line_buf);
-                    free (read_parameter);
-                    return (-1);
-                }
-                free (read_value); /* free */
-            }
-            store_flag = 0;
-            free (line_buf);
-        } else {
-            if (*ptr == '{') {
-                ptr = rm_first_spaces (ptr + 1);
-                if (*ptr != '\0' && *ptr != '#') {
-                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
-                    free (line_buf);
-                    free (read_parameter);
-                    return (-1);
-                }
-                free (line_buf);
-                while ((ptr = get_single_line_without_first_spaces (
-                            fp, &line_buf, &line)) !=
-                       NULL) { /* malloc line_buf */
-                    if (*ptr == '}') {
-                        ptr = rm_first_spaces (ptr + 1);
-                        if (*ptr != '\0' && *ptr != '#') {
-                            cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
-                            free (line_buf);
-                            free (read_parameter);
-                            return (-1);
-                        }
-                        break;
-                    }
-                    free (line_buf);
-                }
-            }
-        }
-        free (read_parameter);
     }
     return (store_flag);
 }
@@ -1501,17 +1452,24 @@ fetch_ini (const char *file,
 {
     int store_flag = -1;
     int section_flag = -1;
-    int error_code;
     int line;
     char *line_buf;
     char *ptr;
-    char *read_parameter;
-    char *read_value;
     char *read_section_name;
     int current_section_number = 0;
 
-    cfgStruct fetch_cfg[] = {{parameter_name, value_type, result_value},
-                             {NULL, CFG_END, NULL}};
+#if 0
+	/* for GNU extensions */
+	cfgStruct fetch_cfg[] = {
+		{parameter_name, value_type, result_value},
+		{NULL, CFG_END, NULL}
+	};
+#endif
+
+    cfgStruct fetch_cfg[] = {{NULL, CFG_END, NULL}, {NULL, CFG_END, NULL}};
+    fetch_cfg[0].parameterName = parameter_name;
+    fetch_cfg[0].type = value_type;
+    fetch_cfg[0].value = result_value;
 
     while ((ptr = get_single_line_without_first_spaces (
                 fp, &line_buf, &line)) != NULL) { /* malloc line_buf */
@@ -1548,85 +1506,113 @@ fetch_ini (const char *file,
             continue;
         }
 
-        if ((ptr = parse_word (ptr, &read_parameter, CFG_PARAMETER)) ==
-            NULL) { /* malloc read_parameter */
-            cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
-            free (line_buf);
+        if (fetch_value (
+                file, &line, line_buf, fp, &store_flag, ptr, fetch_cfg) == -1) {
             return (-1);
         }
-        if (strcasecmp (read_parameter, parameter_name) == 0) {
-            if (*ptr == '{') {
-                ptr = rm_first_spaces (ptr + 1);
-                if (*ptr != '\0' && *ptr != '#') {
-                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
-                    free (line_buf);
-                    free (read_parameter);
-                    return (-1);
-                }
-                if (parse_values_between_braces (file,
-                                                 fp,
-                                                 parameter_name,
-                                                 fetch_cfg,
-                                                 &line,
-                                                 CFG_SIMPLE,
-                                                 0,
-                                                 line_buf,
-                                                 line) != CFG_NO_ERROR) {
-                    free (line_buf);
-                    free (read_parameter);
-                    return (-1);
-                }
-            } else {
-                if ((ptr = parse_word (ptr, &read_value, CFG_VALUE)) ==
-                    NULL) { /* malloc read_value */
-                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
-                    free (line_buf);
-                    free (read_parameter);
-                    return (-1);
-                }
-                if ((error_code = store_value (fetch_cfg,
-                                               parameter_name,
-                                               read_value,
-                                               CFG_SIMPLE,
-                                               0)) != CFG_NO_ERROR) {
-                    cfgFatal (error_code, file, line, line_buf);
-                    free (line_buf);
-                    free (read_parameter);
-                    free (read_value);
-                    return (-1);
-                }
-                free (read_value);
-            }
-            store_flag = 0;
-            free (line_buf);
-        } else {
-            if (*ptr == '{') {
-                ptr = rm_first_spaces (ptr + 1);
-                if (*ptr != '\0' && *ptr != '#') {
-                    cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
-                    free (line_buf);
-                    free (read_parameter);
-                    return (-1);
-                }
-                free (line_buf);
-                while ((ptr = get_single_line_without_first_spaces (
-                            fp, &line_buf, &line)) != NULL) {
-                    if (*ptr == '}') {
-                        ptr = rm_first_spaces (ptr + 1);
-                        if (*ptr != '\0' && *ptr != '#') {
-                            cfgFatal (CFG_SYNTAX_ERROR, file, line, line_buf);
-                            free (line_buf);
-                            free (read_parameter);
-                            return (-1);
-                        }
-                        free (line_buf);
-                        break;
-                    }
-                    free (line_buf);
-                }
-            }
-        }
-        free (read_parameter);
     }
     return (store_flag);
+}
+
+/* --------------------------------------------------
+   NAME       fetch_value
+   FUNCTION
+   INPUT
+   OUTPUT     0 on success, -1 on error
+   -------------------------------------------------- */
+static int
+fetch_value (const char *file,
+             int *line,
+             char *line_buf,
+             FILE *fp,
+             int *store_flag,
+             char *ptr,
+             cfgStruct *fetch_cfg)
+{
+    int error_code;
+    char *read_parameter;
+    char *read_value;
+
+    if ((ptr = parse_word (ptr, &read_parameter, CFG_PARAMETER)) ==
+        NULL) { /* malloc read_parameter */
+        cfgFatal (CFG_SYNTAX_ERROR, file, *line, line_buf);
+        free (line_buf);
+        return (-1);
+    }
+    if (strcasecmp (read_parameter, fetch_cfg[0].parameterName) == 0) {
+        if (*ptr == '{') {
+            ptr = rm_first_spaces (ptr + 1);
+            if (*ptr != '\0' && *ptr != '#') {
+                cfgFatal (CFG_SYNTAX_ERROR, file, *line, line_buf);
+                free (line_buf);
+                free (read_parameter);
+                return (-1);
+            }
+            if (parse_values_between_braces (file,
+                                             fp,
+                                             fetch_cfg[0].parameterName,
+                                             fetch_cfg,
+                                             line,
+                                             CFG_SIMPLE,
+                                             0,
+                                             line_buf,
+                                             *line) != CFG_NO_ERROR) {
+                free (line_buf);
+                free (read_parameter);
+                return (-1);
+            }
+        } else {
+            if ((ptr = parse_word (ptr, &read_value, CFG_VALUE)) ==
+                NULL) { /* malloc read_value */
+                cfgFatal (CFG_SYNTAX_ERROR, file, *line, line_buf);
+                free (line_buf);
+                free (read_parameter);
+                return (-1);
+            }
+            if ((error_code = store_value (fetch_cfg,
+                                           fetch_cfg[0].parameterName,
+                                           read_value,
+                                           CFG_SIMPLE,
+                                           0)) != CFG_NO_ERROR) {
+                cfgFatal (error_code, file, *line, line_buf);
+                free (line_buf);
+                free (read_parameter);
+                free (read_value);
+                return (-1);
+            }
+            free (read_value);
+        }
+        *store_flag = 0;
+        free (line_buf);
+    } else {
+        if (*ptr == '{') {
+            ptr = rm_first_spaces (ptr + 1);
+            if (*ptr != '\0' && *ptr != '#') {
+                cfgFatal (CFG_SYNTAX_ERROR, file, *line, line_buf);
+                free (line_buf);
+                free (read_parameter);
+                return (-1);
+            }
+            free (line_buf);
+            while ((ptr = get_single_line_without_first_spaces (
+                        fp, &line_buf, line)) != NULL) { /* malloc line_buf */
+                if (*ptr == '}') {
+                    ptr = rm_first_spaces (ptr + 1);
+                    if (*ptr != '\0' && *ptr != '#') {
+                        cfgFatal (CFG_SYNTAX_ERROR, file, *line, line_buf);
+                        free (line_buf);
+                        free (read_parameter);
+                        return (-1);
+                    }
+                    free (line_buf);
+                    break;
+                }
+                free (line_buf);
+            }
+        } else {
+            free (line_buf);
+        }
+    }
+    free (read_parameter);
+    return (0);
 }

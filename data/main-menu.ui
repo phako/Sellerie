@@ -166,7 +166,7 @@
             <item>
               <attribute name="label" translatable="no">1_0</attribute>
               <attribute name="action">main.view.hex-width</attribute>
-              <attribute name="target">0</attribute>
+              <attribute name="target">10</attribute>
             </item>
             <item>
               <attribute name="label" translatable="no">_16</attribute>

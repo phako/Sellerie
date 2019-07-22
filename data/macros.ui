@@ -72,6 +72,9 @@
                 <property name="use_underline">True</property>
                 <signal name="clicked" handler="gt_macros_save" object="treeview" swapped="no"/>
                 <signal name="clicked" handler="gtk_widget_hide" object="dialog-macros" after="yes" swapped="yes"/>
+                <style>
+                  <class name="suggested-action"/>
+                </style>
               </object>
               <packing>
                 <property name="expand">True</property>

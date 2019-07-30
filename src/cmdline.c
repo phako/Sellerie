@@ -80,6 +80,12 @@ on_flow_parse (const gchar *name,
                gpointer data,
                GError **error)
 {
+    if (g_str_equal (value, "none")) {
+        config.flux = 0;
+
+        return TRUE;
+    }
+
     if (g_str_equal (value, "RTS")) {
         config.flux = 1;
 

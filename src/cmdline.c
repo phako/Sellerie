@@ -86,13 +86,13 @@ on_flow_parse (const gchar *name,
         return TRUE;
     }
 
-    if (g_str_equal (value, "RTS")) {
+    if (g_str_equal (value, "Xon")) {
         config.flux = 1;
 
         return TRUE;
     }
 
-    if (g_str_equal (value, "Xon")) {
+    if (g_str_equal (value, "RTS")) {
         config.flux = 2;
 
         return TRUE;

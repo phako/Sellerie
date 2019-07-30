@@ -268,8 +268,8 @@
                     <property name="active">0</property>
                     <items>
                       <item id="0" translatable="yes">none</item>
-                      <item id="1" translatable="yes">RTS/CTS</item>
-                      <item id="2" translatable="yes">XON/XOFF</item>
+                      <item id="1" translatable="yes">XON/XOFF</item>
+                      <item id="2" translatable="yes">RTS/CTS</item>
                       <item id="3" translatable="yes">RS485 Half-Duplex (RTS)</item>
                     </items>
                   </object>

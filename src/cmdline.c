@@ -36,6 +36,12 @@ on_parity_parse (const gchar *name,
                  gpointer data,
                  GError **error)
 {
+    if (g_str_equal (value, "none")) {
+        config.parite = 0;
+
+        return TRUE;
+    }
+
     if (g_str_equal (value, "odd")) {
         config.parite = 1;
 

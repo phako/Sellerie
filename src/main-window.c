@@ -287,7 +287,7 @@ gt_main_window_dispose (GObject *object)
 {
     GtMainWindow *self = GT_MAIN_WINDOW (object);
 
-    g_clear_pointer (&self->serial_port, gt_serial_port_close_and_unlock);
+    gt_serial_port_close_and_unlock (self->serial_port);
 
     g_clear_object (&GT_MAIN_WINDOW (object)->serial_port);
     g_clear_object (&GT_MAIN_WINDOW (object)->buffer);

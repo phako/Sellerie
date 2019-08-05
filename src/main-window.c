@@ -289,10 +289,10 @@ gt_main_window_dispose (GObject *object)
 
     gt_serial_port_close_and_unlock (self->serial_port);
 
-    g_clear_object (&GT_MAIN_WINDOW (object)->serial_port);
-    g_clear_object (&GT_MAIN_WINDOW (object)->buffer);
-    g_clear_object (&GT_MAIN_WINDOW (object)->logger);
-    g_clear_object (&GT_MAIN_WINDOW (object)->shortcuts);
+    g_clear_object (&self->serial_port);
+    g_clear_object (&self->buffer);
+    g_clear_object (&self->logger);
+    g_clear_object (&self->shortcuts);
 
     G_OBJECT_CLASS (gt_main_window_parent_class)->dispose (object);
 }

@@ -44,32 +44,30 @@ gt_macros_show_help (GtkButton *button, gpointer pointer);
 
 enum { COLUMN_SHORTCUT, COLUMN_ACTION, NUM_COLUMNS };
 
-macro_t *macros = NULL;
+static GList *macros = NULL;
 static GtkWidget *window = NULL;
 
-macro_t *
-get_shortcuts (gint *size)
+GList *
+get_shortcuts (void)
 {
-    gint i = 0;
-
-    if (macros != NULL) {
-        while (macros[i].shortcut != NULL)
-            i++;
-    }
-    *size = i;
     return macros;
 }
 
 static void
-shortcut_callback (gpointer *number)
+shortcut_callback (gpointer number)
 {
     gchar *string;
     gchar *str;
     gint i, length;
     guchar a;
     guint val_read;
+    macro_t *macro =
+        (macro_t *)g_list_nth_data (macros, GPOINTER_TO_INT (number));
 
-    string = macros[(long)number].action;
+    if (macro == NULL)
+        return;
+
+    string = macro->action;
     length = strlen (string);
 
     for (i = 0; i < length; i++) {
@@ -138,22 +136,15 @@ shortcut_callback (gpointer *number)
         }
     }
 
-    str = g_strdup_printf (_ ("Macro \"%s\" sent !"),
-                           macros[(long)number].shortcut);
+    str = g_strdup_printf (_ ("Macro \"%s\" sent !"), macro->shortcut);
     gt_main_window_temp_message (GT_MAIN_WINDOW (Fenetre), str, 800);
     g_free (str);
 }
 
 void
-create_shortcuts (macro_t *macro, gint size)
+create_shortcuts (GList *macro)
 {
-    macros = g_malloc ((size + 1) * sizeof (macro_t));
-    if (macros != NULL) {
-        memcpy (macros, macro, size * sizeof (macro_t));
-        macros[size].shortcut = NULL;
-        macros[size].action = NULL;
-    } else
-        perror ("malloc");
+    macros = macro;
 }
 
 void
@@ -162,82 +153,98 @@ add_shortcuts (void)
     long i = 0;
     guint acc_key;
     GdkModifierType mod;
+    GList *it = macros;
 
-    if (macros == NULL)
-        return;
+    for (it = macros; it != NULL; it = it->next) {
+        macro_t *macro = (macro_t *)it->data;
 
-    while (macros[i].shortcut != NULL) {
-        macros[i].closure = g_cclosure_new_swap (
-            G_CALLBACK (shortcut_callback), (gpointer)i, NULL);
-        gtk_accelerator_parse (macros[i].shortcut, &acc_key, &mod);
+        macro->closure = g_cclosure_new_swap (
+            G_CALLBACK (shortcut_callback), GINT_TO_POINTER (i), NULL);
+        gtk_accelerator_parse (macro->shortcut, &acc_key, &mod);
         if (acc_key != 0)
             gt_main_window_add_shortcut (
-                GT_MAIN_WINDOW (Fenetre), acc_key, mod, macros[i].closure);
+                GT_MAIN_WINDOW (Fenetre), acc_key, mod, macro->closure);
         i++;
+    }
+}
+
+char *
+serialize_macro (macro_t *macro)
+{
+    return g_strdup_printf ("%s::%s", macro->shortcut, macro->action);
+}
+
+macro_t *
+macro_from_string (const char *str)
+{
+    g_return_val_if_fail (str != NULL, NULL);
+
+    gchar **parts = g_strsplit (str, "::", 2);
+    if (g_strv_length (parts) != 2) {
+        g_warning ("Failed to parse macro \"%s\"", str);
+
+        return NULL;
+    }
+
+    macro_t *macro = g_new0 (macro_t, 1);
+    macro->shortcut = parts[0];
+    macro->action = parts[1];
+
+    /* Only free the array, the macro owns the parts now */
+    g_free (parts);
+
+    return macro;
+}
+
+static void
+free_macro (gpointer data)
+{
+    macro_t *macro = (macro_t *)data;
+
+    g_free (macro->shortcut);
+    g_free (macro->action);
+    // g_closure_unref (macro->closure);
+    g_free (macro);
+}
+
+static void
+remove_macro (gpointer data, gpointer user_data)
+{
+    macro_t *macro = (macro_t *)data;
+    if (macro->shortcut != NULL) {
+        gt_main_window_remove_shortcut (GT_MAIN_WINDOW (user_data),
+                                        macro->closure);
     }
 }
 
 static void
 macros_destroy (void)
 {
-    gint i = 0;
-
-    if (macros == NULL)
-        return;
-
-    while (macros[i].shortcut != NULL) {
-        g_free (macros[i].shortcut);
-        g_free (macros[i].action);
-        /*
-        g_closure_unref(macros[i].closure);
-        */
-        i++;
-    }
-    g_free (macros);
+    g_list_free_full (macros, free_macro);
     macros = NULL;
 }
 
 void
 remove_shortcuts (void)
 {
-    gint i = 0;
-
-    if (macros == NULL)
-        return;
-
-    while (macros[i].shortcut != NULL) {
-        gt_main_window_remove_shortcut (GT_MAIN_WINDOW (Fenetre),
-                                        macros[i].closure);
-        i++;
-    }
-
+    g_list_foreach (macros, remove_macro, Fenetre);
     macros_destroy ();
 }
 
-static GtkTreeModel *
-create_model (GtkListStore *store)
+static void
+fill_model (gpointer data, gpointer user_data)
 {
-    gint i = 0;
+    macro_t *macro = (macro_t *)data;
     GtkTreeIter iter;
 
-    /* add data to the list store */
-    if (macros != NULL) {
-        while (1) {
-            if (macros[i].shortcut == NULL)
-                break;
-            gtk_list_store_append (store, &iter);
-            gtk_list_store_set (store,
-                                &iter,
-                                COLUMN_SHORTCUT,
-                                macros[i].shortcut,
-                                COLUMN_ACTION,
-                                macros[i].action,
-                                -1);
-            i++;
-        }
-    }
-
-    return GTK_TREE_MODEL (store);
+    gtk_list_store_append (GTK_LIST_STORE (user_data), &iter);
+    gtk_list_store_set (GTK_LIST_STORE (user_data),
+                        &iter,
+                        COLUMN_SHORTCUT,
+                        macro->shortcut,
+                        COLUMN_ACTION,
+                        macro->action,
+                        -1);
 }
 
 static gboolean
@@ -283,41 +290,35 @@ gt_macros_remove_shortcut (GtkButton *button, gpointer pointer)
     }
 }
 
+static gboolean
+build_macro_list (GtkTreeModel *model,
+                  GtkTreePath *path,
+                  GtkTreeIter *iter,
+                  gpointer data)
+{
+    GList **macros_list = (GList **)data;
+    macro_t *macro = g_new0 (macro_t, 1);
+    gtk_tree_model_get (model,
+                        iter,
+                        COLUMN_SHORTCUT,
+                        &(macro->shortcut),
+                        COLUMN_ACTION,
+                        &(macro->action),
+                        -1);
+    *macros_list = g_list_prepend (*macros_list, macro);
+
+    return TRUE;
+}
+
 void
 gt_macros_save (GtkButton *button, gpointer pointer)
 {
-    GtkTreeIter iter;
-    GtkTreeView *treeview = (GtkTreeView *)pointer;
-    GtkTreeModel *model = gtk_tree_view_get_model (treeview);
-    gint i = 0;
-
     remove_shortcuts ();
 
-    if (gtk_tree_model_get_iter_first (model, &iter)) {
-        do {
-            i++;
-        } while (gtk_tree_model_iter_next (model, &iter));
-
-        gtk_tree_model_get_iter_first (model, &iter);
-
-        macros = g_malloc ((i + 1) * sizeof (macro_t));
-        i = 0;
-        if (macros != NULL) {
-            do {
-                gtk_tree_model_get (model,
-                                    &iter,
-                                    COLUMN_SHORTCUT,
-                                    &(macros[i].shortcut),
-                                    COLUMN_ACTION,
-                                    &(macros[i].action),
-                                    -1);
-                i++;
-            } while (gtk_tree_model_iter_next (model, &iter));
-
-            macros[i].shortcut = NULL;
-            macros[i].action = NULL;
-        }
-    }
+    gtk_tree_model_foreach (gtk_tree_view_get_model (GTK_TREE_VIEW (pointer)),
+                            build_macro_list,
+                            &macros);
+    macros = g_list_reverse (macros);
 
     add_shortcuts ();
 }
@@ -446,7 +447,7 @@ Config_macros (GtkWindow *parent)
     gtk_window_set_transient_for (GTK_WINDOW (window), parent);
     treeview = GTK_WIDGET (gtk_builder_get_object (builder, "treeview"));
     model = gtk_tree_view_get_model (GTK_TREE_VIEW (treeview));
-    create_model (GTK_LIST_STORE (model));
+    g_list_foreach (macros, fill_model, GTK_LIST_STORE (model));
     renderer = GTK_CELL_RENDERER (
         gtk_builder_get_object (builder, "cellrenderer_action"));
     g_signal_connect (renderer, "edited", G_CALLBACK (shortcut_edited), model);

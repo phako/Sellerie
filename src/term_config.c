@@ -704,11 +704,9 @@ update_vte_config (void)
 gint
 Load_configuration_from_file (const gchar *config_name)
 {
-    int max, i, j, size;
-    size_t k;
+    int max, i;
     gchar *string = NULL;
-    gchar *str;
-    macro_t *macros = NULL;
+    GList *macros = NULL;
     cfgList *t;
 
     max = cfgParse (config_file, cfg, CFG_INI);
@@ -771,39 +769,18 @@ Load_configuration_from_file (const gchar *config_name)
                 g_clear_pointer (&term_conf.font, pango_font_description_free);
                 term_conf.font = pango_font_description_from_string (font[i]);
 
-                t = macro_list[i];
-                size = 0;
-                if (t != NULL) {
-                    size++;
-                    while (t->next != NULL) {
-                        t = t->next;
-                        size++;
-                    }
-                }
+                for (t = macro_list[i]; t != NULL; t = t->next) {
+                    macro_t *macro = macro_from_string (t->str);
+                    if (macro == NULL)
+                        continue;
 
-                if (size != 0) {
-                    t = macro_list[i];
-                    macros = g_malloc (size * sizeof (macro_t));
-                    if (macros == NULL) {
-                        perror ("malloc");
-                        return -1;
-                    }
-                    for (j = 0; j < size; j++) {
-                        for (k = 0; k < (strlen (t->str) - 1); k++) {
-                            if ((t->str[k] == ':') && (t->str[k + 1] == ':'))
-                                break;
-                        }
-                        macros[j].shortcut = g_strndup (t->str, k);
-                        str = &(t->str[k + 2]);
-                        macros[j].action = g_strdup (str);
-
-                        t = t->next;
-                    }
+                    macros = g_list_prepend (macros, macro);
                 }
+                macros = g_list_reverse (macros);
 
                 remove_shortcuts ();
-                create_shortcuts (macros, size);
-                g_free (macros);
+                create_shortcuts (macros);
+                macros = NULL;
 
                 if (rows[i] != 0)
                     term_conf.rows = rows[i];
@@ -993,12 +970,18 @@ Hard_default_configuration (void)
     Selec_couleur (&term_conf.background_color, 0, 0, 0);
 }
 
+static void
+store_macro (gpointer data, gpointer user_data)
+{
+    char *string = serialize_macro ((macro_t *)data);
+    cfgStoreValue (cfg, "macros", string, CFG_INI, GPOINTER_TO_INT (user_data));
+    g_free (string);
+}
+
 void
 Copy_configuration (int pos)
 {
     gchar *string = NULL;
-    macro_t *macros = NULL;
-    gint size, i;
 
     string = g_strdup (config.port);
     cfgStoreValue (cfg, "port", string, CFG_INI, pos);
@@ -1087,13 +1070,7 @@ Copy_configuration (int pos)
     cfgStoreValue (cfg, "font", string, CFG_INI, pos);
     g_free (string);
 
-    macros = get_shortcuts (&size);
-    for (i = 0; i < size; i++) {
-        string =
-            g_strdup_printf ("%s::%s", macros[i].shortcut, macros[i].action);
-        cfgStoreValue (cfg, "macros", string, CFG_INI, pos);
-        g_free (string);
-    }
+    g_list_foreach (get_shortcuts (), store_macro, GINT_TO_POINTER (pos));
 
     string = g_strdup_printf ("%d", term_conf.rows);
     cfgStoreValue (cfg, "term_rows", string, CFG_INI, pos);

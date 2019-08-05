@@ -20,6 +20,8 @@
 
 #include <gtk/gtk.h>
 
+#include <glib.h>
+
 typedef struct
 {
   gchar *shortcut;
@@ -31,7 +33,13 @@ macro_t;
 void Config_macros(GtkWindow *parent);
 void remove_shortcuts(void);
 void add_shortcuts(void);
-void create_shortcuts(macro_t *, gint);
-macro_t *get_shortcuts(gint *);
+void
+create_shortcuts (GList *);
+GList *
+get_shortcuts (void);
+char *
+serialize_macro (macro_t *macro);
+macro_t *
+macro_from_string (const char *str);
 
 #endif

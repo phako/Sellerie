@@ -22,7 +22,9 @@
 #include "cmdline.h"
 #include "fichier.h"
 #include "i18n.h"
+#include "sellerie-enums.h"
 #include "term_config.h"
+#include "util.h"
 
 #include <glib.h>
 #include <glib/gi18n.h>
@@ -36,31 +38,21 @@ on_parity_parse (const gchar *name,
                  gpointer data,
                  GError **error)
 {
-    if (g_str_equal (value, "none")) {
-        config.parite = 0;
+    int val = gt_get_value_by_nick (GT_TYPE_SERIAL_PORT_PARITY, value, -1);
 
-        return TRUE;
+    if (val == -1) {
+        g_set_error (error,
+                     G_OPTION_ERROR,
+                     G_OPTION_ERROR_FAILED,
+                     _ ("Invalid parity value (none, even, odd): %s"),
+                     value);
+
+        return FALSE;
     }
 
-    if (g_str_equal (value, "odd")) {
-        config.parite = 1;
+    config.parity = val;
 
-        return TRUE;
-    }
-
-    if (g_str_equal (value, "even")) {
-        config.parite = 2;
-
-        return TRUE;
-    }
-
-    g_set_error (error,
-                 G_OPTION_ERROR,
-                 G_OPTION_ERROR_FAILED,
-                 "Invalid parity value (even, odd): %s",
-                 value);
-
-    return FALSE;
+    return TRUE;
 }
 
 static gboolean
@@ -80,37 +72,20 @@ on_flow_parse (const gchar *name,
                gpointer data,
                GError **error)
 {
-    if (g_str_equal (value, "none")) {
-        config.flux = 0;
+    int val = gt_get_value_by_nick (GT_TYPE_SERIAL_PORT_PARITY, value, -1);
 
-        return TRUE;
+    if (val == -1) {
+        g_set_error (
+            error,
+            G_OPTION_ERROR,
+            G_OPTION_ERROR_FAILED,
+            _ ("Invalid flow control value (none, Xon, RTS, RS485): %s"),
+            value);
+        return FALSE;
     }
 
-    if (g_str_equal (value, "Xon")) {
-        config.flux = 1;
-
-        return TRUE;
-    }
-
-    if (g_str_equal (value, "RTS")) {
-        config.flux = 2;
-
-        return TRUE;
-    }
-
-    if (g_str_equal (value, "RS485")) {
-        config.flux = 3;
-
-        return TRUE;
-    }
-
-    g_set_error (error,
-                 G_OPTION_ERROR,
-                 G_OPTION_ERROR_FAILED,
-                 "Invalid flow value (Xon, RTS, RS485): %s",
-                 value);
-
-    return FALSE;
+    config.flow = val;
+    return TRUE;
 }
 
 char *default_file = NULL;

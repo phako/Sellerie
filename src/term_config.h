@@ -20,6 +20,19 @@
 
 #include <gtk/gtk.h>
 
+typedef enum _GtSerialPortFlowControl {
+    GT_SERIAL_PORT_FLOW_CONTROL_NONE,
+    GT_SERIAL_PORT_FLOW_CONTROL_XON,
+    GT_SERIAL_PORT_FLOW_CONTROL_RTS,
+    GT_SERIAL_PORT_FLOW_CONTROL_RS485
+} GtSerialPortFlowControl;
+
+typedef enum _GtSerialPortParity {
+    GT_SERIAL_PORT_PARITY_NONE,
+    GT_SERIAL_PORT_PARITY_ODD,
+    GT_SERIAL_PORT_PARITY_EVEN,
+} GtSerialPortParity;
+
 void Config_Port_Fenetre(GtkWindow *parent);
 gint Lis_Config(GtkBuilder *builder);
 void Config_Terminal(GtkAction *action, gpointer data);
@@ -41,8 +54,9 @@ struct configuration_port {
   gint vitesse;                // 300 - 600 - 1200 - ... - 115200
   gint bits;                   // 5 - 6 - 7 - 8
   gint stops;                  // 1 - 2
-  gint parite;                 // 0 : None, 1 : Odd, 2 : Even
-  gint flux;                   // 0 : None, 1 : Xon/Xoff, 2 : RTS/CTS, 3 : RS485halfduplex
+  GtSerialPortParity parity;   // 0 : None, 1 : Odd, 2 : Even
+  GtSerialPortFlowControl
+      flow; // 0 : None, 1 : Xon/Xoff, 2 : RTS/CTS, 3 : RS485halfduplex
   gint delai;                  // end of char delay: in ms
   gint rs485_rts_time_before_transmit;
   gint rs485_rts_time_after_transmit;

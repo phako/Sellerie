@@ -1,3 +1,5 @@
+enum_headers = files('serial-port.h', 'term_config.h')
+enums = gnome.mkenums_simple ('sellerie-enums', sources : enum_headers)
 sources = [
     'term_config.h',
     'term_config.c',
@@ -17,14 +19,15 @@ sources = [
     'parsecfg.c',
     'parsecfg.h',
     'serial-port.c',
-    'serial-port.h',
     'main-window.h',
     'main-window.c',
     'infobar.h',
     'infobar.c',
     'serial-view.h',
     'serial-view.c',
-    resources
+    resources,
+    enum_headers,
+    enums
 ]
 
 all_deps = [gtk_deps, vte_deps, udev_deps, config]

@@ -23,7 +23,9 @@
 
 #include "buffer.h"
 #include "fichier.h"
+#include "sellerie-enums.h"
 #include "term_config.h"
+#include "util.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -52,30 +54,6 @@
 #define GT_SERIAL_PORT_CONTROL_POLL_DELAY                                      \
     100 /* in ms (for control signals)                                         \
            */
-
-/* GType for GtSerialPortState enum */
-#define GT_SERIAL_PORT_STATE_TYPE (gt_serial_port_state_get_type ())
-static GType
-gt_serial_port_state_get_type (void)
-{
-    static GType gt_serial_port_state_type = 0;
-
-    if (gt_serial_port_state_type == 0) {
-        static GEnumValue state_types[] = {
-            {GT_SERIAL_PORT_STATE_ONLINE, "Serial port is online", "online"},
-            {GT_SERIAL_PORT_STATE_OFFLINE, "Serial port is offline", "offline"},
-            {GT_SERIAL_PORT_STATE_ERROR,
-             "Serial port is in error state (implies offline)",
-             "error"},
-            {0, NULL, NULL},
-        };
-
-        gt_serial_port_state_type =
-            g_enum_register_static ("GtSerialPortState", state_types);
-    }
-
-    return gt_serial_port_state_type;
-}
 
 typedef struct {
     struct configuration_port config;
@@ -279,11 +257,11 @@ gt_serial_port_termios_from_config (GtSerialPort *self,
         g_assert_not_reached ();
     }
 
-    switch (priv->config.parite) {
-    case 1:
+    switch (priv->config.parity) {
+    case GT_SERIAL_PORT_PARITY_ODD:
         termios_p->c_cflag |= PARODD | PARENB;
         break;
-    case 2:
+    case GT_SERIAL_PORT_PARITY_EVEN:
         termios_p->c_cflag |= PARENB;
         break;
     default:
@@ -296,11 +274,11 @@ gt_serial_port_termios_from_config (GtSerialPort *self,
     termios_p->c_cflag |= CREAD;
     termios_p->c_iflag = IGNPAR | IGNBRK;
 
-    switch (priv->config.flux) {
-    case 1:
+    switch (priv->config.flow) {
+    case GT_SERIAL_PORT_FLOW_CONTROL_XON:
         termios_p->c_iflag |= IXON | IXOFF;
         break;
-    case 2:
+    case GT_SERIAL_PORT_FLOW_CONTROL_RTS:
         termios_p->c_cflag |= CRTSCTS;
         break;
     default:
@@ -339,7 +317,7 @@ gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
         return 0;
 
     /* RS485 half-duplex mode ? */
-    if (priv->config.flux == 3) {
+    if (priv->config.flow == GT_SERIAL_PORT_FLOW_CONTROL_RS485) {
         /* set RTS (start to send) */
         gt_serial_port_set_signals (self, 1);
         if (priv->config.rs485_rts_time_before_transmit > 0)
@@ -349,7 +327,7 @@ gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
     bytes_written = write (priv->serial_port_fd, string, length);
 
     /* RS485 half-duplex mode ? */
-    if (priv->config.flux == 3) {
+    if (priv->config.flow == GT_SERIAL_PORT_FLOW_CONTROL_RS485) {
         /* wait all chars are send */
         tcdrain (priv->serial_port_fd);
         if (priv->config.rs485_rts_time_after_transmit > 0)
@@ -575,7 +553,7 @@ gt_serial_port_read_signals (GtSerialPort *self)
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     int stat_read;
 
-    if (priv->config.flux == 3) {
+    if (priv->config.flow == GT_SERIAL_PORT_FLOW_CONTROL_RS485) {
         /* reset RTS (default = receive) */
         gt_serial_port_set_signals (self, 1);
     }
@@ -794,20 +772,13 @@ gt_serial_port_to_string (GtSerialPort *self)
     if (priv->serial_port_fd == -1) {
         msg = g_strdup (_ ("No open port"));
     } else {
-        // 0: none, 1: odd, 2: even
-        switch (priv->config.parite) {
-        case 0:
+        const char *nick =
+            gt_get_value_nick (GT_TYPE_SERIAL_PORT_PARITY, priv->config.parity);
+
+        if (nick == NULL)
             parity = 'N';
-            break;
-        case 1:
-            parity = 'O';
-            break;
-        case 2:
-            parity = 'E';
-            break;
-        default:
-            parity = 'N';
-        }
+        else
+            parity = g_ascii_toupper (nick[0]);
 
         /* "Sellerie: device  baud-bits-parity-stops"  */
         msg = g_strdup_printf ("%.15s  %d-%d-%c-%d",
@@ -863,7 +834,7 @@ gt_serial_port_class_init (GtSerialPortClass *klass)
         g_param_spec_enum ("status",
                            "status",
                            "status",
-                           GT_SERIAL_PORT_STATE_TYPE,
+                           GT_TYPE_SERIAL_PORT_STATE,
                            GT_SERIAL_PORT_STATE_OFFLINE,
                            G_PARAM_STATIC_STRINGS | G_PARAM_READABLE);
 
@@ -1254,4 +1225,61 @@ gt_serial_port_detect_devices (void)
     result = g_list_reverse (result);
 
     return result;
+}
+
+int
+gt_get_value_by_nick (GType type, const char *value, int fallback)
+{
+    g_return_val_if_fail (value != NULL, fallback);
+
+    int retval = fallback;
+    GEnumClass *klass = g_type_class_ref (type);
+    char *nick = g_ascii_strdown (value, -1);
+    GEnumValue *ev = g_enum_get_value_by_nick (klass, nick);
+
+    if (ev == NULL) {
+        goto out;
+    }
+
+    retval = ev->value;
+
+out:
+    g_free (nick);
+    g_type_class_unref (klass);
+
+    return retval;
+}
+
+const char *
+gt_get_value_nick (GType type, gint value)
+{
+    const char *retval = NULL;
+    GEnumClass *klass = g_type_class_ref (type);
+    GEnumValue *ev = g_enum_get_value (klass, value);
+
+    if (ev == NULL) {
+        goto out;
+    }
+
+    retval = ev->value_nick;
+
+out:
+    g_type_class_unref (klass);
+
+    return retval;
+}
+
+GtSerialPortParity
+gt_serial_port_parity_from_string (const char *name)
+{
+    return gt_get_value_by_nick (
+        GT_TYPE_SERIAL_PORT_PARITY, name, GT_SERIAL_PORT_PARITY_NONE);
+}
+
+GtSerialPortFlowControl
+gt_serial_port_flow_control_from_string (const char *name)
+{
+    return gt_get_value_by_nick (GT_TYPE_SERIAL_PORT_FLOW_CONTROL,
+                                 name,
+                                 GT_SERIAL_PORT_FLOW_CONTROL_NONE);
 }

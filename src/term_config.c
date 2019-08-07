@@ -23,8 +23,10 @@
 #include "macros.h"
 #include "main-window.h"
 #include "parsecfg.h"
+#include "sellerie-enums.h"
 #include "serial-port.h"
 #include "term_config.h"
+#include "util.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -219,9 +221,9 @@ Config_Port_Fenetre (GtkWindow *parent)
     g_free (rate);
 
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-parity"));
-    rate = g_strdup_printf ("%d", config.parite);
-    gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), rate);
-    g_free (rate);
+    gtk_combo_box_set_active_id (
+        GTK_COMBO_BOX (combo),
+        gt_get_value_nick (GT_TYPE_SERIAL_PORT_PARITY, config.parity));
 
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "spin-bits"));
     gtk_spin_button_set_value (GTK_SPIN_BUTTON (combo), config.bits);
@@ -230,9 +232,9 @@ Config_Port_Fenetre (GtkWindow *parent)
     gtk_spin_button_set_value (GTK_SPIN_BUTTON (combo), config.stops);
 
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-flow"));
-    rate = g_strdup_printf ("%d", config.flux);
-    gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), rate);
-    g_free (rate);
+    gtk_combo_box_set_active_id (
+        GTK_COMBO_BOX (combo),
+        gt_get_value_nick (GT_TYPE_SERIAL_PORT_FLOW_CONTROL, config.flow));
 
     /* Set values on second page */
     {
@@ -311,14 +313,14 @@ Lis_Config (GtkBuilder *builder)
 
     widget = gtk_builder_get_object (builder, "combo-parity");
     message = (char *)gtk_combo_box_get_active_id (GTK_COMBO_BOX (widget));
-    config.parite = atoi (message);
+    config.parity = gt_serial_port_parity_from_string (message);
 
     widget = gtk_builder_get_object (builder, "spin-stopbits");
     config.stops = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON (widget));
 
     widget = gtk_builder_get_object (builder, "combo-flow");
     message = (char *)gtk_combo_box_get_active_id (GTK_COMBO_BOX (widget));
-    config.flux = atoi (message);
+    config.flow = gt_serial_port_flow_control_from_string (message);
 
     widget = gtk_builder_get_object (builder, "check-use-wait-char");
     if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget))) {
@@ -728,22 +730,12 @@ Load_configuration_from_file (const gchar *config_name)
                 if (stopbits[i] != 0)
                     config.stops = stopbits[i];
                 if (parity[i] != NULL) {
-                    if (!g_ascii_strcasecmp (parity[i], "none"))
-                        config.parite = 0;
-                    else if (!g_ascii_strcasecmp (parity[i], "odd"))
-                        config.parite = 1;
-                    else if (!g_ascii_strcasecmp (parity[i], "even"))
-                        config.parite = 2;
+                    config.parity =
+                        gt_serial_port_parity_from_string (parity[i]);
                 }
                 if (flow[i] != NULL) {
-                    if (!g_ascii_strcasecmp (flow[i], "none"))
-                        config.flux = 0;
-                    else if (!g_ascii_strcasecmp (flow[i], "xon"))
-                        config.flux = 1;
-                    else if (!g_ascii_strcasecmp (flow[i], "rts"))
-                        config.flux = 2;
-                    else if (!g_ascii_strcasecmp (flow[i], "rs485"))
-                        config.flux = 3;
+                    config.flow =
+                        gt_serial_port_flow_control_from_string (flow[i]);
                 }
 
                 config.delai = wait_delay[i];
@@ -948,10 +940,10 @@ Hard_default_configuration (void)
 {
     strcpy (config.port, DEFAULT_PORT);
     config.vitesse = DEFAULT_SPEED;
-    config.parite = DEFAULT_PARITY;
+    config.parity = DEFAULT_PARITY;
     config.bits = DEFAULT_BITS;
     config.stops = DEFAULT_STOP;
-    config.flux = DEFAULT_FLOW;
+    config.flow = DEFAULT_FLOW;
     config.delai = DEFAULT_DELAY;
     config.rs485_rts_time_before_transmit = DEFAULT_DELAY_RS485;
     config.rs485_rts_time_after_transmit = DEFAULT_DELAY_RS485;
@@ -999,41 +991,19 @@ Copy_configuration (int pos)
     cfgStoreValue (cfg, "stopbits", string, CFG_INI, pos);
     g_free (string);
 
-    switch (config.parite) {
-    case 0:
-        string = g_strdup_printf ("none");
-        break;
-    case 1:
-        string = g_strdup_printf ("odd");
-        break;
-    case 2:
-        string = g_strdup_printf ("even");
-        break;
-    default:
-        string = g_strdup_printf ("none");
-    }
-    cfgStoreValue (cfg, "parity", string, CFG_INI, pos);
-    g_free (string);
+    cfgStoreValue (
+        cfg,
+        "parity",
+        gt_get_value_nick (GT_TYPE_SERIAL_PORT_PARITY, config.parity),
+        CFG_INI,
+        pos);
 
-    switch (config.flux) {
-    case 0:
-        string = g_strdup_printf ("none");
-        break;
-    case 1:
-        string = g_strdup_printf ("xon");
-        break;
-    case 2:
-        string = g_strdup_printf ("rts");
-        break;
-    case 3:
-        string = g_strdup_printf ("rs485");
-        break;
-    default:
-        string = g_strdup_printf ("none");
-    }
-
-    cfgStoreValue (cfg, "flow", string, CFG_INI, pos);
-    g_free (string);
+    cfgStoreValue (
+        cfg,
+        "flow",
+        gt_get_value_nick (GT_TYPE_SERIAL_PORT_FLOW_CONTROL, config.flow),
+        CFG_INI,
+        pos);
 
     string = g_strdup_printf ("%d", config.delai);
     cfgStoreValue (cfg, "wait_delay", string, CFG_INI, pos);

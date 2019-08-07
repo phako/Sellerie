@@ -32,17 +32,15 @@
 G_BEGIN_DECLS
 
 #define GT_TYPE_SERIAL_PORT gt_serial_port_get_type ()
-
 G_DECLARE_FINAL_TYPE (GtSerialPort, gt_serial_port, GT, SERIAL_PORT, GObject)
 
 typedef struct _GtSerialPort GtSerialPort;
 
-enum _GtSerialPortState {
+typedef enum _GtSerialPortState {
     GT_SERIAL_PORT_STATE_ONLINE,
     GT_SERIAL_PORT_STATE_OFFLINE,
     GT_SERIAL_PORT_STATE_ERROR
-};
-typedef enum _GtSerialPortState GtSerialPortState;
+} GtSerialPortState;
 
 GtSerialPort *gt_serial_port_new (void);
 
@@ -79,6 +77,11 @@ gt_serial_port_write_finish (GtSerialPort *self,
                              GAsyncResult *result,
                              GError **error);
 
+GtSerialPortParity
+gt_serial_port_parity_from_string (const char *name);
+
+GtSerialPortFlowControl
+gt_serial_port_flow_control_from_string (const char *name);
 
 #define BUFFER_RECEPTION 8192
 #define BUFFER_EMISSION 4096

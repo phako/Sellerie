@@ -251,9 +251,9 @@
                     <property name="hexpand">True</property>
                     <property name="active">0</property>
                     <items>
-                      <item id="0" translatable="yes">none</item>
-                      <item id="1" translatable="yes">odd</item>
-                      <item id="2" translatable="yes">even</item>
+                      <item id="none" translatable="yes">none</item>
+                      <item id="odd" translatable="yes">odd</item>
+                      <item id="even" translatable="yes">even</item>
                     </items>
                   </object>
                   <packing>
@@ -267,10 +267,10 @@
                     <property name="can_focus">False</property>
                     <property name="active">0</property>
                     <items>
-                      <item id="0" translatable="yes">none</item>
-                      <item id="1" translatable="yes">XON/XOFF</item>
-                      <item id="2" translatable="yes">RTS/CTS</item>
-                      <item id="3" translatable="yes">RS485 Half-Duplex (RTS)</item>
+                      <item id="none" translatable="yes">none</item>
+                      <item id="xon" translatable="yes">XON/XOFF</item>
+                      <item id="rts" translatable="yes">RTS/CTS</item>
+                      <item id="rs485" translatable="yes">RS485 Half-Duplex (RTS)</item>
                     </items>
                   </object>
                   <packing>

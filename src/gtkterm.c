@@ -85,12 +85,13 @@ on_gtk_application_activate (GApplication *app, gpointer user_data)
     gtk_application_add_window (GTK_APPLICATION (app),
                                 GTK_WINDOW (main_window));
 
-    update_vte_config ();
 
     buffer = GT_MAIN_WINDOW (main_window)->buffer;
     serial_port = GT_MAIN_WINDOW (main_window)->serial_port;
     logger = GT_MAIN_WINDOW (main_window)->logger;
     display = GT_MAIN_WINDOW (Fenetre)->display;
+
+    update_vte_config ();
 
     gt_serial_port_config (GT_MAIN_WINDOW (main_window)->serial_port, &config);
 

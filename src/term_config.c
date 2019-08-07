@@ -811,9 +811,9 @@ Load_configuration_from_file (const gchar *config_name)
                     term_conf.scrollback = DEFAULT_SCROLLBACK;
                     term_conf.visual_bell = FALSE;
 
-                    term_conf.foreground_color.red = 43253;
-                    term_conf.foreground_color.green = 43253;
-                    term_conf.foreground_color.blue = 43253;
+                    term_conf.foreground_color.red = 0.66;
+                    term_conf.foreground_color.green = 0.66;
+                    term_conf.foreground_color.blue = 0.66;
 
                     term_conf.background_color.red = 0;
                     term_conf.background_color.green = 0;

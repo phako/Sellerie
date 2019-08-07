@@ -29,11 +29,12 @@
 #include <gtk/gtk.h>
 #include <vte/vte.h>
 
-enum _GtSerialViewMode { GT_SERIAL_VIEW_TEXT, GT_SERIAL_VIEW_HEX };
-
-typedef enum _GtSerialViewMode GtSerialViewMode;
-
 G_BEGIN_DECLS
+
+typedef enum _GtSerialViewMode {
+    GT_SERIAL_VIEW_TEXT,
+    GT_SERIAL_VIEW_HEX
+} GtSerialViewMode;
 
 GType
 gt_serial_view_get_type (void);
@@ -59,6 +60,13 @@ gt_serial_view_get_bytes_per_line (GtSerialView *self);
 
 void
 gt_serial_view_set_display_mode (GtSerialView *self, GtSerialViewMode mode);
+
+void
+gt_serial_view_set_text_color (GtSerialView *self, const GdkRGBA *text);
+
+void
+gt_serial_view_set_background_color (GtSerialView *self,
+                                     const GdkRGBA *background);
 
 G_END_DECLS
 

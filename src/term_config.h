@@ -67,21 +67,12 @@ struct configuration_port {
 typedef struct configuration_port GtSerialPortConfiguration;
 
 
-#define DEFAULT_FONT "Monospace, 12"
-#define DEFAULT_SCROLLBACK 200
-
-#define DEFAULT_PORT "/dev/ttyS0"
-#define DEFAULT_SPEED 9600
-#define DEFAULT_PARITY 0
-#define DEFAULT_BITS 8
-#define DEFAULT_STOP 1
-#define DEFAULT_FLOW 0
-#define DEFAULT_DELAY 0
-#define DEFAULT_CHAR -1
-#define DEFAULT_DELAY_RS485 30
-#define DEFAULT_ECHO FALSE
-
 const char *gt_config_get_file_path (void);
 void gt_config_set_file_path (const char *path);
+void
+gt_config_set_view_config (PangoFontDescription *desc,
+                           const GdkRGBA *fg,
+                           const GdkRGBA *bg,
+                           guint lines);
 
 #endif

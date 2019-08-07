@@ -25,6 +25,7 @@
 #include "main-window.h"
 #include "serial-view.h"
 #include "term_config.h"
+#include "view-config.h"
 
 #include <stdlib.h>
 
@@ -1366,7 +1367,29 @@ on_config_terminal (GSimpleAction *action,
                     GVariant *parameter,
                     gpointer user_data)
 {
-    Config_Terminal (NULL, NULL);
+    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
+    GtkWidget *d = gt_view_config_new (GT_SERIAL_VIEW (self->display));
+    gtk_window_set_transient_for (GTK_WINDOW (d), GTK_WINDOW (self));
+
+    gtk_dialog_run (GTK_DIALOG (d));
+    gtk_widget_destroy (d);
+
+    PangoFontDescription *font_desc = NULL;
+    GdkRGBA *text = NULL;
+    GdkRGBA *background = NULL;
+    guint scrollback_lines = 0;
+
+    g_object_get (self->display,
+                  "font-desc",
+                  &font_desc,
+                  "text",
+                  &text,
+                  "background",
+                  &background,
+                  "scrollback-lines",
+                  &scrollback_lines,
+                  NULL);
+    gt_config_set_view_config (font_desc, text, background, scrollback_lines);
 }
 
 void

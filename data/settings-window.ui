@@ -1,14 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.20.0 -->
-<interface>
+<!-- Generated with glade 3.22.0 -->
+<interface domain="sellerie">
   <requires lib="gtk+" version="3.18"/>
-  <object class="GtkAdjustment" id="adjustment6">
-    <property name="upper">9999</property>
-    <property name="value">200</property>
-    <property name="step_increment">10</property>
-    <property name="page_increment">80</property>
-  </object>
-  <object class="GtkDialog" id="dialog-settings-window">
+  <template class="GtViewConfig" parent="GtkDialog">
     <property name="width_request">400</property>
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">Terminal configuration</property>
@@ -16,8 +10,10 @@
     <child internal-child="vbox">
       <object class="GtkBox">
         <property name="can_focus">False</property>
-        <property name="margin_start">6</property>
-        <property name="margin_end">6</property>
+        <property name="margin_start">18</property>
+        <property name="margin_end">18</property>
+        <property name="margin_top">18</property>
+        <property name="margin_bottom">18</property>
         <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
@@ -60,17 +56,17 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="row_spacing">6</property>
-            <property name="column_spacing">6</property>
+            <property name="column_spacing">12</property>
             <property name="row_homogeneous">True</property>
             <child>
               <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="halign">start</property>
+                <property name="halign">end</property>
                 <property name="label" translatable="yes">Font</property>
-                <attributes>
-                  <attribute name="weight" value="bold"/>
-                </attributes>
+                <style>
+                  <class name="dim-label"/>
+                </style>
               </object>
               <packing>
                 <property name="left_attach">0</property>
@@ -78,42 +74,14 @@
               </packing>
             </child>
             <child>
-              <object class="GtkFontButton" id="font-button">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="margin_start">12</property>
-                <property name="hexpand">True</property>
-                <property name="font">Sans 12</property>
-                <property name="preview_text"/>
-              </object>
-              <packing>
-                <property name="left_attach">0</property>
-                <property name="top_attach">1</property>
-                <property name="width">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="halign">start</property>
-                <property name="label" translatable="yes">Colors</property>
-                <attributes>
-                  <attribute name="weight" value="bold"/>
-                </attributes>
-              </object>
-              <packing>
-                <property name="left_attach">0</property>
-                <property name="top_attach">2</property>
-              </packing>
-            </child>
-            <child>
               <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="halign">end</property>
-                <property name="label" translatable="yes">Text</property>
+                <property name="label" translatable="yes">Scrollback</property>
+                <style>
+                  <class name="dim-label"/>
+                </style>
               </object>
               <packing>
                 <property name="left_attach">0</property>
@@ -121,7 +89,36 @@
               </packing>
             </child>
             <child>
-              <object class="GtkColorButton" id="color-button-fg">
+              <object class="GtkFontButton" id="font_button">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="hexpand">True</property>
+                <property name="font">Sans 12</property>
+                <property name="preview_text"/>
+              </object>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="top_attach">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">end</property>
+                <property name="label" translatable="yes">Text color</property>
+                <style>
+                  <class name="dim-label"/>
+                </style>
+              </object>
+              <packing>
+                <property name="left_attach">0</property>
+                <property name="top_attach">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkColorButton" id="color_button_fg">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
@@ -130,7 +127,7 @@
               </object>
               <packing>
                 <property name="left_attach">1</property>
-                <property name="top_attach">3</property>
+                <property name="top_attach">1</property>
               </packing>
             </child>
             <child>
@@ -140,14 +137,17 @@
                 <property name="halign">end</property>
                 <property name="margin_start">12</property>
                 <property name="label" translatable="yes">Background</property>
+                <style>
+                  <class name="dim-label"/>
+                </style>
               </object>
               <packing>
                 <property name="left_attach">0</property>
-                <property name="top_attach">4</property>
+                <property name="top_attach">2</property>
               </packing>
             </child>
             <child>
-              <object class="GtkColorButton" id="color-button-bg">
+              <object class="GtkColorButton" id="color_button_bg">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
@@ -156,48 +156,23 @@
               </object>
               <packing>
                 <property name="left_attach">1</property>
-                <property name="top_attach">4</property>
+                <property name="top_attach">2</property>
               </packing>
             </child>
             <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="halign">start</property>
-                <property name="label" translatable="yes">Scrollback</property>
-                <attributes>
-                  <attribute name="weight" value="bold"/>
-                </attributes>
-              </object>
-              <packing>
-                <property name="left_attach">0</property>
-                <property name="top_attach">5</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSpinButton" id="spin-scrollback">
+              <object class="GtkSpinButton" id="spin_scrollback">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="margin_start">12</property>
+                <property name="text" translatable="yes">200</property>
                 <property name="input_purpose">number</property>
                 <property name="adjustment">adjustment6</property>
                 <property name="numeric">True</property>
                 <property name="value">200</property>
               </object>
               <packing>
-                <property name="left_attach">0</property>
-                <property name="top_attach">6</property>
-                <property name="width">2</property>
+                <property name="left_attach">1</property>
+                <property name="top_attach">3</property>
               </packing>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
             </child>
           </object>
           <packing>
@@ -211,5 +186,14 @@
     <action-widgets>
       <action-widget response="-7">button3</action-widget>
     </action-widgets>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
+  </template>
+  <object class="GtkAdjustment" id="adjustment6">
+    <property name="upper">9999</property>
+    <property name="value">200</property>
+    <property name="step_increment">10</property>
+    <property name="page_increment">80</property>
   </object>
 </interface>

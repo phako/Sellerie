@@ -31,6 +31,8 @@ typedef struct {
     GtSerialViewMode mode;
     GtBuffer *buffer;
     GtHexDisplay hex_display;
+    GdkRGBA *text;
+    GdkRGBA *background;
 } GtSerialViewPrivate;
 
 struct _GtSerialView {
@@ -43,7 +45,7 @@ struct _GtSerialViewClass {
 
 G_DEFINE_TYPE_WITH_PRIVATE (GtSerialView, gt_serial_view, VTE_TYPE_TERMINAL)
 
-enum { PROP_0, PROP_BUFFER, N_PROPS };
+enum { PROP_0, PROP_BUFFER, PROP_TEXT, PROP_BACKGROUND, N_PROPS };
 static GParamSpec *properties[N_PROPS] = {NULL};
 
 enum { SIGNAL_NEW_DATA, SIGNAL_COUNT };
@@ -109,6 +111,12 @@ gt_serial_view_get_property (GObject *object,
     case PROP_BUFFER:
         g_value_set_object (value, priv->buffer);
         break;
+    case PROP_TEXT:
+        g_value_set_boxed (value, priv->text);
+        break;
+    case PROP_BACKGROUND:
+        g_value_set_boxed (value, priv->background);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -126,6 +134,12 @@ gt_serial_view_set_property (GObject *object,
     switch (prop_id) {
     case PROP_BUFFER:
         priv->buffer = g_value_dup_object (value);
+        break;
+    case PROP_TEXT:
+        gt_serial_view_set_text_color (self, g_value_get_boxed (value));
+        break;
+    case PROP_BACKGROUND:
+        gt_serial_view_set_background_color (self, g_value_get_boxed (value));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -173,6 +187,23 @@ gt_serial_view_class_init (GtSerialViewClass *klass)
         "buffer",
         GT_TYPE_BUFFER,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+
+    properties[PROP_TEXT] = g_param_spec_boxed (
+        "text",
+        "text",
+        "text",
+        GDK_TYPE_RGBA,
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS |
+            G_PARAM_EXPLICIT_NOTIFY);
+
+    properties[PROP_BACKGROUND] = g_param_spec_boxed (
+        "background",
+        "background",
+        "background",
+        GDK_TYPE_RGBA,
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS |
+            G_PARAM_EXPLICIT_NOTIFY);
+
     g_object_class_install_properties (object_class, N_PROPS, properties);
 }
 
@@ -238,6 +269,34 @@ gt_serial_view_set_display_mode (GtSerialView *self, GtSerialViewMode mode)
 
     // Trigger re-display
     gt_buffer_write (priv->buffer);
+}
+
+void
+gt_serial_view_set_text_color (GtSerialView *self, const GdkRGBA *text)
+{
+    GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+    g_clear_pointer (&priv->text, gdk_rgba_free);
+    priv->text = (text == NULL ? NULL : gdk_rgba_copy (text));
+    if (priv->text != NULL)
+        vte_terminal_set_color_foreground (VTE_TERMINAL (self), priv->text);
+
+    g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_TEXT]);
+}
+
+void
+gt_serial_view_set_background_color (GtSerialView *self,
+                                     const GdkRGBA *background)
+{
+    GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
+
+    g_clear_pointer (&priv->background, gdk_rgba_free);
+    priv->background = (background == NULL ? NULL : gdk_rgba_copy (background));
+    if (priv->background != NULL)
+        vte_terminal_set_color_background (VTE_TERMINAL (self),
+                                           priv->background);
+
+    g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_BACKGROUND]);
 }
 
 void

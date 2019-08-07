@@ -25,6 +25,7 @@
 #include "parsecfg.h"
 #include "sellerie-enums.h"
 #include "serial-port.h"
+#include "serial-view.h"
 #include "term_config.h"
 #include "util.h"
 
@@ -44,6 +45,20 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+
+#define DEFAULT_FONT "Monospace, 12"
+#define DEFAULT_SCROLLBACK 200
+
+#define DEFAULT_PORT "/dev/ttyS0"
+#define DEFAULT_SPEED 9600
+#define DEFAULT_PARITY 0
+#define DEFAULT_BITS 8
+#define DEFAULT_STOP 1
+#define DEFAULT_FLOW 0
+#define DEFAULT_DELAY 0
+#define DEFAULT_CHAR -1
+#define DEFAULT_DELAY_RS485 30
+#define DEFAULT_ECHO FALSE
 
 extern GtSerialPort *serial_port;
 extern GtkWidget *Fenetre;
@@ -122,8 +137,6 @@ static display_config_t term_conf;
 
 static GtkWidget *Entry;
 
-static void
-read_font_button (GtkFontButton *fontButton);
 static gint
 Grise_Degrise (GtkWidget *bouton, gpointer pointeur);
 static void
@@ -146,12 +159,6 @@ static gint
 remove_section (gchar *, gchar *);
 static void
 Selec_couleur (GdkRGBA *, gfloat, gfloat, gfloat);
-static void
-config_fg_color (GtkWidget *button, gpointer data);
-static void
-config_bg_color (GtkWidget *button, gpointer data);
-static void
-scrollback_set (GtkSpinButton *spin_button, gpointer data);
 
 extern GtkWidget *display;
 
@@ -346,27 +353,6 @@ Grise_Degrise (GtkWidget *bouton, gpointer pointeur)
         gtk_widget_set_sensitive (GTK_WIDGET (pointeur), TRUE);
     }
     return FALSE;
-}
-
-void
-read_font_button (GtkFontButton *fontButton)
-{
-    char *font_name = gtk_font_chooser_get_font (GTK_FONT_CHOOSER (fontButton));
-    PangoFontDescription *old_font = term_conf.font;
-
-    if (font_name == NULL) {
-        return;
-    }
-
-    term_conf.font = pango_font_description_from_string (font_name);
-    if (term_conf.font != NULL) {
-        g_clear_pointer (&old_font, pango_font_description_free);
-        vte_terminal_set_font (VTE_TERMINAL (display), term_conf.font);
-    } else {
-        term_conf.font = old_font;
-    }
-
-    g_free (font_name);
 }
 
 void
@@ -696,10 +682,10 @@ update_vte_config (void)
         VTE_TERMINAL (display), term_conf.rows, term_conf.columns);
     vte_terminal_set_scrollback_lines (VTE_TERMINAL (display),
                                        term_conf.scrollback);
-    vte_terminal_set_color_foreground (
-        VTE_TERMINAL (display), (const GdkRGBA *)&term_conf.foreground_color);
-    vte_terminal_set_color_background (
-        VTE_TERMINAL (display), (const GdkRGBA *)&term_conf.background_color);
+    gt_serial_view_set_text_color (
+        GT_SERIAL_VIEW (display), (const GdkRGBA *)&term_conf.foreground_color);
+    gt_serial_view_set_background_color (
+        GT_SERIAL_VIEW (display), (const GdkRGBA *)&term_conf.background_color);
     gtk_widget_queue_draw (display);
 }
 
@@ -1164,129 +1150,12 @@ remove_section (gchar *cfg_file, gchar *section)
 }
 
 void
-Config_Terminal (GtkAction *action, gpointer data)
-{
-    GtkWidget *dialog;
-    GtkWidget *font_button;
-    GtkWidget *fg_color_button;
-    GtkWidget *bg_color_button;
-    GtkWidget *scrollback_spin;
-
-    GtkBuilder *builder;
-
-    builder = gtk_builder_new_from_resource (
-        "/org/jensge/Sellerie/settings-window.ui");
-
-    dialog =
-        GTK_WIDGET (gtk_builder_get_object (builder, "dialog-settings-window"));
-
-    font_button = GTK_WIDGET (gtk_builder_get_object (builder, "font-button"));
-    gtk_font_chooser_set_font_desc (GTK_FONT_CHOOSER (font_button),
-                                    term_conf.font);
-    g_signal_connect (
-        GTK_WIDGET (font_button), "font-set", G_CALLBACK (read_font_button), 0);
-
-    fg_color_button =
-        GTK_WIDGET (gtk_builder_get_object (builder, "color-button-fg"));
-    gtk_color_chooser_set_rgba (GTK_COLOR_CHOOSER (fg_color_button),
-                                &term_conf.foreground_color);
-    g_signal_connect (GTK_WIDGET (fg_color_button),
-                      "color-set",
-                      G_CALLBACK (config_fg_color),
-                      NULL);
-
-    bg_color_button =
-        GTK_WIDGET (gtk_builder_get_object (builder, "color-button-bg"));
-    gtk_color_chooser_set_rgba (GTK_COLOR_CHOOSER (bg_color_button),
-                                &term_conf.background_color);
-    g_signal_connect (GTK_WIDGET (bg_color_button),
-                      "color-set",
-                      G_CALLBACK (config_bg_color),
-                      NULL);
-
-    scrollback_spin =
-        GTK_WIDGET (gtk_builder_get_object (builder, "spin-scrollback"));
-    gtk_spin_button_set_value (GTK_SPIN_BUTTON (scrollback_spin),
-                               term_conf.scrollback);
-    g_signal_connect (G_OBJECT (scrollback_spin),
-                      "value-changed",
-                      G_CALLBACK (scrollback_set),
-                      NULL);
-
-    gtk_dialog_run (GTK_DIALOG (dialog));
-    gtk_widget_hide (dialog);
-    gtk_widget_destroy (dialog);
-    g_object_unref (builder);
-}
-
-void
 Selec_couleur (GdkRGBA *color, gfloat R, gfloat G, gfloat B)
 {
     color->red = R;
     color->green = G;
     color->blue = B;
     color->alpha = 1.0;
-}
-
-void
-config_fg_color (GtkWidget *button, gpointer data)
-{
-    gchar *string;
-
-    gtk_color_chooser_get_rgba (GTK_COLOR_CHOOSER (button),
-                                &term_conf.foreground_color);
-
-    vte_terminal_set_color_foreground (
-        VTE_TERMINAL (display), (const GdkRGBA *)&term_conf.foreground_color);
-    gtk_widget_queue_draw (display);
-
-    string = g_strdup_printf (
-        "%u", (guint16) (term_conf.foreground_color.red * G_MAXUINT16));
-    cfgStoreValue (cfg, "term_foreground_red", string, CFG_INI, 0);
-    g_free (string);
-    string = g_strdup_printf (
-        "%d", (guint16) (term_conf.foreground_color.green * G_MAXUINT16));
-    cfgStoreValue (cfg, "term_foreground_green", string, CFG_INI, 0);
-    g_free (string);
-    string = g_strdup_printf (
-        "%d", (guint16) (term_conf.foreground_color.blue * G_MAXUINT16));
-    cfgStoreValue (cfg, "term_foreground_blue", string, CFG_INI, 0);
-    g_free (string);
-}
-
-void
-config_bg_color (GtkWidget *button, gpointer data)
-{
-    gchar *string;
-
-    gtk_color_chooser_get_rgba (GTK_COLOR_CHOOSER (button),
-                                &term_conf.background_color);
-
-    vte_terminal_set_color_background (
-        VTE_TERMINAL (display), (const GdkRGBA *)&term_conf.background_color);
-    gtk_widget_queue_draw (display);
-
-    string = g_strdup_printf (
-        "%u", (guint16) (term_conf.background_color.red * G_MAXUINT16));
-    cfgStoreValue (cfg, "term_background_red", string, CFG_INI, 0);
-    g_free (string);
-    string = g_strdup_printf (
-        "%d", (guint16) (term_conf.background_color.green * G_MAXUINT16));
-    cfgStoreValue (cfg, "term_background_green", string, CFG_INI, 0);
-    g_free (string);
-    string = g_strdup_printf (
-        "%d", (guint16) (term_conf.background_color.blue * G_MAXUINT16));
-    cfgStoreValue (cfg, "term_background_blue", string, CFG_INI, 0);
-    g_free (string);
-}
-
-void
-scrollback_set (GtkSpinButton *spin_button, gpointer data)
-{
-    int scrollback_value = gtk_spin_button_get_value_as_int (spin_button);
-    term_conf.scrollback = scrollback_value;
-    vte_terminal_set_scrollback_lines (VTE_TERMINAL (display),
-                                       term_conf.scrollback);
 }
 
 /**
@@ -1337,4 +1206,16 @@ gt_config_set_file_path (const char *path)
 {
     g_free (config_file);
     config_file = g_strdup (path);
+}
+
+void
+gt_config_set_view_config (PangoFontDescription *desc,
+                           const GdkRGBA *fg,
+                           const GdkRGBA *bg,
+                           guint lines)
+{
+    term_conf.font = pango_font_description_copy (desc);
+    memcpy (&term_conf.background_color, bg, sizeof (GdkRGBA));
+    memcpy (&term_conf.foreground_color, fg, sizeof (GdkRGBA));
+    term_conf.scrollback = lines;
 }

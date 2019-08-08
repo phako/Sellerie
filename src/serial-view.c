@@ -316,9 +316,20 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
     if (size == 0)
         return;
 
+    // We are spinning the mainloop below. If the user closes the window it
+    // might mean that we accidentally access a disposed VTE. So we add a weak
+    // pointer here that we can check after the loop iteration.
+    // FIXME: Need to do this without the nested main loop (which is ugly)
+    g_object_add_weak_pointer (G_OBJECT (self), (gpointer *)&term);
+
     while (i < size) {
         while (gtk_events_pending ())
             gtk_main_iteration ();
+
+        // User closed window, stop right here
+        if (term == NULL)
+            return;
+
         vte_terminal_get_cursor_position (term, &column, &row);
 
         if (priv->hex_display.show_index) {
@@ -374,6 +385,8 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
             }
         }
     }
+
+    g_object_remove_weak_pointer (G_OBJECT (self), (gpointer *)&term);
 }
 
 void

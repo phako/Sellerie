@@ -24,6 +24,10 @@ struct _GtHexDisplay {
     guint bytes_per_line;
     guint total_bytes;
     gboolean show_index;
+
+    gchar data[128];
+    gchar data_byte[6];
+    guint bytes;
 };
 typedef struct _GtHexDisplay GtHexDisplay;
 
@@ -304,17 +308,14 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
 {
     GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
     VteTerminal *term = VTE_TERMINAL (self);
-
-    static gchar data[128];
-    static gchar data_byte[6];
-    static guint bytes;
-
+    GtHexDisplay *display = &(priv->hex_display);
     glong column, row;
 
     guint i = 0;
 
-    if (size == 0)
+    if (size == 0) {
         return;
+    }
 
     // We are spinning the mainloop below. If the user closes the window it
     // might mean that we accidentally access a disposed VTE. So we add a weak
@@ -332,56 +333,59 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
 
         vte_terminal_get_cursor_position (term, &column, &row);
 
-        if (priv->hex_display.show_index) {
+        if (display->show_index) {
             if (column == 0)
             /* First byte on line */
             {
-                sprintf (data, "%6d: ", priv->hex_display.total_bytes);
-                vte_terminal_feed (term, data, strlen (data));
-                bytes = 0;
+                sprintf (display->data, "%6d: ", display->total_bytes);
+                vte_terminal_feed (term, display->data, strlen (display->data));
+                display->bytes = 0;
             }
         } else {
             if (column == 0)
-                bytes = 0;
+                display->bytes = 0;
         }
 
         /* Print hexadecimal characters */
-        data[0] = 0;
+        display->data[0] = 0;
 
-        guint bytes_per_line = priv->hex_display.bytes_per_line;
-        while (bytes < bytes_per_line && i < size) {
+        guint bytes_per_line = display->bytes_per_line;
+        while (display->bytes < bytes_per_line && i < size) {
             gint avance = 0;
             gchar ascii[1];
 
-            sprintf (data_byte, "%02X ", (guchar)string[i]);
-            g_signal_emit (self, SIGNALS[SIGNAL_NEW_DATA], 0, data_byte, 3);
+            sprintf (display->data_byte, "%02X ", (guchar)string[i]);
+            g_signal_emit (
+                self, SIGNALS[SIGNAL_NEW_DATA], 0, display->data_byte, 3);
 
-            vte_terminal_feed (term, data_byte, 3);
+            vte_terminal_feed (term, display->data_byte, 3);
 
-            avance = (bytes_per_line - bytes) * 3 + bytes + 2;
+            avance = (bytes_per_line - display->bytes) * 3 + display->bytes + 2;
 
             /* Move forward */
-            sprintf (data_byte, "%c[%dC", 27, avance);
-            vte_terminal_feed (term, data_byte, strlen (data_byte));
+            sprintf (display->data_byte, "%c[%dC", 27, avance);
+            vte_terminal_feed (
+                term, display->data_byte, strlen (display->data_byte));
 
             /* Print ascii characters */
             ascii[0] = (string[i] > 0x1F) ? string[i] : '.';
             vte_terminal_feed (term, ascii, 1);
 
             /* Move backward */
-            sprintf (data_byte, "%c[%dD", 27, avance + 1);
-            vte_terminal_feed (term, data_byte, strlen (data_byte));
+            sprintf (display->data_byte, "%c[%dD", 27, avance + 1);
+            vte_terminal_feed (
+                term, display->data_byte, strlen (display->data_byte));
 
-            if (bytes == bytes_per_line / 2 - 1)
+            if (display->bytes == bytes_per_line / 2 - 1)
                 vte_terminal_feed (term, "- ", strlen ("- "));
 
-            bytes++;
+            display->bytes++;
             i++;
 
             /* End of line ? */
-            if (bytes == bytes_per_line) {
+            if (display->bytes == bytes_per_line) {
                 vte_terminal_feed (term, "\r\n", 2);
-                priv->hex_display.total_bytes += bytes;
+                display->total_bytes += display->bytes;
             }
         }
     }

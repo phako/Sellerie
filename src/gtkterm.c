@@ -55,7 +55,7 @@ on_gtk_application_local_options (GApplication *app,
     }
 
     if (config_port != NULL) {
-        strncpy (config.port, config_port, sizeof (config.port));
+        strncpy (config.port, config_port, sizeof (config.port) - 1);
     }
     Verify_configuration ();
 

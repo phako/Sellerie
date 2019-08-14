@@ -134,13 +134,13 @@ gt_buffer_put_chars (GtBuffer *self,
 {
     GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
     char *characters = NULL;
+    /* BUFFER_RECEPTION*2 for worst case scenario, all \n or \r chars */
+    char out_buffer[BUFFER_RECEPTION * 2];
 
     g_return_if_fail (self != NULL);
 
     /* If the auto CR LF mode on, read the buffer to add \r before \n */
     if (crlf_auto) {
-        /* BUFFER_RECEPTION*2 for worst case scenario, all \n or \r chars */
-        char out_buffer[BUFFER_RECEPTION * 2];
         unsigned int i, out_size = 0;
 
         for (i = 0; i < size; i++) {

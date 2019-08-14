@@ -297,7 +297,7 @@ Lis_Config (GtkBuilder *builder)
 
     widget = gtk_builder_get_object (builder, "combo-device");
     message = gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT (widget));
-    strcpy (config.port, message);
+    strncpy (config.port, message, sizeof (config.port) - 1);
     g_free (message);
 
     widget = gtk_builder_get_object (builder, "combo-baud-rate");
@@ -708,7 +708,7 @@ Load_configuration_from_file (const gchar *config_name)
                 Hard_default_configuration ();
 
                 if (port[i] != NULL)
-                    strcpy (config.port, port[i]);
+                    strncpy (config.port, port[i], sizeof (config.port) - 1);
                 if (speed[i] != 0)
                     config.vitesse = speed[i];
                 if (bits[i] != 0)

@@ -138,6 +138,7 @@ gt_buffer_put_chars (GtBuffer *self,
     char out_buffer[BUFFER_RECEPTION * 2];
 
     g_return_if_fail (self != NULL);
+    g_return_if_fail (size > BUFFER_RECEPTION);
 
     /* If the auto CR LF mode on, read the buffer to add \r before \n */
     if (crlf_auto) {

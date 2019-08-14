@@ -1090,12 +1090,23 @@ remove_section (gchar *cfg_file, gchar *section)
         return -1;
     }
 
-    fseek (f, 0L, SEEK_END);
+    if (fseek (f, 0L, SEEK_END) < 0) {
+        fclose (f);
+        perror ("Seek");
+        return -1;
+    }
+
     size = ftell (f);
+    if (size == -1) {
+        fclose (f);
+        perror ("ftell");
+        return -1;
+    }
     rewind (f);
 
     buffer = g_malloc (size);
     if (buffer == NULL) {
+        fclose (f);
         perror ("malloc");
         return -1;
     }

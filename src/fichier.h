@@ -22,7 +22,6 @@
 #include <glib.h>
 
 void send_ascii_file(GtkWindow *parent);
-void save_raw_file(GtkWindow *parent);
 void add_input(void);
 
 gboolean gt_file_get_waiting_for_char (void);

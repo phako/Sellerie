@@ -64,6 +64,11 @@ gt_main_window_set_view (GtMainWindow *self, GtMainWindowViewType type);
 static void
 gt_main_window_clear_display (GtMainWindow *self);
 
+static GFile *
+gt_main_window_query_file (GtMainWindow *self,
+                           const char *title,
+                           const char *default_file);
+
 /* Call-backs */
 static void
 on_serial_port_status_changed (GObject *object,
@@ -301,8 +306,10 @@ gt_main_window_dispose (GObject *object)
 static void
 gt_main_window_finalize (GObject *object)
 {
-    //    GtMainWindow *self = (GtMainWindow *)object;
+    GtMainWindow *self = (GtMainWindow *)object;
 
+    g_clear_pointer (&self->default_raw_file, g_free);
+    g_clear_pointer (&self->default_text_file, g_free);
     G_OBJECT_CLASS (gt_main_window_parent_class)->finalize (object);
 }
 
@@ -558,6 +565,18 @@ gt_main_window_remove_info_bar (GtMainWindow *self, GtkWidget *widget)
 {
     gtk_revealer_set_reveal_child (GTK_REVEALER (self->revealer), FALSE);
     gtk_container_remove (GTK_CONTAINER (self->revealer), widget);
+}
+
+GtkWidget *
+gt_main_window_get_info_bar (GtMainWindow *self)
+{
+    GList *children =
+        gtk_container_get_children (GTK_CONTAINER (self->revealer));
+    GtkWidget *result = children->data;
+
+    g_list_free (children);
+
+    return result;
 }
 
 void
@@ -1084,7 +1103,15 @@ on_send_ascii_file (GSimpleAction *action,
 {
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
 
-    send_ascii_file (GTK_WINDOW (self));
+    GFile *file = gt_main_window_query_file (
+        self, _ ("Send Text File"), self->default_text_file);
+
+    if (file == NULL) {
+        return;
+    }
+
+    send_ascii_file (file, GTK_WINDOW (self));
+    g_object_unref (file);
 }
 
 typedef struct {
@@ -1438,4 +1465,40 @@ on_display_updated (GtMainWindow *self,
             self, error->message, GT_MESSAGE_TYPE_ERROR);
         g_error_free (error);
     }
+}
+
+static GFile *
+gt_main_window_query_file (GtMainWindow *self,
+                           const char *title,
+                           const char *default_file)
+{
+    GtkWidget *file_selector =
+        gtk_file_chooser_dialog_new (title,
+                                     GTK_WINDOW (self),
+                                     GTK_FILE_CHOOSER_ACTION_OPEN,
+                                     _ ("_Cancel"),
+                                     GTK_RESPONSE_CANCEL,
+                                     _ ("_Send"),
+                                     GTK_RESPONSE_ACCEPT,
+                                     NULL);
+
+    if (default_file != NULL)
+        gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (file_selector),
+                                       default_file);
+
+    gtk_dialog_set_default_response (GTK_DIALOG (file_selector),
+                                     GTK_RESPONSE_ACCEPT);
+    gtk_window_set_transient_for (GTK_WINDOW (file_selector),
+                                  GTK_WINDOW (self));
+    gint response = gtk_dialog_run (GTK_DIALOG (file_selector));
+    gtk_widget_hide (file_selector);
+
+    GFile *result = NULL;
+    if (response == GTK_RESPONSE_ACCEPT) {
+        result = gtk_file_chooser_get_file (GTK_FILE_CHOOSER (file_selector));
+    }
+
+    gtk_widget_destroy (file_selector);
+
+    return result;
 }

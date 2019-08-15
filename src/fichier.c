@@ -39,8 +39,6 @@
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
-extern GtSerialPort *serial_port;
-extern GtkWidget *Fenetre;
 
 /* Global variables */
 static gint nb_car;
@@ -50,7 +48,6 @@ static gint bytes_read;
 static gint Fichier;
 static guint callback_handler;
 static gchar *fic_defaut = NULL;
-static GtkWidget *Window;
 static gboolean waiting_for_char = FALSE;
 static gboolean waiting_for_timer = FALSE;
 static gboolean input_running = FALSE;
@@ -58,7 +55,7 @@ static gchar *str = NULL;
 
 /* Local functions prototype */
 static void
-close_all (void);
+close_all (gpointer data);
 static void
 on_infobar_close (GtkInfoBar *bar, gpointer user_data);
 static void
@@ -73,82 +70,54 @@ remove_input (void);
 extern struct configuration_port config;
 
 void
-send_ascii_file (GtkWindow *parent)
+send_ascii_file (GFile *file, GtkWindow *parent)
 {
-    GtkWidget *file_select;
+    gchar *fileName = g_file_get_path (file);
+    gchar *msg;
 
-    file_select = gtk_file_chooser_dialog_new (_ ("Send RAW File"),
-                                               parent,
-                                               GTK_FILE_CHOOSER_ACTION_OPEN,
-                                               _ ("_Cancel"),
-                                               GTK_RESPONSE_CANCEL,
-                                               _ ("_OK"),
-                                               GTK_RESPONSE_ACCEPT,
-                                               NULL);
-    gtk_dialog_set_default_response (GTK_DIALOG (file_select),
-                                     GTK_RESPONSE_ACCEPT);
-
-    if (fic_defaut != NULL)
-        gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (file_select),
-                                       fic_defaut);
-
-    if (gtk_dialog_run (GTK_DIALOG (file_select)) == GTK_RESPONSE_ACCEPT) {
-        gchar *fileName;
-        gchar *msg;
-
-        gtk_widget_hide (file_select);
-
-        fileName =
-            gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_select));
-
-        if (!g_file_test (fileName, G_FILE_TEST_IS_REGULAR)) {
-            msg = g_strdup_printf (_ ("Error opening file\n"));
-            gt_main_window_show_message (
-                GT_MAIN_WINDOW (Fenetre), msg, GT_MESSAGE_TYPE_ERROR);
-            g_free (msg);
-            g_free (fileName);
-            gtk_widget_destroy (file_select);
-            return;
-        }
-
-        Fichier = open (fileName, O_RDONLY);
-        if (Fichier != -1) {
-            gt_file_set_default (fileName);
-            msg = g_strdup_printf (_ ("%s : transfer in progress…"), fileName);
-            gt_main_window_push_status (GT_MAIN_WINDOW (Fenetre), msg);
-
-            car_written = 0;
-            current_buffer_position = 0;
-            bytes_read = 0;
-            nb_car = lseek (Fichier, 0L, SEEK_END);
-            lseek (Fichier, 0L, SEEK_SET);
-
-            Window = gt_infobar_new ();
-            gt_main_window_set_info_bar (GT_MAIN_WINDOW (Fenetre), Window);
-            g_signal_connect (G_OBJECT (Window),
-                              "close",
-                              G_CALLBACK (on_infobar_close),
-                              NULL);
-            g_signal_connect (G_OBJECT (Window),
-                              "response",
-                              G_CALLBACK (on_infobar_response),
-                              NULL);
-            gt_infobar_set_label (GT_INFOBAR (Window), msg);
-            g_free (msg);
-
-            gtk_widget_show_all (Window);
-
-            add_input ();
-        } else {
-            msg = g_strdup_printf (
-                _ ("Cannot read file %s: %s\n"), fileName, strerror (errno));
-            gt_main_window_show_message (
-                GT_MAIN_WINDOW (Fenetre), msg, GT_MESSAGE_TYPE_ERROR);
-            g_free (msg);
-        }
+    if (!g_file_test (fileName, G_FILE_TEST_IS_REGULAR)) {
+        msg = g_strdup_printf (_ ("Error opening file\n"));
+        gt_main_window_show_message (
+            GT_MAIN_WINDOW (parent), msg, GT_MESSAGE_TYPE_ERROR);
+        g_free (msg);
         g_free (fileName);
+        return;
     }
-    gtk_widget_destroy (file_select);
+
+    Fichier = open (fileName, O_RDONLY);
+    if (Fichier != -1) {
+        gt_file_set_default (fileName);
+        msg = g_strdup_printf (_ ("%s : transfer in progress…"), fileName);
+        gt_main_window_push_status (GT_MAIN_WINDOW (parent), msg);
+
+        car_written = 0;
+        current_buffer_position = 0;
+        bytes_read = 0;
+        nb_car = lseek (Fichier, 0L, SEEK_END);
+        lseek (Fichier, 0L, SEEK_SET);
+
+        GtkWidget *infobar = gt_infobar_new ();
+        gt_main_window_set_info_bar (GT_MAIN_WINDOW (parent), infobar);
+        g_signal_connect (
+            G_OBJECT (infobar), "close", G_CALLBACK (on_infobar_close), parent);
+        g_signal_connect (G_OBJECT (infobar),
+                          "response",
+                          G_CALLBACK (on_infobar_response),
+                          parent);
+        gt_infobar_set_label (GT_INFOBAR (infobar), msg);
+        g_free (msg);
+
+        gtk_widget_show_all (infobar);
+
+        add_input (parent);
+    } else {
+        msg = g_strdup_printf (
+            _ ("Cannot read file %s: %s\n"), fileName, strerror (errno));
+        gt_main_window_show_message (
+            GT_MAIN_WINDOW (parent), msg, GT_MESSAGE_TYPE_ERROR);
+        g_free (msg);
+    }
+    g_free (fileName);
 }
 
 static gboolean
@@ -163,12 +132,14 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
     if (condition == G_IO_ERR) {
         str = g_strdup_printf (_ ("Error sending file\n"));
         gt_main_window_show_message (
-            GT_MAIN_WINDOW (Fenetre), str, GT_MESSAGE_TYPE_ERROR);
-        close_all ();
+            GT_MAIN_WINDOW (data), str, GT_MESSAGE_TYPE_ERROR);
+        close_all (data);
         return FALSE;
     }
 
-    gt_infobar_set_progress (GT_INFOBAR (Window),
+    GtkWidget *infobar = gt_main_window_get_info_bar (GT_MAIN_WINDOW (data));
+
+    gt_infobar_set_progress (GT_INFOBAR (infobar),
                              (gdouble)car_written / (gdouble)nb_car);
 
     if (car_written < nb_car) {
@@ -186,8 +157,8 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
             g_free (str);
             str = g_strdup_printf (_ ("Error sending file\n"));
             gt_main_window_show_message (
-                GT_MAIN_WINDOW (Fenetre), str, GT_MESSAGE_TYPE_ERROR);
-            close_all ();
+                GT_MAIN_WINDOW (data), str, GT_MESSAGE_TYPE_ERROR);
+            close_all (data);
             return FALSE;
         }
 
@@ -206,7 +177,7 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
 
         /* write to serial port */
         bytes_written = gt_serial_port_send_chars (
-            GT_MAIN_WINDOW (Fenetre)->serial_port,
+            GT_MAIN_WINDOW (data)->serial_port,
             current_buffer,
             bytes_to_write - current_buffer_position);
 
@@ -216,8 +187,8 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
             str = g_strdup_printf (_ ("Error sending file: %s\n"),
                                    strerror (errno));
             gt_main_window_show_message (
-                GT_MAIN_WINDOW (Fenetre), str, GT_MESSAGE_TYPE_ERROR);
-            close_all ();
+                GT_MAIN_WINDOW (data), str, GT_MESSAGE_TYPE_ERROR);
+            close_all (data);
             return FALSE;
         }
 
@@ -225,7 +196,7 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
         current_buffer_position += bytes_written;
         current_buffer += bytes_written;
 
-        gt_infobar_set_progress (GT_INFOBAR (Window),
+        gt_infobar_set_progress (GT_INFOBAR (infobar),
                                  (gdouble)car_written / (gdouble)nb_car);
 
         if (config.delai != 0 && *car == LINE_FEED) {
@@ -237,7 +208,7 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
             waiting_for_char = TRUE;
         }
     } else {
-        close_all ();
+        close_all (data);
         return FALSE;
     }
     return TRUE;
@@ -247,25 +218,25 @@ static gboolean
 timer (gpointer pointer)
 {
     if (waiting_for_timer == TRUE) {
-        add_input ();
+        add_input (pointer);
         waiting_for_timer = FALSE;
     }
     return FALSE;
 }
 
 void
-add_input (void)
+add_input (gpointer user_data)
 {
     if (input_running == FALSE) {
         int fd = -1;
 
         input_running = TRUE;
-        fd = gt_serial_port_get_fd (serial_port);
+        fd = gt_serial_port_get_fd (GT_MAIN_WINDOW (user_data)->serial_port);
         callback_handler = g_io_add_watch_full (g_io_channel_unix_new (fd),
                                                 10,
                                                 G_IO_OUT | G_IO_ERR,
                                                 (GIOFunc)on_serial_io_ready,
-                                                NULL,
+                                                user_data,
                                                 NULL);
     }
 }
@@ -282,25 +253,26 @@ remove_input (void)
 static void
 on_infobar_close (GtkInfoBar *bar, gpointer user_data)
 {
-    close_all ();
+    close_all (user_data);
 }
 
 static void
-close_all (void)
+close_all (gpointer data)
 {
     remove_input ();
     waiting_for_char = FALSE;
     waiting_for_timer = FALSE;
-    gt_main_window_remove_info_bar (GT_MAIN_WINDOW (Fenetre), Window);
-    gt_main_window_pop_status (GT_MAIN_WINDOW (Fenetre));
+    GtkWidget *infobar = gt_main_window_get_info_bar (GT_MAIN_WINDOW (data));
+    gt_main_window_remove_info_bar (GT_MAIN_WINDOW (data), infobar);
+    gt_main_window_pop_status (GT_MAIN_WINDOW (data));
     close (Fichier);
-    gtk_widget_destroy (Window);
+    gtk_widget_destroy (infobar);
 }
 
 static void
 on_infobar_response (GtkInfoBar *bar, gint response_id, gpointer user_data)
 {
-    close_all ();
+    close_all (user_data);
 }
 
 gboolean

@@ -160,7 +160,7 @@ gt_serial_port_on_channel_read (GIOChannel *src,
                 while (i < bytes_read) {
                     if (c[i] == priv->config.car) {
                         gt_file_set_waiting_for_char (FALSE);
-                        add_input ();
+                        add_input (data);
                         i = bytes_read;
                     }
                     i++;

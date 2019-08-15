@@ -46,6 +46,8 @@ struct _GtMainWindow
     GtkWidget *revealer;
     GtLogging *logger;
     GtkAccelGroup *shortcuts;
+    char *default_raw_file;
+    char *default_text_file;
 };
 
 enum _GtMessageType {
@@ -70,7 +72,9 @@ void gt_main_window_set_title (GtMainWindow *self,
                                const char   *msg);
 
 void gt_main_window_remove_info_bar (GtMainWindow *self, GtkWidget *widget);
-void gt_main_window_set_info_bar (GtMainWindow *self, GtkWidget *widget);
+void
+gt_main_window_set_info_bar (GtMainWindow *self, GtkWidget *widget);
+GtkWidget *gt_main_window_get_info_bar (GtMainWindow *self);
 void gt_main_window_show_message (GtMainWindow *self, const char *message, GtMessageType type);
 void gt_main_window_add_shortcut (GtMainWindow *self, guint key, GdkModifierType mod, GClosure *closure);
 void gt_main_window_remove_shortcut (GtMainWindow *self, GClosure *closure);

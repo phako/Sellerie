@@ -21,8 +21,10 @@
 #include <gtk/gtk.h>
 #include <glib.h>
 
-void send_ascii_file(GtkWindow *parent);
-void add_input(void);
+void
+send_ascii_file (GFile *file, GtkWindow *parent);
+void
+add_input (gpointer user_data);
 
 gboolean gt_file_get_waiting_for_char (void);
 void gt_file_set_waiting_for_char (gboolean waiting);

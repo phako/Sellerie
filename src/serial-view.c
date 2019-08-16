@@ -98,6 +98,8 @@ gt_serial_view_finalize (GObject *object)
     GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
 
     g_clear_object (&priv->buffer);
+    g_clear_pointer (&priv->text, gdk_rgba_free);
+    g_clear_pointer (&priv->background, gdk_rgba_free);
 
     G_OBJECT_CLASS (gt_serial_view_parent_class)->finalize (object);
 }

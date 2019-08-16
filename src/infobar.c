@@ -29,9 +29,9 @@ struct _GtInfobar {
 
 G_DEFINE_TYPE (GtInfobar, gt_infobar, GTK_TYPE_INFO_BAR)
 
-enum { PROP_0, N_PROPS };
+enum { PROP_0, PROP_PROGRESS, N_PROPS };
 
-// static GParamSpec *properties [N_PROPS];
+static GParamSpec *properties[N_PROPS];
 
 GtkWidget *
 gt_infobar_new (void)
@@ -53,7 +53,7 @@ gt_infobar_get_property (GObject *object,
                          GValue *value,
                          GParamSpec *pspec)
 {
-    // GtInfobar *self = GT_INFOBAR (object);
+    //    GtInfobar *self = GT_INFOBAR (object);
 
     switch (prop_id) {
     default:
@@ -67,9 +67,12 @@ gt_infobar_set_property (GObject *object,
                          const GValue *value,
                          GParamSpec *pspec)
 {
-    // GtInfobar *self = GT_INFOBAR (object);
+    GtInfobar *self = GT_INFOBAR (object);
 
     switch (prop_id) {
+    case PROP_PROGRESS:
+        gt_infobar_set_progress (self, g_value_get_double (value));
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -89,6 +92,16 @@ gt_infobar_class_init (GtInfobarClass *klass)
     object_class->finalize = gt_infobar_finalize;
     object_class->get_property = gt_infobar_get_property;
     object_class->set_property = gt_infobar_set_property;
+
+    properties[PROP_PROGRESS] =
+        g_param_spec_double ("progress",
+                             "progress",
+                             "progress",
+                             0.0,
+                             1.0,
+                             0.0,
+                             G_PARAM_STATIC_STRINGS | G_PARAM_WRITABLE);
+    g_object_class_install_properties (object_class, N_PROPS, properties);
 }
 
 static void

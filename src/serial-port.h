@@ -22,8 +22,9 @@
 #include <config.h>
 #endif
 
-#include "term_config.h"
 #include "buffer.h"
+#include "file-transfer.h"
+#include "term_config.h"
 
 #include <glib.h>
 #include <gio/gio.h>
@@ -82,6 +83,9 @@ gt_serial_port_parity_from_string (const char *name);
 
 GtSerialPortFlowControl
 gt_serial_port_flow_control_from_string (const char *name);
+
+GtFileTransfer *
+gt_serial_port_send_file (GtSerialPort *self, GFile *file);
 
 #define BUFFER_RECEPTION 8192
 #define BUFFER_EMISSION 4096

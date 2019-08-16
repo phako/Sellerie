@@ -47,6 +47,7 @@
 #include <gudev/gudev.h>
 #endif
 
+#include <gio/gunixoutputstream.h>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
@@ -182,7 +183,9 @@ gt_serial_port_on_channel_error (GIOChannel *src,
 {
     gt_serial_port_close (GT_SERIAL_PORT (data));
     gt_serial_port_set_status (
-        GT_SERIAL_PORT (data), GT_SERIAL_PORT_STATE_OFFLINE, NULL);
+        GT_SERIAL_PORT (data),
+        GT_SERIAL_PORT_STATE_OFFLINE,
+        g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED, "Connection broken"));
 
     return TRUE;
 }
@@ -1018,27 +1021,15 @@ gt_serial_port_get_buffer (GtSerialPort *self)
 
 typedef struct {
     GBytes *data;
-    GIOChannel *channel;
+    GOutputStream *stream;
 } GtSerialAsyncWriteData;
 
 static gboolean
-on_serial_io_async_write (GIOChannel *source,
-                          GIOCondition condition,
-                          gpointer user_data)
+on_serial_io_async_write (GPollableOutputStream *stream, gpointer user_data)
 {
     GTask *task = G_TASK (user_data);
 
     if (g_task_return_error_if_cancelled (task)) {
-        g_object_unref (task);
-
-        return FALSE;
-    }
-
-    if (condition == G_IO_ERR) {
-        g_task_return_new_error (task,
-                                 G_IO_ERROR,
-                                 G_IO_ERROR_FAILED,
-                                 _ ("Serial port went to error"));
         g_object_unref (task);
 
         return FALSE;
@@ -1090,7 +1081,8 @@ void
 gt_serial_async_write_data_free (GtSerialAsyncWriteData *data)
 {
     g_clear_pointer (&data->data, g_bytes_unref);
-    g_clear_pointer (&data->channel, g_io_channel_unref);
+    // g_clear_pointer (&data->channel, g_io_channel_unref);
+    g_clear_object (&data->stream);
     g_slice_free (GtSerialAsyncWriteData, data);
 }
 
@@ -1102,21 +1094,26 @@ gt_serial_port_write_async (GtSerialPort *self,
                             GAsyncReadyCallback callback,
                             gpointer user_data)
 {
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+    GTask *task = g_task_new (self, cancellable, callback, user_data);
+    if (priv->last_error != NULL) {
+        g_task_return_error (task, priv->last_error);
+        return;
+    }
+
     GtSerialAsyncWriteData *data = g_slice_new0 (GtSerialAsyncWriteData);
     data->data = g_bytes_new_static (buffer, length);
 
-    data->channel = g_io_channel_unix_new (gt_serial_port_get_fd (self));
+    // data->channel = g_io_channel_unix_new (gt_serial_port_get_fd (self));
+    data->stream =
+        g_unix_output_stream_new (gt_serial_port_get_fd (self), FALSE);
 
-    GTask *task = g_task_new (self, cancellable, callback, user_data);
     g_task_set_task_data (
         task, data, (GDestroyNotify)gt_serial_async_write_data_free);
 
-    g_io_add_watch_full (data->channel,
-                         G_PRIORITY_DEFAULT + 10,
-                         G_IO_OUT | G_IO_ERR,
-                         (GIOFunc)on_serial_io_async_write,
-                         task,
-                         NULL);
+    GSource *source = g_pollable_output_stream_create_source (
+        G_POLLABLE_OUTPUT_STREAM (data->stream), cancellable);
+    g_task_attach_source (task, source, on_serial_io_async_write);
 }
 
 gsize
@@ -1282,4 +1279,13 @@ gt_serial_port_flow_control_from_string (const char *name)
     return gt_get_value_by_nick (GT_TYPE_SERIAL_PORT_FLOW_CONTROL,
                                  name,
                                  GT_SERIAL_PORT_FLOW_CONTROL_NONE);
+}
+
+GtFileTransfer *
+gt_serial_port_send_file (GtSerialPort *self, GFile *file)
+{
+        return g_object_new (GT_TYPE_FILE_TRANSFER,
+                         "file", file,
+                         "serial-port", self,
+                         NULL);
 }

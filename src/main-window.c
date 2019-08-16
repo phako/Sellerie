@@ -990,6 +990,8 @@ on_logging_start (GSimpleAction *action,
         }
         g_free (file_name);
     }
+
+    gtk_widget_destroy (file_select);
 }
 
 void

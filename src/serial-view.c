@@ -27,7 +27,7 @@ struct _GtHexDisplay {
 
     gchar data[128];
     gchar data_byte[6];
-    guint bytes;
+    guint column;
 };
 typedef struct _GtHexDisplay GtHexDisplay;
 
@@ -311,7 +311,6 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
     GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
     VteTerminal *term = VTE_TERMINAL (self);
     GtHexDisplay *display = &(priv->hex_display);
-    glong column, row;
 
     guint i = 0;
 
@@ -333,28 +332,20 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
         if (term == NULL)
             return;
 
-        vte_terminal_get_cursor_position (term, &column, &row);
-
-        if (display->show_index) {
-            if (column == 0)
-            /* First byte on line */
-            {
-                sprintf (display->data, "%6d: ", display->total_bytes);
-                vte_terminal_feed (term, display->data, strlen (display->data));
-                display->bytes = 0;
-            }
-        } else {
-            if (column == 0)
-                display->bytes = 0;
-        }
-
         /* Print hexadecimal characters */
         display->data[0] = 0;
 
         guint bytes_per_line = display->bytes_per_line;
-        while (display->bytes < bytes_per_line && i < size) {
+        while (display->column < bytes_per_line && i < size) {
             gint avance = 0;
             gchar ascii[1];
+
+            if ((display->show_index) && (display->column == 0)) {
+                /* First byte on line */
+                sprintf (display->data, "%6d: ", display->total_bytes);
+                vte_terminal_feed (term, display->data, strlen (display->data));
+                display->column = 0;
+            }
 
             sprintf (display->data_byte, "%02X ", (guchar)string[i]);
             g_signal_emit (
@@ -362,7 +353,8 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
 
             vte_terminal_feed (term, display->data_byte, 3);
 
-            avance = (bytes_per_line - display->bytes) * 3 + display->bytes + 2;
+            avance =
+                (bytes_per_line - display->column) * 3 + display->column + 2;
 
             /* Move forward */
             sprintf (display->data_byte, "%c[%dC", 27, avance);
@@ -378,16 +370,17 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
             vte_terminal_feed (
                 term, display->data_byte, strlen (display->data_byte));
 
-            if (display->bytes == bytes_per_line / 2 - 1)
+            if (display->column == bytes_per_line / 2 - 1)
                 vte_terminal_feed (term, "- ", strlen ("- "));
 
-            display->bytes++;
+            display->column++;
             i++;
 
             /* End of line ? */
-            if (display->bytes == bytes_per_line) {
+            if (display->column == bytes_per_line) {
                 vte_terminal_feed (term, "\r\n", 2);
-                display->total_bytes += display->bytes;
+                display->total_bytes += display->column;
+                display->column = 0;
             }
         }
     }

@@ -20,24 +20,58 @@
 
 #include <glib/gi18n.h>
 
+#define FILE_TRANSFER_BUFFER_SIZE 8192
+
 struct _GtFileTransfer {
     GObject parent_instance;
     GFile *file;
     GtSerialPort *port;
     GFileInputStream *stream;
-    guint8 buffer[8192];
     gsize size;
     gsize written;
+    gint wait_character;
+    gint wait_delay;
+    gulong callback;
+    gulong timeout_source;
+
+    gboolean waiting;
+    GBytes *residual;
 };
 
 G_DEFINE_TYPE (GtFileTransfer, gt_file_transfer, G_TYPE_OBJECT)
 
-enum { PROP_0, PROP_FILE, PROP_SERIAL_PORT, PROP_PROGRESS, N_PROPS };
+enum {
+    PROP_0,
+    PROP_FILE,
+    PROP_SERIAL_PORT,
+    PROP_PROGRESS,
+    PROP_WAIT_CHARACTER,
+    PROP_DELAY,
+    N_PROPS
+};
 
 enum { SIGNAL_PROGRESS, N_SIGNALS };
 
 static GParamSpec *properties[N_PROPS];
 static guint signals[N_SIGNALS] = {0};
+
+static void
+gt_file_transfer_send_chunk (GtFileTransfer *self,
+                             GBytes *data,
+                             gpointer user_data);
+
+static void
+gt_file_transfer_dispose (GObject *object)
+{
+    GtFileTransfer *self = (GtFileTransfer *)object;
+
+    if (self->callback != 0) {
+        g_signal_handler_disconnect (self->port, self->callback);
+        self->callback = 0;
+    }
+
+    G_OBJECT_CLASS (gt_file_transfer_parent_class)->dispose (object);
+}
 
 static void
 gt_file_transfer_finalize (GObject *object)
@@ -87,6 +121,12 @@ gt_file_transfer_set_property (GObject *object,
     case PROP_SERIAL_PORT:
         self->port = GT_SERIAL_PORT (g_value_dup_object (value));
         break;
+    case PROP_WAIT_CHARACTER:
+        self->wait_character = g_value_get_int (value);
+        break;
+    case PROP_DELAY:
+        self->wait_delay = g_value_get_int (value);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -97,6 +137,7 @@ gt_file_transfer_class_init (GtFileTransferClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+    object_class->dispose = gt_file_transfer_dispose;
     object_class->finalize = gt_file_transfer_finalize;
     object_class->get_property = gt_file_transfer_get_property;
     object_class->set_property = gt_file_transfer_set_property;
@@ -132,6 +173,24 @@ gt_file_transfer_class_init (GtFileTransferClass *klass)
                              1.0,
                              0.0,
                              G_PARAM_STATIC_STRINGS | G_PARAM_READABLE);
+
+    properties[PROP_WAIT_CHARACTER] = g_param_spec_int (
+        "wait-character",
+        "wait-character",
+        "wait-character",
+        -1,
+        G_MAXINT,
+        -1,
+        G_PARAM_STATIC_STRINGS | G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+
+    properties[PROP_DELAY] = g_param_spec_int (
+        "delay",
+        "delay",
+        "delay",
+        -1,
+        G_MAXINT,
+        -1,
+        G_PARAM_STATIC_STRINGS | G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
 
     g_object_class_install_properties (object_class, N_PROPS, properties);
 }
@@ -177,13 +236,26 @@ on_serial_port_write_ready (GObject *source,
 
     g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_PROGRESS]);
 
-    g_input_stream_read_async (G_INPUT_STREAM (self->stream),
-                               self->buffer,
-                               sizeof (self->buffer),
-                               G_PRIORITY_DEFAULT,
-                               g_task_get_cancellable (task),
-                               on_file_input_ready,
-                               task);
+    if (self->waiting)
+        return;
+
+    // We have left-over data from the previous write due to a mode where we
+    // have to obey the LF. Short-cut to send the data without reading from the
+    // file
+    if (self->residual != NULL) {
+        GBytes *data = self->residual;
+        self->residual = NULL;
+        gt_file_transfer_send_chunk (self, data, user_data);
+
+        return;
+    }
+
+    g_input_stream_read_bytes_async (G_INPUT_STREAM (self->stream),
+                                     FILE_TRANSFER_BUFFER_SIZE,
+                                     G_PRIORITY_DEFAULT,
+                                     g_task_get_cancellable (task),
+                                     on_file_input_ready,
+                                     task);
 }
 
 static void
@@ -193,8 +265,8 @@ on_file_input_ready (GObject *source, GAsyncResult *res, gpointer user_data)
     GError *error = NULL;
     GtFileTransfer *self = GT_FILE_TRANSFER (g_task_get_source_object (task));
 
-    gssize size =
-        g_input_stream_read_finish (G_INPUT_STREAM (source), res, &error);
+    GBytes *data =
+        g_input_stream_read_bytes_finish (G_INPUT_STREAM (source), res, &error);
 
     if (error != NULL) {
         g_task_return_error (task, error);
@@ -202,20 +274,52 @@ on_file_input_ready (GObject *source, GAsyncResult *res, gpointer user_data)
         return;
     }
 
+    gt_file_transfer_send_chunk (self, data, user_data);
+}
+
+static void
+gt_file_transfer_send_chunk (GtFileTransfer *self,
+                             GBytes *data,
+                             gpointer user_data)
+{
+    GTask *task = G_TASK (user_data);
+
     // Reading done
-    if (size == 0) {
+    gsize size = 0;
+    const guint8 *bytes = (const guint8 *)g_bytes_get_data (data, &size);
+    if (g_bytes_get_size (data) == 0) {
+        g_debug ("FInishing task because there's no data left to send");
+        g_bytes_unref (data);
         g_task_return_boolean (task, TRUE);
         g_object_unref (G_OBJECT (task));
         return;
     }
 
+    if (self->wait_character != -1) {
+        gsize lf_position = 0;
+        while (lf_position < size && bytes[lf_position++] != LINE_FEED) {
+        }
+
+        if (lf_position + 1 < size) {
+            self->waiting = TRUE;
+            GBytes *old_residual = self->residual;
+            self->residual = g_bytes_new_from_bytes (
+                data, lf_position + 1, size - lf_position - 1);
+            size = lf_position + 1;
+            GBytes *old_data = data;
+            data = g_bytes_new_from_bytes (data, 0, size);
+            g_bytes_unref (old_residual);
+            g_bytes_unref (old_data);
+        }
+    }
+
     self->written += size;
-    gt_serial_port_write_async (self->port,
-                                self->buffer,
-                                (gsize)size,
-                                g_task_get_cancellable (task),
-                                on_serial_port_write_ready,
-                                task);
+    gt_serial_port_write_bytes_async (self->port,
+                                      data,
+                                      g_task_get_cancellable (task),
+                                      on_serial_port_write_ready,
+                                      task);
+    g_bytes_unref (data);
 }
 
 static void
@@ -232,13 +336,60 @@ on_read_file_done (GObject *source, GAsyncResult *res, gpointer user_data)
         return;
     }
 
-    g_input_stream_read_async (G_INPUT_STREAM (self->stream),
-                               self->buffer,
-                               sizeof (self->buffer),
-                               G_PRIORITY_DEFAULT,
-                               g_task_get_cancellable (task),
-                               on_file_input_ready,
-                               task);
+    g_input_stream_read_bytes_async (G_INPUT_STREAM (self->stream),
+                                     FILE_TRANSFER_BUFFER_SIZE,
+                                     G_PRIORITY_DEFAULT,
+                                     g_task_get_cancellable (task),
+                                     on_file_input_ready,
+                                     task);
+}
+
+static void
+on_serial_data_ready (GtSerialPort *port, GBytes *data, gpointer user_data)
+{
+    GTask *task = G_TASK (user_data);
+    GtFileTransfer *self = GT_FILE_TRANSFER (g_task_get_source_object (task));
+
+    if (!self->waiting) {
+        return;
+    }
+
+    // Should not happen
+    if (self->wait_character == -1) {
+        return;
+    }
+
+    gsize size = 0;
+    const guint8 *bytes = (const guint8 *)g_bytes_get_data (data, &size);
+    gssize char_position = 0;
+    while (char_position < size) {
+        if (bytes[char_position++] == self->wait_character) {
+            self->waiting = FALSE;
+            break;
+        }
+    }
+
+    if (self->waiting) {
+        return;
+    }
+
+    // We have left-over data from the previous write due to a mode where we
+    // have to obey the LF. Short-cut to send the data without reading from the
+    // file
+    if (self->residual != NULL) {
+        GBytes *data_to_send = self->residual;
+        self->residual = NULL;
+        gt_file_transfer_send_chunk (self, data_to_send, user_data);
+
+        return;
+    }
+
+    g_input_stream_read_bytes_async (G_INPUT_STREAM (self->stream),
+                                     FILE_TRANSFER_BUFFER_SIZE,
+                                     G_PRIORITY_DEFAULT,
+                                     g_task_get_cancellable (task),
+                                     on_file_input_ready,
+                                     user_data);
 }
 
 static void
@@ -255,6 +406,13 @@ on_file_info_done (GObject *source, GAsyncResult *res, gpointer user_data)
     }
 
     GtFileTransfer *self = GT_FILE_TRANSFER (g_task_get_source_object (task));
+
+    if (self->wait_character != -1)
+        self->callback = g_signal_connect (G_OBJECT (self->port),
+                                           "data-available",
+                                           G_CALLBACK (on_serial_data_ready),
+                                           task);
+
     self->size = g_file_info_get_size (info);
     g_object_unref (info);
 
@@ -271,6 +429,10 @@ gt_file_transfer_start (GtFileTransfer *self,
                         GAsyncReadyCallback callback,
                         gpointer user_data)
 {
+    g_autofree char *path = g_file_get_path (self->file);
+
+    g_debug ("Starting file transfer of %s", path);
+
     GTask *task = g_task_new (self, cancellable, callback, user_data);
     g_file_query_info_async (self->file,
                              G_FILE_ATTRIBUTE_STANDARD_SIZE,

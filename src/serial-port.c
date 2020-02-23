@@ -1297,9 +1297,20 @@ gt_serial_port_flow_control_from_string (const char *name)
 GtFileTransfer *
 gt_serial_port_send_file (GtSerialPort *self, GFile *file)
 {
-    return g_object_new (
-        GT_TYPE_FILE_TRANSFER, "file", file, "serial-port", self, NULL);
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+
+    return g_object_new (GT_TYPE_FILE_TRANSFER,
+                         "file",
+                         file,
+                         "serial-port",
+                         self,
+                         "wait-character",
+                         priv->config.car,
+                         "delay",
+                         priv->config.delai,
+                         NULL);
 }
+
 static void
 gt_serial_port_on_data_ready (GObject *source,
                               GAsyncResult *res,
@@ -1310,7 +1321,8 @@ gt_serial_port_on_data_ready (GObject *source,
     GError *error = NULL;
 
     GBytes *data =
-        g_input_stream_read_bytes_finish (priv->input_stream, res, &error);
+        g_input_stream_read_bytes_finish (G_INPUT_STREAM (source), res, &error);
+
     if (error != NULL) {
         if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
             gt_serial_port_close (self);
@@ -1324,20 +1336,6 @@ gt_serial_port_on_data_ready (GObject *source,
     }
 
     g_signal_emit (self, SIGNALS[SIGNAL_DATA_AVAILABLE], 0, data);
-
-#if 0
-    if (priv->config.car != -1) {
-        gsize size;
-        const char *buffer = (const char *)g_bytes_get_data (&size);
-        for (gsize i = 0; i < size; i++) {
-            if (buffer[i] == priv->config.car) {
-                g_signal_emit (self, SIGNALS[SIGNAL_WAIT_CHAR], 0);
-            }
-        }
-    }
-
-    gt_buffer_put_bytes (priv->buffer, data, priv->config.crlfauto);
-#endif
 
     g_input_stream_read_bytes_async (priv->input_stream,
                                      BUFFER_RECEPTION,

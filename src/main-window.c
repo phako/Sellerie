@@ -1161,10 +1161,11 @@ on_file_transfer_ready (GObject *source_object,
 {
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
     GError *error = NULL;
-    gboolean result =
-        gt_file_transfer_finish (GT_FILE_TRANSFER (source_object), res, &error);
 
-    GtInfobar *infobar = gt_main_window_get_info_bar (self);
+    g_debug ("File transfer finished...");
+    gt_file_transfer_finish (GT_FILE_TRANSFER (source_object), res, &error);
+
+    GtkWidget *infobar = gt_main_window_get_info_bar (self);
     gt_main_window_remove_info_bar (self, infobar);
     // gtk_widget_destroy (infobar);
 

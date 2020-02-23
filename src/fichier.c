@@ -41,8 +41,8 @@
 
 
 /* Global variables */
-static gint nb_car;
-static gint car_written;
+static gint file_size;
+static gint bytes_written;
 static gint current_buffer_position;
 static gint bytes_read;
 static gint Fichier;
@@ -90,10 +90,10 @@ send_ascii_file (GFile *file, GtkWindow *parent)
         msg = g_strdup_printf (_ ("%s : transfer in progress…"), fileName);
         gt_main_window_push_status (GT_MAIN_WINDOW (parent), msg);
 
-        car_written = 0;
+        bytes_written = 0;
         current_buffer_position = 0;
         bytes_read = 0;
-        nb_car = lseek (Fichier, 0L, SEEK_END);
+        file_size = lseek (Fichier, 0L, SEEK_END);
         lseek (Fichier, 0L, SEEK_SET);
 
         GtkWidget *infobar = gt_infobar_new ();
@@ -140,9 +140,10 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
     GtkWidget *infobar = gt_main_window_get_info_bar (GT_MAIN_WINDOW (data));
 
     gt_infobar_set_progress (GT_INFOBAR (infobar),
-                             (gdouble)car_written / (gdouble)nb_car);
+                             (gdouble)bytes_written / (gdouble)file_size);
 
-    if (car_written < nb_car) {
+    // If we still have something to write
+    if (bytes_written < file_size) {
         /* Read the file only if buffer totally sent or if buffer empty */
         if (current_buffer_position == bytes_read) {
             bytes_read = read (Fichier, buffer, BUFFER_EMISSION);
@@ -164,6 +165,9 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
 
         car = current_buffer;
 
+        // We have special communications needs; either a delay after the
+        // line-feed or a waitchar, we only send up to and including the LF
+        // FIXME: Why LF and not the wait char?
         if (config.delai != 0 || config.car != -1) {
             /* search for next LF */
             bytes_to_write = current_buffer_position;
@@ -181,6 +185,7 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
             current_buffer,
             bytes_to_write - current_buffer_position);
 
+        // Error here - bail out
         if (bytes_written == -1) {
             /* Problem while writing, stop file transfer */
             g_free (str);
@@ -192,20 +197,30 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
             return FALSE;
         }
 
-        car_written += bytes_written;
+        bytes_written += bytes_written;
         current_buffer_position += bytes_written;
         current_buffer += bytes_written;
 
         gt_infobar_set_progress (GT_INFOBAR (infobar),
-                                 (gdouble)car_written / (gdouble)nb_car);
+                                 (gdouble)bytes_written / (gdouble)file_size);
 
-        if (config.delai != 0 && *car == LINE_FEED) {
-            remove_input ();
-            g_timeout_add (config.delai, (GSourceFunc)timer, NULL);
-            waiting_for_timer = TRUE;
-        } else if (config.car != -1 && *car == LINE_FEED) {
-            remove_input ();
-            waiting_for_char = TRUE;
+        if (*car == LINE_FEED) {
+            // We ended on a LINE_FEED, so something special happened above
+            if (config.delai != 0) {
+                // We have a delay and we found a line feed, stop waiting for
+                // the ready to send singal and start applying the timeout
+                // If we have a delay and a wait char, we only use the delay
+                remove_input ();
+                g_timeout_add (config.delai, (GSourceFunc)timer, NULL);
+                waiting_for_timer = TRUE;
+            } else if (config.car != -1) {
+                // Else we are waiting for a character from the other end to
+                // continue sending, stop waiting for the ready to send data
+                // signal
+                remove_input ();
+                waiting_for_char = TRUE;
+            }
+            // Just coincidence, nothing to do
         }
     } else {
         close_all (data);
@@ -217,9 +232,10 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
 static gboolean
 timer (gpointer pointer)
 {
+    // Timeout expired,
     if (waiting_for_timer == TRUE) {
-        add_input (pointer);
         waiting_for_timer = FALSE;
+        add_input (pointer);
     }
     return FALSE;
 }

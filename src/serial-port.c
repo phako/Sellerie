@@ -140,6 +140,7 @@ gt_serial_port_on_channel_read (GIOChannel *src,
                                 GIOCondition cond,
                                 gpointer data)
 {
+    // There is data ready to be read on the port
     GtSerialPort *self = GT_SERIAL_PORT (data);
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     gint bytes_read;
@@ -149,16 +150,24 @@ gt_serial_port_on_channel_read (GIOChannel *src,
     bytes_read = BUFFER_RECEPTION;
 
     while (bytes_read == BUFFER_RECEPTION) {
+        // Read up until BUFFER_RECEPTION bytes
         bytes_read = read (priv->serial_port_fd, c, BUFFER_RECEPTION);
         if (bytes_read > 0) {
+            // We got something, put it in the display buffer
             gt_buffer_put_chars (
                 priv->buffer, c, bytes_read, priv->config.crlfauto);
 
+            // We have a waiting character configured and there is actually a
+            // file transfer waiting for it
             if (priv->config.car != -1 &&
                 gt_file_get_waiting_for_char () == TRUE) {
                 i = 0;
+                // Look if the character we're looking for is in the buffer we
+                // read
                 while (i < bytes_read) {
                     if (c[i] == priv->config.car) {
+                        // Found it, so unblock the waiting process and set up
+                        // the ready to send handler again
                         gt_file_set_waiting_for_char (FALSE);
                         add_input (data);
                         i = bytes_read;

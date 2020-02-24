@@ -73,10 +73,21 @@ gt_serial_port_write_async (GtSerialPort *self,
                             GCancellable *cancellable,
                             GAsyncReadyCallback callback,
                             gpointer user_data);
+void
+gt_serial_port_write_bytes_async (GtSerialPort *self,
+                                  GBytes *bytes,
+                                  GCancellable *cancellable,
+                                  GAsyncReadyCallback callback,
+                                  gpointer user_data);
 gsize
 gt_serial_port_write_finish (GtSerialPort *self,
                              GAsyncResult *result,
                              GError **error);
+
+gsize
+gt_serial_port_write_bytes_finish (GtSerialPort *self,
+                                   GAsyncResult *result,
+                                   GError **error);
 
 GtSerialPortParity
 gt_serial_port_parity_from_string (const char *name);

@@ -1097,10 +1097,42 @@ gt_serial_port_write_async (GtSerialPort *self,
     g_task_attach_source (task, source, (GSourceFunc)on_serial_io_async_write);
 }
 
+void
+gt_serial_port_write_bytes_async (GtSerialPort *self,
+                                  GBytes *bytes,
+                                  GCancellable *cancellable,
+                                  GAsyncReadyCallback callback,
+                                  gpointer user_data)
+{
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+    GTask *task = g_task_new (self, cancellable, callback, user_data);
+    if (priv->last_error != NULL) {
+        g_task_return_error (task, priv->last_error);
+        return;
+    }
+
+    g_task_set_task_data (
+        task, g_bytes_ref (bytes), (GDestroyNotify)g_bytes_unref);
+
+    GSource *source = g_pollable_output_stream_create_source (
+        G_POLLABLE_OUTPUT_STREAM (priv->output_stream), cancellable);
+    g_task_attach_source (task, source, (GSourceFunc)on_serial_io_async_write);
+}
+
 gsize
 gt_serial_port_write_finish (GtSerialPort *self,
                              GAsyncResult *result,
                              GError **error)
+{
+    g_return_val_if_fail (g_task_is_valid (G_TASK (result), self), 0);
+
+    return (gsize)g_task_propagate_int (G_TASK (result), error);
+}
+
+gsize
+gt_serial_port_write_bytes_finish (GtSerialPort *self,
+                                   GAsyncResult *result,
+                                   GError **error)
 {
     g_return_val_if_fail (g_task_is_valid (G_TASK (result), self), 0);
 

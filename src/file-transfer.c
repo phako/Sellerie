@@ -289,10 +289,10 @@ gt_file_transfer_continue (GtFileTransfer *self, gpointer user_data)
     g_input_stream_read_bytes_async (
         G_INPUT_STREAM (self->stream),
         FILE_TRANSFER_BUFFER_SIZE,
-        G_PRIORITY_DEFAULT,
+        g_task_get_priority (G_TASK (user_data)),
         g_task_get_cancellable (G_TASK (user_data)),
         on_file_input_ready,
-        G_TASK (user_data));
+        user_data);
 }
 
 static void
@@ -436,7 +436,7 @@ on_file_info_done (GObject *source, GAsyncResult *res, gpointer user_data)
     g_object_unref (info);
 
     g_file_read_async (self->file,
-                       G_PRIORITY_DEFAULT,
+                       g_task_get_priority (task),
                        g_task_get_cancellable (task),
                        on_read_file_done,
                        task);
@@ -449,15 +449,17 @@ gt_file_transfer_start (GtFileTransfer *self,
                         gpointer user_data)
 {
     g_autofree char *path = g_file_get_path (self->file);
+    g_autofree char *task_name = g_strdup_printf ("Transferring file %s", path);
 
     g_debug ("Starting file transfer of %s", path);
 
     GTask *task = g_task_new (self, cancellable, callback, user_data);
+    g_task_set_name (task, task_name);
     g_file_query_info_async (self->file,
                              G_FILE_ATTRIBUTE_STANDARD_SIZE,
                              G_FILE_QUERY_INFO_NONE,
-                             G_PRIORITY_DEFAULT,
-                             cancellable,
+                             g_task_get_priority (task),
+                             g_task_get_cancellable (task),
                              on_file_info_done,
                              task);
 

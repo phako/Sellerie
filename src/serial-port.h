@@ -45,7 +45,6 @@ typedef enum _GtSerialPortState {
 
 GtSerialPort *gt_serial_port_new (void);
 
-void gt_serial_port_set_buffer (GtSerialPort *, GtBuffer *);
 int gt_serial_port_send_chars (GtSerialPort *, char *, int);
 gboolean gt_serial_port_config (GtSerialPort *, GtSerialPortConfiguration *config);
 void gt_serial_port_set_signals (GtSerialPort *, guint);
@@ -58,32 +57,18 @@ gboolean gt_serial_port_get_crlfauto (GtSerialPort *self);
 void gt_serial_port_send_brk (GtSerialPort *);
 void gt_serial_port_set_custom_speed (GtSerialPort *, int);
 gchar *gt_serial_port_to_string (GtSerialPort *);
-gint gt_serial_port_get_fd (GtSerialPort *);
 GError *gt_serial_port_get_last_error (GtSerialPort *self);
 GtSerialPortState gt_serial_port_get_status (GtSerialPort *self);
 gboolean gt_serial_port_reconnect (GtSerialPort *);
 gboolean gt_serial_port_connect (GtSerialPort *self);
-GtBuffer *gt_serial_port_get_buffer (GtSerialPort *self);
 GList *gt_serial_port_detect_devices (void);
 
-void
-gt_serial_port_write_async (GtSerialPort *self,
-                            guint8 *buffer,
-                            gsize length,
-                            GCancellable *cancellable,
-                            GAsyncReadyCallback callback,
-                            gpointer user_data);
 void
 gt_serial_port_write_bytes_async (GtSerialPort *self,
                                   GBytes *bytes,
                                   GCancellable *cancellable,
                                   GAsyncReadyCallback callback,
                                   gpointer user_data);
-gsize
-gt_serial_port_write_finish (GtSerialPort *self,
-                             GAsyncResult *result,
-                             GError **error);
-
 gsize
 gt_serial_port_write_bytes_finish (GtSerialPort *self,
                                    GAsyncResult *result,
@@ -98,8 +83,6 @@ gt_serial_port_flow_control_from_string (const char *name);
 GtFileTransfer *
 gt_serial_port_send_file (GtSerialPort *self, GFile *file);
 
-#define BUFFER_RECEPTION 8192
-#define BUFFER_EMISSION 4096
 #define LINE_FEED 0x0A
 
 G_END_DECLS

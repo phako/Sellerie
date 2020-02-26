@@ -47,7 +47,6 @@ struct _GtMainWindow
     GtLogging *logger;
     GtkAccelGroup *shortcuts;
     char *default_raw_file;
-    char *default_text_file;
 };
 
 enum _GtMessageType {

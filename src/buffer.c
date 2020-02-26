@@ -21,9 +21,6 @@
 #include "buffer.h"
 #include "i18n.h"
 
-/* For BUFFER_RECEPTION */
-#include "serial-port.h"
-
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,6 +28,7 @@
 #include <glib/gi18n.h>
 
 #define BUFFER_SIZE (128 * 1024)
+#define BUFFER_RECEPTION 8192
 
 typedef struct {
     char *buffer;

@@ -277,8 +277,8 @@ on_serial_port_write_ready (GObject *source,
     GError *error = NULL;
     GtFileTransfer *self = GT_FILE_TRANSFER (g_task_get_source_object (task));
 
-    gsize size =
-        gt_serial_port_write_finish (GT_SERIAL_PORT (source), res, &error);
+    gsize size = gt_serial_port_write_bytes_finish (
+        GT_SERIAL_PORT (source), res, &error);
 
     if (error != NULL) {
         g_task_return_error (task, error);

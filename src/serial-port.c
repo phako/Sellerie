@@ -53,6 +53,8 @@
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
+#define RECEIVE_BUFFER_SIZE 8192
+
 #define GT_SERIAL_PORT_CONTROL_POLL_DELAY                                      \
     100 /* in ms (for control signals)                                         \
            */
@@ -303,12 +305,6 @@ gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
         gt_serial_port_set_signals (self, 1);
     }
 
-    if (bytes_written > 0) {
-        if (priv->config.echo)
-            gt_buffer_put_chars (
-                priv->buffer, string, bytes_written, priv->config.crlfauto);
-    }
-
     return bytes_written;
 }
 
@@ -379,32 +375,11 @@ gt_serial_port_connect (GtSerialPort *self)
         g_unix_output_stream_new (priv->serial_port_fd, FALSE);
 
     g_input_stream_read_bytes_async (priv->input_stream,
-                                     BUFFER_RECEPTION,
+                                     RECEIVE_BUFFER_SIZE,
                                      G_PRIORITY_DEFAULT,
                                      priv->cancellable,
                                      gt_serial_port_on_data_ready,
                                      self);
-
-#if 0
-    priv->in_channel = g_io_channel_unix_new (priv->serial_port_fd);
-    priv->callback_handler_in =
-        g_io_add_watch_full (priv->in_channel,
-                             10,
-                             G_IO_IN,
-                             gt_serial_port_on_channel_read,
-                             self,
-                             NULL);
-
-    priv->err_channel = g_io_channel_unix_new (priv->serial_port_fd);
-    priv->callback_handler_err =
-        g_io_add_watch_full (priv->err_channel,
-                             10,
-                             G_IO_ERR,
-                             gt_serial_port_on_channel_error,
-                             self,
-                             NULL);
-    priv->callback_activated = TRUE;
-#endif
 
     g_object_notify (G_OBJECT (self), "local-echo");
 
@@ -459,15 +434,6 @@ gt_serial_port_close (GtSerialPort *self)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     if (priv->serial_port_fd != -1) {
-#if 0
-        if (priv->callback_activated == TRUE) {
-            g_source_remove (priv->callback_handler_in);
-            g_source_remove (priv->callback_handler_err);
-            priv->callback_activated = FALSE;
-        }
-        g_clear_pointer (&priv->in_channel, g_io_channel_unref);
-        g_clear_pointer (&priv->err_channel, g_io_channel_unref);
-#endif
         tcsetattr (priv->serial_port_fd, TCSANOW, &(priv->termios_save));
         tcflush (priv->serial_port_fd, TCOFLUSH);
         tcflush (priv->serial_port_fd, TCIFLUSH);
@@ -783,14 +749,6 @@ gt_serial_port_to_string (GtSerialPort *self)
     return msg;
 }
 
-int
-gt_serial_port_get_fd (GtSerialPort *self)
-{
-    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
-
-    return priv->serial_port_fd;
-}
-
 static void
 gt_serial_port_set_status (GtSerialPort *self,
                            GtSerialPortState status,
@@ -953,8 +911,6 @@ gt_serial_port_dispose (GObject *object)
 
     g_cancellable_cancel (priv->cancellable);
 
-    g_clear_object (&priv->buffer);
-
     object_class = G_OBJECT_CLASS (gt_serial_port_parent_class);
     object_class->dispose (object);
 }
@@ -988,15 +944,6 @@ gt_serial_port_new (void)
     return GT_SERIAL_PORT (g_object_new (GT_TYPE_SERIAL_PORT, NULL));
 }
 
-void
-gt_serial_port_set_buffer (GtSerialPort *self, GtBuffer *buffer)
-{
-    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
-
-    g_clear_object (&priv->buffer);
-    priv->buffer = g_object_ref (buffer);
-}
-
 GError *
 gt_serial_port_get_last_error (GtSerialPort *self)
 {
@@ -1011,14 +958,6 @@ gt_serial_port_get_status (GtSerialPort *self)
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
 
     return priv->state;
-}
-
-GtBuffer *
-gt_serial_port_get_buffer (GtSerialPort *self)
-{
-    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
-
-    return priv->buffer;
 }
 
 static gboolean
@@ -1074,29 +1013,6 @@ on_serial_io_async_write (GPollableOutputStream *stream, gpointer user_data)
 }
 
 void
-gt_serial_port_write_async (GtSerialPort *self,
-                            guint8 *buffer,
-                            gsize length,
-                            GCancellable *cancellable,
-                            GAsyncReadyCallback callback,
-                            gpointer user_data)
-{
-    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
-    GTask *task = g_task_new (self, cancellable, callback, user_data);
-    if (priv->last_error != NULL) {
-        g_task_return_error (task, priv->last_error);
-        return;
-    }
-
-    g_task_set_task_data (
-        task, g_bytes_new (buffer, length), (GDestroyNotify)g_bytes_unref);
-
-    GSource *source = g_pollable_output_stream_create_source (
-        G_POLLABLE_OUTPUT_STREAM (priv->output_stream), cancellable);
-    g_task_attach_source (task, source, (GSourceFunc)on_serial_io_async_write);
-}
-
-void
 gt_serial_port_write_bytes_async (GtSerialPort *self,
                                   GBytes *bytes,
                                   GCancellable *cancellable,
@@ -1116,16 +1032,6 @@ gt_serial_port_write_bytes_async (GtSerialPort *self,
     GSource *source = g_pollable_output_stream_create_source (
         G_POLLABLE_OUTPUT_STREAM (priv->output_stream), cancellable);
     g_task_attach_source (task, source, (GSourceFunc)on_serial_io_async_write);
-}
-
-gsize
-gt_serial_port_write_finish (GtSerialPort *self,
-                             GAsyncResult *result,
-                             GError **error)
-{
-    g_return_val_if_fail (g_task_is_valid (G_TASK (result), self), 0);
-
-    return (gsize)g_task_propagate_int (G_TASK (result), error);
 }
 
 gsize
@@ -1337,7 +1243,7 @@ gt_serial_port_on_data_ready (GObject *source,
     g_signal_emit (self, SIGNALS[SIGNAL_DATA_AVAILABLE], 0, data);
 
     g_input_stream_read_bytes_async (priv->input_stream,
-                                     BUFFER_RECEPTION,
+                                     RECEIVE_BUFFER_SIZE,
                                      G_PRIORITY_DEFAULT,
                                      priv->cancellable,
                                      gt_serial_port_on_data_ready,

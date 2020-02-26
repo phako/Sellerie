@@ -309,7 +309,6 @@ gt_main_window_finalize (GObject *object)
     GtMainWindow *self = (GtMainWindow *)object;
 
     g_clear_pointer (&self->default_raw_file, g_free);
-    g_clear_pointer (&self->default_text_file, g_free);
     G_OBJECT_CLASS (gt_main_window_parent_class)->finalize (object);
 }
 
@@ -378,7 +377,6 @@ gt_main_window_init (GtMainWindow *self)
 
     self->buffer = gt_buffer_new ();
     self->serial_port = gt_serial_port_new ();
-    gt_serial_port_set_buffer (self->serial_port, self->buffer);
     self->logger = gt_logging_new ();
 
     GPropertyAction *action = g_property_action_new (

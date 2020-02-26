@@ -30,7 +30,7 @@ struct _GtFileTransfer {
     gsize size;
     gsize written;
     gint wait_character;
-    gint wait_delay;
+    guint wait_delay;
     gulong callback;
     gulong timeout_source;
 
@@ -59,6 +59,9 @@ static void
 gt_file_transfer_send_chunk (GtFileTransfer *self,
                              GBytes *data,
                              gpointer user_data);
+
+static void
+gt_file_transfer_continue (GtFileTransfer *self, gpointer user_data);
 
 static void
 gt_file_transfer_dispose (GObject *object)
@@ -125,7 +128,7 @@ gt_file_transfer_set_property (GObject *object,
         self->wait_character = g_value_get_int (value);
         break;
     case PROP_DELAY:
-        self->wait_delay = g_value_get_int (value);
+        self->wait_delay = g_value_get_uint (value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -183,13 +186,13 @@ gt_file_transfer_class_init (GtFileTransferClass *klass)
         -1,
         G_PARAM_STATIC_STRINGS | G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
 
-    properties[PROP_DELAY] = g_param_spec_int (
+    properties[PROP_DELAY] = g_param_spec_uint (
         "delay",
         "delay",
         "delay",
-        -1,
-        G_MAXINT,
-        -1,
+        0,
+        G_MAXUINT,
+        0,
         G_PARAM_STATIC_STRINGS | G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
 
     g_object_class_install_properties (object_class, N_PROPS, properties);
@@ -205,6 +208,19 @@ gt_file_transfer_init (GtFileTransfer *self)
 
 static void
 on_file_input_ready (GObject *source, GAsyncResult *res, gpointer user_data);
+
+static gboolean
+on_delay_timeout (gpointer user_data)
+{
+    GTask *task = G_TASK (user_data);
+    GtFileTransfer *self = GT_FILE_TRANSFER (g_task_get_source_object (task));
+
+    g_debug ("output delay timeout: %lu", g_get_monotonic_time ());
+
+    gt_file_transfer_continue (self, user_data);
+
+    return G_SOURCE_REMOVE;
+}
 
 static void
 on_serial_port_write_ready (GObject *source,
@@ -239,6 +255,26 @@ on_serial_port_write_ready (GObject *source,
     if (self->waiting)
         return;
 
+    // Not waiting for character but have a delay configured
+    if (self->wait_character == -1 && self->wait_delay != 0) {
+        GSource *timeout_source = g_timeout_source_new (self->wait_delay);
+        GSource *cancellable_source =
+            g_cancellable_source_new (g_task_get_cancellable (task));
+        g_source_set_dummy_callback (cancellable_source);
+        g_source_add_child_source (timeout_source, cancellable_source);
+        g_task_attach_source (task, timeout_source, on_delay_timeout);
+        g_source_unref (timeout_source);
+        g_source_unref (cancellable_source);
+
+        return;
+    }
+
+    gt_file_transfer_continue (self, task);
+}
+
+static void
+gt_file_transfer_continue (GtFileTransfer *self, gpointer user_data)
+{
     // We have left-over data from the previous write due to a mode where we
     // have to obey the LF. Short-cut to send the data without reading from the
     // file
@@ -250,12 +286,13 @@ on_serial_port_write_ready (GObject *source,
         return;
     }
 
-    g_input_stream_read_bytes_async (G_INPUT_STREAM (self->stream),
-                                     FILE_TRANSFER_BUFFER_SIZE,
-                                     G_PRIORITY_DEFAULT,
-                                     g_task_get_cancellable (task),
-                                     on_file_input_ready,
-                                     task);
+    g_input_stream_read_bytes_async (
+        G_INPUT_STREAM (self->stream),
+        FILE_TRANSFER_BUFFER_SIZE,
+        G_PRIORITY_DEFAULT,
+        g_task_get_cancellable (G_TASK (user_data)),
+        on_file_input_ready,
+        G_TASK (user_data));
 }
 
 static void
@@ -295,13 +332,12 @@ gt_file_transfer_send_chunk (GtFileTransfer *self,
         return;
     }
 
-    if (self->wait_character != -1) {
+    if (self->wait_character != -1 || self->wait_delay != 0) {
         gsize lf_position = 0;
         while (lf_position < size && bytes[lf_position++] != LINE_FEED) {
         }
 
         if (lf_position + 1 < size) {
-            self->waiting = TRUE;
             GBytes *old_residual = self->residual;
             self->residual = g_bytes_new_from_bytes (
                 data, lf_position + 1, size - lf_position - 1);
@@ -310,6 +346,10 @@ gt_file_transfer_send_chunk (GtFileTransfer *self,
             data = g_bytes_new_from_bytes (data, 0, size);
             g_bytes_unref (old_residual);
             g_bytes_unref (old_data);
+        }
+
+        if (self->wait_delay == 0) {
+            self->waiting = TRUE;
         }
     }
 
@@ -336,12 +376,7 @@ on_read_file_done (GObject *source, GAsyncResult *res, gpointer user_data)
         return;
     }
 
-    g_input_stream_read_bytes_async (G_INPUT_STREAM (self->stream),
-                                     FILE_TRANSFER_BUFFER_SIZE,
-                                     G_PRIORITY_DEFAULT,
-                                     g_task_get_cancellable (task),
-                                     on_file_input_ready,
-                                     task);
+    gt_file_transfer_continue (self, user_data);
 }
 
 static void
@@ -373,23 +408,7 @@ on_serial_data_ready (GtSerialPort *port, GBytes *data, gpointer user_data)
         return;
     }
 
-    // We have left-over data from the previous write due to a mode where we
-    // have to obey the LF. Short-cut to send the data without reading from the
-    // file
-    if (self->residual != NULL) {
-        GBytes *data_to_send = self->residual;
-        self->residual = NULL;
-        gt_file_transfer_send_chunk (self, data_to_send, user_data);
-
-        return;
-    }
-
-    g_input_stream_read_bytes_async (G_INPUT_STREAM (self->stream),
-                                     FILE_TRANSFER_BUFFER_SIZE,
-                                     G_PRIORITY_DEFAULT,
-                                     g_task_get_cancellable (task),
-                                     on_file_input_ready,
-                                     user_data);
+    gt_file_transfer_continue (self, user_data);
 }
 
 static void

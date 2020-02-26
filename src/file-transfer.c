@@ -22,6 +22,48 @@
 
 #define FILE_TRANSFER_BUFFER_SIZE 8192
 
+typedef struct {
+    GSource source;
+
+    int wait_char;
+    gpointer object;
+    guint callback;
+
+    gboolean wait_char_found;
+} SignalWaitSource;
+
+static gboolean
+signal_wait_source_prepare (GSource *source, gint *timeout)
+{
+    SignalWaitSource *self = (SignalWaitSource *)source;
+    *timeout = -1;
+
+    return self->wait_char_found;
+}
+
+static gboolean
+signal_wait_source_dispatch (GSource *source,
+                             GSourceFunc callback,
+                             gpointer user_data)
+{
+    return callback (user_data);
+}
+
+static void
+signal_wait_source_finalize (GSource *source)
+{
+    SignalWaitSource *self = (SignalWaitSource *)source;
+
+    g_signal_handler_disconnect (self->object, self->callback);
+}
+
+static GSourceFuncs signal_wait_source_funcs = {signal_wait_source_prepare,
+                                                NULL,
+                                                signal_wait_source_dispatch,
+                                                signal_wait_source_finalize,
+                                                NULL,
+                                                NULL};
+
 struct _GtFileTransfer {
     GObject parent_instance;
     GFile *file;
@@ -62,6 +104,9 @@ gt_file_transfer_send_chunk (GtFileTransfer *self,
 
 static void
 gt_file_transfer_continue (GtFileTransfer *self, gpointer user_data);
+
+static void
+on_serial_data_ready (GtSerialPort *port, GBytes *data, gpointer user_data);
 
 static void
 gt_file_transfer_dispose (GObject *object)
@@ -214,6 +259,7 @@ on_delay_timeout (gpointer user_data)
 {
     GTask *task = G_TASK (user_data);
     GtFileTransfer *self = GT_FILE_TRANSFER (g_task_get_source_object (task));
+    self->waiting = FALSE;
 
     g_debug ("output delay timeout: %lu", g_get_monotonic_time ());
 
@@ -252,24 +298,39 @@ on_serial_port_write_ready (GObject *source,
 
     g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_PROGRESS]);
 
-    if (self->waiting)
-        return;
-
-    // Not waiting for character but have a delay configured
-    if (self->wait_character == -1 && self->wait_delay != 0) {
-        GSource *timeout_source = g_timeout_source_new (self->wait_delay);
-        GSource *cancellable_source =
-            g_cancellable_source_new (g_task_get_cancellable (task));
-        g_source_set_dummy_callback (cancellable_source);
-        g_source_add_child_source (timeout_source, cancellable_source);
-        g_task_attach_source (task, timeout_source, on_delay_timeout);
-        g_source_unref (timeout_source);
-        g_source_unref (cancellable_source);
+    if (!self->waiting) {
+        gt_file_transfer_continue (self, task);
 
         return;
     }
 
-    gt_file_transfer_continue (self, task);
+    GSource *wait_source = NULL;
+    if (self->wait_character != -1) {
+        wait_source =
+            g_source_new (&signal_wait_source_funcs, sizeof (SignalWaitSource));
+        SignalWaitSource *source = (SignalWaitSource *)wait_source;
+        source->wait_char_found = FALSE;
+        source->wait_char = self->wait_character;
+        source->object = self->port;
+        source->callback = g_signal_connect (G_OBJECT (self->port),
+                                             "data-available",
+                                             G_CALLBACK (on_serial_data_ready),
+                                             wait_source);
+
+        g_debug ("=> %u", source->callback);
+    } else if (self->wait_delay != 0) {
+        wait_source = g_timeout_source_new (self->wait_delay);
+    } else {
+        g_assert_not_reached ();
+    }
+
+    GSource *cancellable_source =
+        g_cancellable_source_new (g_task_get_cancellable (task));
+    g_source_set_dummy_callback (cancellable_source);
+    g_source_add_child_source (wait_source, cancellable_source);
+    g_task_attach_source (task, wait_source, on_delay_timeout);
+    g_source_unref (wait_source);
+    g_source_unref (cancellable_source);
 }
 
 static void
@@ -333,7 +394,7 @@ gt_file_transfer_send_chunk (GtFileTransfer *self,
     }
 
     if (self->wait_character != -1 || self->wait_delay != 0) {
-        gsize lf_position = 0;
+        gsize lf_position = 0, old_size = size;
         while (lf_position < size && bytes[lf_position++] != LINE_FEED) {
         }
 
@@ -348,9 +409,10 @@ gt_file_transfer_send_chunk (GtFileTransfer *self,
             g_bytes_unref (old_data);
         }
 
-        if (self->wait_delay == 0) {
-            self->waiting = TRUE;
-        }
+        // Check if the buffer ends on a line-feed, so we have to wait for
+        // something later on
+        self->waiting =
+            lf_position < old_size && bytes[lf_position] == LINE_FEED;
     }
 
     self->written += size;
@@ -382,15 +444,10 @@ on_read_file_done (GObject *source, GAsyncResult *res, gpointer user_data)
 static void
 on_serial_data_ready (GtSerialPort *port, GBytes *data, gpointer user_data)
 {
-    GTask *task = G_TASK (user_data);
-    GtFileTransfer *self = GT_FILE_TRANSFER (g_task_get_source_object (task));
-
-    if (!self->waiting) {
-        return;
-    }
+    SignalWaitSource *self = (SignalWaitSource *)user_data;
 
     // Should not happen
-    if (self->wait_character == -1) {
+    if (self->wait_char == -1) {
         return;
     }
 
@@ -398,17 +455,11 @@ on_serial_data_ready (GtSerialPort *port, GBytes *data, gpointer user_data)
     const guint8 *bytes = (const guint8 *)g_bytes_get_data (data, &size);
     gssize char_position = 0;
     while (char_position < size) {
-        if (bytes[char_position++] == self->wait_character) {
-            self->waiting = FALSE;
+        if (bytes[char_position++] == self->wait_char) {
+            self->wait_char_found = TRUE;
             break;
         }
     }
-
-    if (self->waiting) {
-        return;
-    }
-
-    gt_file_transfer_continue (self, user_data);
 }
 
 static void
@@ -425,12 +476,6 @@ on_file_info_done (GObject *source, GAsyncResult *res, gpointer user_data)
     }
 
     GtFileTransfer *self = GT_FILE_TRANSFER (g_task_get_source_object (task));
-
-    if (self->wait_character != -1)
-        self->callback = g_signal_connect (G_OBJECT (self->port),
-                                           "data-available",
-                                           G_CALLBACK (on_serial_data_ready),
-                                           task);
 
     self->size = g_file_info_get_size (info);
     g_object_unref (info);

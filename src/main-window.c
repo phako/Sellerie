@@ -19,7 +19,6 @@
 #include <config.h>
 #endif
 
-#include "fichier.h"
 #include "file-transfer.h"
 #include "infobar.h"
 #include "macros.h"
@@ -200,10 +199,6 @@ on_send_raw_file (GSimpleAction *action,
                   GVariant *parameter,
                   gpointer user_data);
 static void
-on_send_ascii_file (GSimpleAction *action,
-                    GVariant *parameter,
-                    gpointer user_data);
-static void
 on_save_raw_file (GSimpleAction *action,
                   GVariant *parameter,
                   gpointer user_data);
@@ -232,8 +227,7 @@ on_config_profile_delete (GSimpleAction *action,
 static const GActionEntry actions[] = {
     /* File menu */
     {"clear", on_clear_buffer},
-    {"send-file", on_send_ascii_file},
-    {"send-raw-file", on_send_raw_file},
+    {"send-file", on_send_raw_file},
     {"save-file", on_save_raw_file},
     {"quit", on_quit},
 
@@ -1124,24 +1118,6 @@ on_view_hex_width_change_state (GSimpleAction *action,
     g_simple_action_set_state (action, parameter);
 }
 
-void
-on_send_ascii_file (GSimpleAction *action,
-                    GVariant *parameter,
-                    gpointer user_data)
-{
-    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
-
-    GFile *file = gt_main_window_query_file (
-        self, _ ("Send Text File"), self->default_text_file);
-
-    if (file == NULL) {
-        return;
-    }
-
-    send_ascii_file (file, GTK_WINDOW (self));
-    g_object_unref (file);
-}
-
 static void
 on_infobar_close (GtkInfoBar *bar, gpointer user_data)
 {
@@ -1240,7 +1216,10 @@ on_save_raw_file (GSimpleAction *action,
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
     char *fileName = NULL;
     char *msg = NULL;
+#if 0
     const char *default_file = gt_file_get_default ();
+#endif
+    const char *default_file = NULL;
 
     GtkWidget *file_select =
         gtk_file_chooser_dialog_new (_ ("Save RAW File"),

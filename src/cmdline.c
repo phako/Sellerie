@@ -20,7 +20,6 @@
 #endif
 
 #include "cmdline.h"
-#include "fichier.h"
 #include "i18n.h"
 #include "sellerie-enums.h"
 #include "term_config.h"

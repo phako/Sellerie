@@ -3,9 +3,7 @@ enums = gnome.mkenums_simple ('sellerie-enums', sources : enum_headers)
 sources = [
     'term_config.h',
     'term_config.c',
-    'fichier.c',
     'gtkterm.c',
-    'fichier.h',
     'cmdline.c',
     'cmdline.h',
     'buffer.c',

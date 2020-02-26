@@ -21,7 +21,6 @@
 
 #include "buffer.h"
 #include "cmdline.h"
-#include "fichier.h"
 #include "logging.h"
 #include "macros.h"
 #include "main-window.h"
@@ -50,10 +49,6 @@ on_gtk_application_local_options (GApplication *app,
                                   GVariantDict *options,
                                   gpointer user_data)
 {
-    if (default_file != NULL) {
-        gt_file_set_default (default_file);
-    }
-
     if (config_port != NULL) {
         strncpy (config.port, config_port, sizeof (config.port) - 1);
     }

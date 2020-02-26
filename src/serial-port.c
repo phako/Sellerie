@@ -22,7 +22,6 @@
 #include "serial-port.h"
 
 #include "buffer.h"
-#include "fichier.h"
 #include "sellerie-enums.h"
 #include "term_config.h"
 #include "util.h"

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.20.0 -->
+<!-- Generated with glade 3.22.1 -->
 <interface>
   <requires lib="gtk+" version="3.18"/>
   <object class="GtkListStore" id="macros-list-store">
@@ -10,7 +10,7 @@
       <column type="gchararray"/>
     </columns>
   </object>
-  <object class="GtkDialog" id="dialog-macros">
+  <template class="GtMacroEditor" parent="GtkDialog">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">Configure Macros</property>
     <property name="modal">True</property>
@@ -18,6 +18,9 @@
     <property name="default_height">320</property>
     <property name="destroy_with_parent">True</property>
     <property name="type_hint">dialog</property>
+    <child>
+      <placeholder/>
+    </child>
     <child internal-child="vbox">
       <object class="GtkBox">
         <property name="can_focus">False</property>
@@ -37,7 +40,7 @@
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_underline">True</property>
-                <signal name="clicked" handler="gt_macros_show_help" object="dialog-macros" swapped="no"/>
+                <signal name="clicked" handler="show_help" object="GtMacroEditor" swapped="no"/>
                 <accelerator key="F1" signal="clicked"/>
               </object>
               <packing>
@@ -55,7 +58,7 @@
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_underline">True</property>
-                <signal name="clicked" handler="gtk_widget_destroy" object="dialog-macros" swapped="yes"/>
+                <signal name="clicked" handler="gtk_widget_hide" object="GtMacroEditor" swapped="yes"/>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -71,7 +74,7 @@
                 <property name="receives_default">True</property>
                 <property name="use_underline">True</property>
                 <signal name="clicked" handler="gt_macros_save" object="treeview" swapped="no"/>
-                <signal name="clicked" handler="gtk_widget_hide" object="dialog-macros" after="yes" swapped="yes"/>
+                <signal name="clicked" handler="gtk_widget_hide" object="GtMacroEditor" after="yes" swapped="yes"/>
                 <style>
                   <class name="suggested-action"/>
                 </style>
@@ -114,7 +117,8 @@
                         <child>
                           <object class="GtkCellRendererAccel" id="cellrenderer_shortcut">
                             <property name="editable">True</property>
-                            <property name="accel_mode">other</property>
+                            <signal name="accel-cleared" handler="accel_cleared" object="treeview" swapped="no"/>
+                            <signal name="accel-edited" handler="accel_edited" object="treeview" swapped="no"/>
                           </object>
                         </child>
                       </object>
@@ -126,6 +130,7 @@
                         <child>
                           <object class="GtkCellRendererText" id="cellrenderer_action">
                             <property name="editable">True</property>
+                            <signal name="edited" handler="shortcut_edited" object="macros-list-store" swapped="no"/>
                           </object>
                           <attributes>
                             <attribute name="text">1</attribute>
@@ -201,5 +206,5 @@
       <action-widget response="-6">button2</action-widget>
       <action-widget response="-5">button3</action-widget>
     </action-widgets>
-  </object>
+  </template>
 </interface>

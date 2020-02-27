@@ -10,6 +10,8 @@ sources = [
     'buffer.h',
     'macros.c',
     'macros.h',
+    'macro-editor.c',
+    'macro-editor.h',
     'i18n.c',
     'i18n.h',
     'logging.c',

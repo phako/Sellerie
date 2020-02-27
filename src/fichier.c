@@ -126,7 +126,6 @@ on_serial_io_ready (GIOChannel *source, GIOCondition condition, gpointer data)
     static gchar buffer[BUFFER_EMISSION];
     static gchar *current_buffer;
     static gint bytes_to_write;
-    gint bytes_written;
     gchar *car;
 
     if (condition == G_IO_ERR) {

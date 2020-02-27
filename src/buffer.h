@@ -18,9 +18,9 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include <glib.h>
-
+#include <gio/gio.h>
 #include <glib-object.h>
+#include <glib.h>
 
 G_BEGIN_DECLS
 
@@ -32,7 +32,11 @@ typedef struct _GtBuffer GtBuffer;
 typedef void (*GtBufferFunc) (char *, unsigned int, gpointer);
 
 GtBuffer *gt_buffer_new (void);
-void gt_buffer_put_chars (GtBuffer *, char *, unsigned int, gboolean);
+
+void
+gt_buffer_put_bytes (GtBuffer *, GBytes *, gboolean);
+void
+gt_buffer_put_chars (GtBuffer *, const char *, unsigned int, gboolean);
 void gt_buffer_clear (GtBuffer *);
 void gt_buffer_write (GtBuffer *);
 gboolean gt_buffer_write_to_file (GtBuffer *, const char *, GError **);

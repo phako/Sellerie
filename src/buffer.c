@@ -127,13 +127,25 @@ gt_buffer_new (void)
 }
 
 void
+gt_buffer_put_bytes (GtBuffer *self, GBytes *bytes, gboolean crlf_auto)
+{
+    gsize size = 0;
+    gconstpointer data = g_bytes_get_data (bytes, &size);
+
+    gt_buffer_put_chars (
+        self, (const char *)data, (unsigned int)size, crlf_auto);
+
+    g_bytes_unref (bytes);
+}
+
+void
 gt_buffer_put_chars (GtBuffer *self,
-                     char *chars,
+                     const char *chars,
                      unsigned int size,
                      gboolean crlf_auto)
 {
     GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
-    char *characters = NULL;
+    const char *characters = NULL;
     /* BUFFER_RECEPTION*2 for worst case scenario, all \n or \r chars */
     char out_buffer[BUFFER_RECEPTION * 2];
 

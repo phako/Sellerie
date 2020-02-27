@@ -20,6 +20,7 @@
 #endif
 
 #include "fichier.h"
+#include "file-transfer.h"
 #include "infobar.h"
 #include "macros.h"
 #include "main-window.h"
@@ -566,6 +567,7 @@ gt_main_window_set_title (GtMainWindow *self, const char *msg)
 void
 gt_main_window_set_info_bar (GtMainWindow *self, GtkWidget *widget)
 {
+    gtk_widget_show_all (widget);
     gtk_container_add (GTK_CONTAINER (self->revealer), widget);
     gtk_revealer_set_reveal_child (GTK_REVEALER (self->revealer), TRUE);
 }
@@ -1140,132 +1142,6 @@ on_send_ascii_file (GSimpleAction *action,
     g_object_unref (file);
 }
 
-typedef struct {
-    GtMainWindow *self;
-    GInputStream *stream;
-    GtkWidget *bar;
-    char buffer[8192];
-    gsize size;
-    gsize written;
-    GCancellable *cancellable;
-} GtRawSendBuffer;
-
-void
-on_send_raw_file_input_ready (GObject *source_object,
-                              GAsyncResult *res,
-                              gpointer user_data);
-
-static void
-on_serial_port_write_ready (GObject *source_object,
-                            GAsyncResult *res,
-                            gpointer user_data)
-{
-    GtRawSendBuffer *buffer = (GtRawSendBuffer *)user_data;
-    GError *error = NULL;
-
-    gsize size =
-        gt_serial_port_write_finish (buffer->self->serial_port, res, &error);
-    if (error != NULL) {
-        gt_main_window_remove_info_bar (GT_MAIN_WINDOW (buffer->self),
-                                        buffer->bar);
-
-        if (error->code != G_IO_ERROR_CANCELLED) {
-            char *msg = g_strdup_printf ("Failed to send data to port: %s",
-                                         error->message);
-            g_warning ("%s", msg);
-            gt_main_window_show_message (
-                GT_MAIN_WINDOW (buffer->self), msg, GT_MESSAGE_TYPE_ERROR);
-            g_free (msg);
-        }
-        g_object_unref (buffer->stream);
-        g_object_unref (buffer->cancellable);
-        g_slice_free (GtRawSendBuffer, buffer);
-
-        g_error_free (error);
-
-        return;
-    }
-
-    if (size == 0) {
-        gtk_widget_destroy (buffer->bar);
-        g_object_unref (buffer->stream);
-        g_object_unref (buffer->cancellable);
-        g_slice_free (GtRawSendBuffer, buffer);
-        g_warning ("Not written anything to serial port…");
-
-        return;
-    }
-
-    gt_infobar_set_progress (GT_INFOBAR (buffer->bar),
-                             (double)buffer->written / (double)buffer->size);
-    // GtSerialPort tries to write all data given to it
-    g_debug ("Written %" G_GSIZE_FORMAT " of %" G_GSIZE_FORMAT,
-             buffer->written,
-             buffer->size);
-
-    g_input_stream_read_async (buffer->stream,
-                               buffer->buffer,
-                               sizeof (buffer->buffer),
-                               G_PRIORITY_DEFAULT + 10,
-                               buffer->cancellable,
-                               on_send_raw_file_input_ready,
-                               buffer);
-}
-
-void
-on_send_raw_file_input_ready (GObject *source_object,
-                              GAsyncResult *res,
-                              gpointer user_data)
-{
-    GtRawSendBuffer *buffer = (GtRawSendBuffer *)user_data;
-    GError *error = NULL;
-
-    gssize size = g_input_stream_read_finish (
-        G_INPUT_STREAM (source_object), res, &error);
-    if (error != NULL) {
-        if (error->code != G_IO_ERROR_CANCELLED) {
-            char *msg = g_strdup_printf ("Failed to read from file: %s",
-                                         error->message);
-            g_warning ("%s", msg);
-            gt_main_window_show_message (
-                GT_MAIN_WINDOW (buffer->self), msg, GT_MESSAGE_TYPE_ERROR);
-            g_free (msg);
-        }
-        gt_main_window_remove_info_bar (GT_MAIN_WINDOW (buffer->self),
-                                        buffer->bar);
-
-        g_object_unref (buffer->stream);
-        g_object_unref (buffer->cancellable);
-
-        g_error_free (error);
-
-        return;
-    }
-
-    if (size == 0) {
-        g_debug ("Reading done…");
-        gt_main_window_remove_info_bar (GT_MAIN_WINDOW (buffer->self),
-                                        buffer->bar);
-
-        g_object_unref (buffer->stream);
-        g_object_unref (buffer->cancellable);
-        g_slice_free (GtRawSendBuffer, buffer);
-
-        // Done
-        return;
-    }
-
-    // serial port will write either everything or fail
-    buffer->written += size;
-
-    gt_serial_port_write_async (buffer->self->serial_port,
-                                (guint8 *)buffer->buffer,
-                                (gsize)size,
-                                buffer->cancellable,
-                                on_serial_port_write_ready,
-                                buffer);
-}
-
 static void
 on_infobar_close (GtkInfoBar *bar, gpointer user_data)
 {
@@ -1279,84 +1155,80 @@ on_infobar_response (GtkInfoBar *bar, gint response_id, gpointer user_data)
 }
 
 void
+on_file_transfer_ready (GObject *source_object,
+                        GAsyncResult *res,
+                        gpointer user_data)
+{
+    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
+    GError *error = NULL;
+    gboolean result =
+        gt_file_transfer_finish (GT_FILE_TRANSFER (source_object), res, &error);
+
+    GtInfobar *infobar = gt_main_window_get_info_bar (self);
+    gt_main_window_remove_info_bar (self, infobar);
+    // gtk_widget_destroy (infobar);
+
+    if (error != NULL) {
+
+        if (error->code != G_IO_ERROR_CANCELLED) {
+            char *msg = g_strdup_printf ("Failed to send data to port: %s",
+                                         error->message);
+            g_warning ("%s", msg);
+            gt_main_window_show_message (
+                GT_MAIN_WINDOW (self), msg, GT_MESSAGE_TYPE_ERROR);
+            g_free (msg);
+
+        } else {
+            g_debug ("File transfer was cancelled");
+        }
+
+        g_error_free (error);
+    }
+
+    g_object_unref (source_object);
+}
+
+void
 on_send_raw_file (GSimpleAction *action,
                   GVariant *parameter,
                   gpointer user_data)
 {
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
-    GtkWidget *file_selector =
-        gtk_file_chooser_dialog_new (_ ("Send raw file"),
-                                     GTK_WINDOW (self),
-                                     GTK_FILE_CHOOSER_ACTION_OPEN,
-                                     _ ("_Cancel"),
-                                     GTK_RESPONSE_CANCEL,
-                                     _ ("_Send"),
-                                     GTK_RESPONSE_ACCEPT,
-                                     NULL);
-    gtk_dialog_set_default_response (GTK_DIALOG (file_selector),
-                                     GTK_RESPONSE_ACCEPT);
-    gint result = gtk_dialog_run (GTK_DIALOG (file_selector));
-    gtk_widget_hide (file_selector);
-    if (result == GTK_RESPONSE_ACCEPT) {
-        GError *error = NULL;
-        GFile *file =
-            gtk_file_chooser_get_file (GTK_FILE_CHOOSER (file_selector));
+    GFile *file = gt_main_window_query_file (
+        self, _ ("Send RAW file"), self->default_raw_file);
 
-        GtRawSendBuffer *data = g_slice_new0 (GtRawSendBuffer);
-        data->self = self;
+    if (file == NULL)
+        return;
 
-        GFileInfo *info = g_file_query_info (file,
-                                             G_FILE_ATTRIBUTE_STANDARD_SIZE,
-                                             G_FILE_QUERY_INFO_NONE,
-                                             NULL,
-                                             &error);
-        if (error != NULL) {
-            g_warning ("Failed to query size of file: %s", error->message);
-            g_error_free (error);
-            g_slice_free (GtRawSendBuffer, data);
+    GtFileTransfer *transfer =
+        gt_serial_port_send_file (self->serial_port, file);
+    GtkWidget *infobar = gt_infobar_new ();
+    char *path = g_file_get_path (file);
+    char *message = g_strdup_printf (_ ("Sending file “%s”…"), path);
+    g_free (path);
+    g_object_unref (file);
+    gt_infobar_set_label (GT_INFOBAR (infobar), message);
+    g_free (message);
+    gt_main_window_set_info_bar (self, infobar);
+    g_object_bind_property (G_OBJECT (transfer),
+                            "progress",
+                            G_OBJECT (infobar),
+                            "progress",
+                            (GBindingFlags)0);
 
-            return;
-        }
+    GCancellable *cancellable = g_cancellable_new ();
+    g_signal_connect (G_OBJECT (infobar),
+                      "close",
+                      G_CALLBACK (on_infobar_close),
+                      cancellable);
+    g_signal_connect (G_OBJECT (infobar),
+                      "response",
+                      G_CALLBACK (on_infobar_response),
+                      cancellable);
+    // g_object_unref (infobar);
 
-        data->size = g_file_info_get_size (info);
-        g_object_unref (info);
-
-        data->stream = G_INPUT_STREAM (g_file_read (file, NULL, &error));
-        g_object_unref (file);
-        if (error != NULL) {
-            g_slice_free (GtRawSendBuffer, data);
-
-            return;
-        }
-
-        data->cancellable = g_cancellable_new ();
-        data->bar = gt_infobar_new ();
-        char *path = g_file_get_path (file);
-        char *message = g_strdup_printf (_ ("Sending file %s…"), path);
-        g_free (path);
-        gt_infobar_set_label (GT_INFOBAR (data->bar), message);
-        g_free (message);
-        gtk_widget_show_all (data->bar);
-        gt_main_window_set_info_bar (GT_MAIN_WINDOW (self), data->bar);
-        g_signal_connect (G_OBJECT (data->bar),
-                          "close",
-                          G_CALLBACK (on_infobar_close),
-                          data->cancellable);
-        g_signal_connect (G_OBJECT (data->bar),
-                          "response",
-                          G_CALLBACK (on_infobar_response),
-                          data->cancellable);
-
-        g_input_stream_read_async (data->stream,
-                                   data->buffer,
-                                   sizeof (data->buffer),
-                                   G_PRIORITY_DEFAULT + 10,
-                                   data->cancellable,
-                                   on_send_raw_file_input_ready,
-                                   data);
-    }
-
-    gtk_widget_destroy (file_selector);
+    gt_file_transfer_start (
+        transfer, cancellable, on_file_transfer_ready, self);
 }
 
 void

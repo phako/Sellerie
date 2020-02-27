@@ -1262,6 +1262,12 @@ gt_serial_port_flow_control_from_string (const char *name)
                                  GT_SERIAL_PORT_FLOW_CONTROL_NONE);
 }
 
+GtFileTransfer *
+gt_serial_port_send_file (GtSerialPort *self, GFile *file)
+{
+    return g_object_new (
+        GT_TYPE_FILE_TRANSFER, "file", file, "serial-port", self, NULL);
+}
 static void
 gt_serial_port_on_data_ready (GObject *source,
                               GAsyncResult *res,

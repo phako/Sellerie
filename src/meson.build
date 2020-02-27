@@ -27,6 +27,8 @@ sources = [
     'serial-view.c',
     'view-config.h',
     'view-config.c',
+    'file-transfer.c',
+    'file-transfer.h',
     resources,
     enum_headers,
     enums

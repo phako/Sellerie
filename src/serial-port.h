@@ -22,8 +22,8 @@
 #include <config.h>
 #endif
 
-#include "term_config.h"
 #include "buffer.h"
+#include "term_config.h"
 
 #include <glib.h>
 #include <gio/gio.h>

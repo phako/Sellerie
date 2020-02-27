@@ -80,6 +80,11 @@ on_serial_port_signals_changed (GObject *object,
                                 GParamSpec *pspec,
                                 gpointer user_data);
 
+static void
+on_serial_port_data_available (GtMainWindow *self,
+                               GBytes *bytes,
+                               gpointer user_data);
+
 static gboolean
 on_vte_button_press_callback (GtkWidget *widget,
                               GdkEventButton *event,
@@ -427,6 +432,11 @@ gt_main_window_init (GtMainWindow *self)
                       G_CALLBACK (on_serial_port_signals_changed),
                       self);
 
+    g_signal_connect_swapped (G_OBJECT (self->serial_port),
+                              "data-available",
+                              G_CALLBACK (on_serial_port_data_available),
+                              self);
+
     /* Set up serial signal indicators */
     for (int i = 0; i < SIGNAL_COUNT; i++) {
         GtkWidget *label = gtk_label_new (signal_names[i]);
@@ -649,6 +659,14 @@ gt_main_window_clear_display (GtMainWindow *self)
     gt_serial_view_clear (GT_SERIAL_VIEW (self->display));
 }
 
+static void
+on_serial_port_data_available (GtMainWindow *self,
+                               GBytes *bytes,
+                               gpointer user_data)
+{
+    gt_buffer_put_bytes (self->buffer, bytes, config.crlfauto);
+}
+
 void
 on_serial_port_status_changed (GObject *object,
                                GParamSpec *pspec,
@@ -761,7 +779,13 @@ on_vte_commit (VteTerminal *widget, gchar *text, guint length, gpointer ptr)
 {
     GtMainWindow *self = GT_MAIN_WINDOW (ptr);
 
-    gt_serial_port_send_chars (self->serial_port, text, length);
+    int bytes_written =
+        gt_serial_port_send_chars (self->serial_port, text, length);
+
+    if (bytes_written > 0 && config.echo) {
+        gt_buffer_put_chars (
+            self->buffer, text, bytes_written, config.crlfauto);
+    }
 }
 
 static gboolean

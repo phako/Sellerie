@@ -47,6 +47,9 @@
 #include <gudev/gudev.h>
 #endif
 
+#include <gio/gio.h>
+#include <gio/gunixinputstream.h>
+#include <gio/gunixoutputstream.h>
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
@@ -56,15 +59,11 @@
            */
 
 typedef struct {
+    GOutputStream *output_stream;
+    GInputStream *input_stream;
     struct configuration_port config;
     struct termios termios_save;
     int serial_port_fd;
-
-    GIOChannel *in_channel;
-    guint callback_handler_in;
-    GIOChannel *err_channel;
-    guint callback_handler_err;
-    gboolean callback_activated;
     char lockfile[256];
 
     GtSerialPortState state;
@@ -72,6 +71,7 @@ typedef struct {
     int control_flags;
     guint status_timeout;
     GtBuffer *buffer;
+    GCancellable *cancellable;
 } GtSerialPortPrivate;
 
 struct _GtSerialPort {
@@ -97,6 +97,13 @@ static GParamSpec *gt_serial_port_properties[N_PROPERTIES] = {
     NULL,
 };
 
+enum GtSerialPortSignals {
+    SIGNAL_DATA_AVAILABLE,
+    SIGNAL_COUNT,
+};
+
+static guint SIGNALS[SIGNAL_COUNT] = {0};
+
 /* Local functions prototype */
 static gboolean
 gt_serial_port_lock (GtSerialPort *, char *, GError **);
@@ -104,10 +111,6 @@ static void
 gt_serial_port_unlock (GtSerialPort *);
 static void
 gt_serial_port_close (GtSerialPort *);
-static gboolean
-gt_serial_port_on_channel_read (GIOChannel *, GIOCondition, gpointer);
-static gboolean
-gt_serial_port_on_channel_error (GIOChannel *, GIOCondition, gpointer);
 static void
 gt_serial_port_set_status (GtSerialPort *self,
                            GtSerialPortState state,
@@ -121,6 +124,11 @@ static gboolean gt_serial_port_on_control_signals_read (gpointer);
 static int
 gt_serial_port_read_signals (GtSerialPort *self);
 
+static void
+gt_serial_port_on_data_ready (GObject *source,
+                              GAsyncResult *res,
+                              gpointer user_data);
+
 /* GObject overrides */
 static void
 gt_serial_port_set_property (GObject *,
@@ -133,68 +141,6 @@ static void
 gt_serial_port_finalize (GObject *object);
 static void
 gt_serial_port_dispose (GObject *object);
-
-/* Implementations */
-gboolean
-gt_serial_port_on_channel_read (GIOChannel *src,
-                                GIOCondition cond,
-                                gpointer data)
-{
-    // There is data ready to be read on the port
-    GtSerialPort *self = GT_SERIAL_PORT (data);
-    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
-    gint bytes_read;
-    static gchar c[BUFFER_RECEPTION];
-    gint i;
-
-    bytes_read = BUFFER_RECEPTION;
-
-    while (bytes_read == BUFFER_RECEPTION) {
-        // Read up until BUFFER_RECEPTION bytes
-        bytes_read = read (priv->serial_port_fd, c, BUFFER_RECEPTION);
-        if (bytes_read > 0) {
-            // We got something, put it in the display buffer
-            gt_buffer_put_chars (
-                priv->buffer, c, bytes_read, priv->config.crlfauto);
-
-            // We have a waiting character configured and there is actually a
-            // file transfer waiting for it
-            if (priv->config.car != -1 &&
-                gt_file_get_waiting_for_char () == TRUE) {
-                i = 0;
-                // Look if the character we're looking for is in the buffer we
-                // read
-                while (i < bytes_read) {
-                    if (c[i] == priv->config.car) {
-                        // Found it, so unblock the waiting process and set up
-                        // the ready to send handler again
-                        gt_file_set_waiting_for_char (FALSE);
-                        add_input (data);
-                        i = bytes_read;
-                    }
-                    i++;
-                }
-            }
-        } else if (bytes_read == -1) {
-            if (errno != EAGAIN)
-                perror (priv->config.port);
-        }
-    }
-
-    return TRUE;
-}
-
-static gboolean
-gt_serial_port_on_channel_error (GIOChannel *src,
-                                 GIOCondition cond,
-                                 gpointer data)
-{
-    gt_serial_port_close (GT_SERIAL_PORT (data));
-    gt_serial_port_set_status (
-        GT_SERIAL_PORT (data), GT_SERIAL_PORT_STATE_OFFLINE, NULL);
-
-    return TRUE;
-}
 
 static gboolean
 gt_serial_port_termios_from_config (GtSerialPort *self,
@@ -333,7 +279,20 @@ gt_serial_port_send_chars (GtSerialPort *self, char *string, int length)
             usleep (priv->config.rs485_rts_time_before_transmit * 1000);
     }
 
-    bytes_written = write (priv->serial_port_fd, string, length);
+    GError *error = NULL;
+    bytes_written = g_output_stream_write (
+        priv->output_stream, string, length, priv->cancellable, &error);
+
+    if (error != NULL) {
+        if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+            gt_serial_port_close (self);
+            gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_ERROR, error);
+        } else {
+            g_clear_error (&error);
+        }
+
+        return -1;
+    }
 
     /* RS485 half-duplex mode ? */
     if (priv->config.flow == GT_SERIAL_PORT_FLOW_CONTROL_RS485) {
@@ -383,6 +342,7 @@ gt_serial_port_connect (GtSerialPort *self)
     struct termios termios_p;
     GError *error = NULL;
 
+    priv->cancellable = g_cancellable_new ();
     priv->serial_port_fd =
         open (priv->config.port, O_RDWR | O_NOCTTY | O_NDELAY);
     if (priv->serial_port_fd == -1) {
@@ -415,6 +375,18 @@ gt_serial_port_connect (GtSerialPort *self)
     tcflush (priv->serial_port_fd, TCOFLUSH);
     tcflush (priv->serial_port_fd, TCIFLUSH);
 
+    priv->input_stream = g_unix_input_stream_new (priv->serial_port_fd, FALSE);
+    priv->output_stream =
+        g_unix_output_stream_new (priv->serial_port_fd, FALSE);
+
+    g_input_stream_read_bytes_async (priv->input_stream,
+                                     BUFFER_RECEPTION,
+                                     G_PRIORITY_DEFAULT,
+                                     priv->cancellable,
+                                     gt_serial_port_on_data_ready,
+                                     self);
+
+#if 0
     priv->in_channel = g_io_channel_unix_new (priv->serial_port_fd);
     priv->callback_handler_in =
         g_io_add_watch_full (priv->in_channel,
@@ -432,8 +404,8 @@ gt_serial_port_connect (GtSerialPort *self)
                              gt_serial_port_on_channel_error,
                              self,
                              NULL);
-
     priv->callback_activated = TRUE;
+#endif
 
     g_object_notify (G_OBJECT (self), "local-echo");
 
@@ -488,6 +460,7 @@ gt_serial_port_close (GtSerialPort *self)
 {
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     if (priv->serial_port_fd != -1) {
+#if 0
         if (priv->callback_activated == TRUE) {
             g_source_remove (priv->callback_handler_in);
             g_source_remove (priv->callback_handler_err);
@@ -495,9 +468,19 @@ gt_serial_port_close (GtSerialPort *self)
         }
         g_clear_pointer (&priv->in_channel, g_io_channel_unref);
         g_clear_pointer (&priv->err_channel, g_io_channel_unref);
+#endif
         tcsetattr (priv->serial_port_fd, TCSANOW, &(priv->termios_save));
         tcflush (priv->serial_port_fd, TCOFLUSH);
         tcflush (priv->serial_port_fd, TCIFLUSH);
+
+        if (priv->cancellable != NULL) {
+            g_cancellable_cancel (priv->cancellable);
+            g_clear_object (&priv->cancellable);
+        }
+
+        // TODO: Really ignore errors on close?
+        g_output_stream_close (priv->output_stream, NULL, NULL);
+        g_input_stream_close (priv->input_stream, NULL, NULL);
         close (priv->serial_port_fd);
         priv->serial_port_fd = -1;
         gt_serial_port_set_status (self, GT_SERIAL_PORT_STATE_OFFLINE, NULL);
@@ -875,6 +858,18 @@ gt_serial_port_class_init (GtSerialPortClass *klass)
 
     g_object_class_install_properties (
         object_class, N_PROPERTIES, gt_serial_port_properties);
+
+    SIGNALS[SIGNAL_DATA_AVAILABLE] = g_signal_new ("data-available",
+                                                   GT_TYPE_SERIAL_PORT,
+                                                   G_SIGNAL_RUN_FIRST,
+                                                   0,
+                                                   NULL,
+                                                   NULL,
+                                                   NULL,
+                                                   G_TYPE_NONE,
+                                                   1,
+                                                   G_TYPE_BYTES,
+                                                   0);
 }
 
 static void
@@ -957,6 +952,8 @@ gt_serial_port_dispose (GObject *object)
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     GObjectClass *object_class = NULL;
 
+    g_cancellable_cancel (priv->cancellable);
+
     g_clear_object (&priv->buffer);
 
     object_class = G_OBJECT_CLASS (gt_serial_port_parent_class);
@@ -1025,15 +1022,8 @@ gt_serial_port_get_buffer (GtSerialPort *self)
     return priv->buffer;
 }
 
-typedef struct {
-    GBytes *data;
-    GIOChannel *channel;
-} GtSerialAsyncWriteData;
-
 static gboolean
-on_serial_io_async_write (GIOChannel *source,
-                          GIOCondition condition,
-                          gpointer user_data)
+on_serial_io_async_write (GPollableOutputStream *stream, gpointer user_data)
 {
     GTask *task = G_TASK (user_data);
 
@@ -1043,20 +1033,10 @@ on_serial_io_async_write (GIOChannel *source,
         return FALSE;
     }
 
-    if (condition == G_IO_ERR) {
-        g_task_return_new_error (task,
-                                 G_IO_ERROR,
-                                 G_IO_ERROR_FAILED,
-                                 _ ("Serial port went to error"));
-        g_object_unref (task);
-
-        return FALSE;
-    }
-
     GtSerialPort *self = GT_SERIAL_PORT (g_task_get_source_object (task));
-    GtSerialAsyncWriteData *data = g_task_get_task_data (task);
+    GBytes *data = g_task_get_task_data (task);
     gsize length = 0;
-    gconstpointer buffer = g_bytes_get_data (data->data, &length);
+    gconstpointer buffer = g_bytes_get_data (data, &length);
 
     GError *write_error = NULL;
     int bytes_written =
@@ -1082,9 +1062,8 @@ on_serial_io_async_write (GIOChannel *source,
     if (bytes_written < length) {
         g_debug ("=> underwrite... setting up new slice");
         GBytes *new_data = g_bytes_new_from_bytes (
-            data->data, bytes_written, length - bytes_written);
-        g_bytes_unref (data->data);
-        data->data = new_data;
+            data, bytes_written, length - bytes_written);
+        g_task_set_task_data (task, new_data, (GDestroyNotify)g_bytes_unref);
 
         return TRUE;
     }
@@ -1096,14 +1075,6 @@ on_serial_io_async_write (GIOChannel *source,
 }
 
 void
-gt_serial_async_write_data_free (GtSerialAsyncWriteData *data)
-{
-    g_clear_pointer (&data->data, g_bytes_unref);
-    g_clear_pointer (&data->channel, g_io_channel_unref);
-    g_slice_free (GtSerialAsyncWriteData, data);
-}
-
-void
 gt_serial_port_write_async (GtSerialPort *self,
                             guint8 *buffer,
                             gsize length,
@@ -1111,21 +1082,19 @@ gt_serial_port_write_async (GtSerialPort *self,
                             GAsyncReadyCallback callback,
                             gpointer user_data)
 {
-    GtSerialAsyncWriteData *data = g_slice_new0 (GtSerialAsyncWriteData);
-    data->data = g_bytes_new_static (buffer, length);
-
-    data->channel = g_io_channel_unix_new (gt_serial_port_get_fd (self));
-
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     GTask *task = g_task_new (self, cancellable, callback, user_data);
-    g_task_set_task_data (
-        task, data, (GDestroyNotify)gt_serial_async_write_data_free);
+    if (priv->last_error != NULL) {
+        g_task_return_error (task, priv->last_error);
+        return;
+    }
 
-    g_io_add_watch_full (data->channel,
-                         G_PRIORITY_DEFAULT + 10,
-                         G_IO_OUT | G_IO_ERR,
-                         (GIOFunc)on_serial_io_async_write,
-                         task,
-                         NULL);
+    g_task_set_task_data (
+        task, g_bytes_new (buffer, length), (GDestroyNotify)g_bytes_unref);
+
+    GSource *source = g_pollable_output_stream_create_source (
+        G_POLLABLE_OUTPUT_STREAM (priv->output_stream), cancellable);
+    g_task_attach_source (task, source, (GSourceFunc)on_serial_io_async_write);
 }
 
 gsize
@@ -1291,4 +1260,51 @@ gt_serial_port_flow_control_from_string (const char *name)
     return gt_get_value_by_nick (GT_TYPE_SERIAL_PORT_FLOW_CONTROL,
                                  name,
                                  GT_SERIAL_PORT_FLOW_CONTROL_NONE);
+}
+
+static void
+gt_serial_port_on_data_ready (GObject *source,
+                              GAsyncResult *res,
+                              gpointer user_data)
+{
+    GtSerialPort *self = GT_SERIAL_PORT (user_data);
+    GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
+    GError *error = NULL;
+
+    GBytes *data =
+        g_input_stream_read_bytes_finish (priv->input_stream, res, &error);
+    if (error != NULL) {
+        if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+            gt_serial_port_close (self);
+            gt_serial_port_set_status (
+                self, GT_SERIAL_PORT_STATE_OFFLINE, NULL);
+        } else {
+            g_clear_error (&error);
+        }
+
+        return;
+    }
+
+    g_signal_emit (self, SIGNALS[SIGNAL_DATA_AVAILABLE], 0, data);
+
+#if 0
+    if (priv->config.car != -1) {
+        gsize size;
+        const char *buffer = (const char *)g_bytes_get_data (&size);
+        for (gsize i = 0; i < size; i++) {
+            if (buffer[i] == priv->config.car) {
+                g_signal_emit (self, SIGNALS[SIGNAL_WAIT_CHAR], 0);
+            }
+        }
+    }
+
+    gt_buffer_put_bytes (priv->buffer, data, priv->config.crlfauto);
+#endif
+
+    g_input_stream_read_bytes_async (priv->input_stream,
+                                     BUFFER_RECEPTION,
+                                     G_PRIORITY_DEFAULT,
+                                     priv->cancellable,
+                                     gt_serial_port_on_data_ready,
+                                     self);
 }

@@ -8,6 +8,8 @@
       <column type="gchararray"/>
       <!-- column-name action -->
       <column type="gchararray"/>
+      <!-- column-name description -->
+      <column type="gchararray"/>
     </columns>
   </object>
   <template class="GtMacroEditor" parent="GtkDialog">
@@ -134,6 +136,20 @@
                           </object>
                           <attributes>
                             <attribute name="text">1</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="title" translatable="yes">Description</property>
+                        <child>
+                          <object class="GtkCellRendererText" id="cellrenderer_description">
+                            <property name="editable">True</property>
+                            <signal name="edited" handler="description_edited" object="macros-list-store" swapped="no"/>
+                          </object>
+                          <attributes>
+                            <attribute name="text">2</attribute>
                           </attributes>
                         </child>
                       </object>

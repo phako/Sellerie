@@ -35,13 +35,7 @@
 extern GtkWidget *Fenetre;
 
 void
-gt_macros_add_shortcut (GtkButton *button, gpointer pointer);
-void
-gt_macros_remove_shortcut (GtkButton *button, gpointer pointer);
-void
 gt_macros_save (GtkButton *button, gpointer pointer);
-void
-gt_macros_show_help (GtkButton *button, gpointer pointer);
 
 enum { COLUMN_SHORTCUT, COLUMN_ACTION, COLUMN_ID, NUM_COLUMNS };
 
@@ -83,55 +77,3 @@ gt_macros_save (GtkButton *button, gpointer pointer)
                             manager);
 }
 
-
-void
-Config_macros (GtkWindow *parent)
-{
-    GtkBuilder *builder = NULL;
-    GtkWidget *treeview = NULL;
-    GtkTreeModel *model = NULL;
-    GtkCellRenderer *renderer = NULL;
-    GtkTreeViewColumn *column = NULL;
-
-    builder = gtk_builder_new_from_resource ("/org/jensge/Sellerie/macros.ui");
-    gtk_builder_connect_signals (builder, NULL);
-    window = GTK_WIDGET (gtk_builder_get_object (builder, "dialog-macros"));
-    gtk_window_set_transient_for (GTK_WINDOW (window), parent);
-    treeview = GTK_WIDGET (gtk_builder_get_object (builder, "treeview"));
-    model = gtk_tree_view_get_model (GTK_TREE_VIEW (treeview));
-    GtMacroManager *manager = gt_macro_manager_get_default ();
-    GListModel *list_model = gt_macro_manager_get_model (manager);
-    for (guint i = 0; i < g_list_model_get_n_items (list_model); i++) {
-        g_autoptr (GtMacro) macro = GT_MACRO (g_list_model_get_object (list_model, i));
-        gtk_list_store_insert_with_values (GTK_LIST_STORE (model),
-                                           NULL,
-                                           -1,
-                                           COLUMN_SHORTCUT,
-                                           gt_macro_get_shortcut (macro),
-                                           COLUMN_ACTION,
-                                           gt_macro_get_action (macro),
-                                           -1);
-    }
-    renderer = GTK_CELL_RENDERER (
-        gtk_builder_get_object (builder, "cellrenderer_action"));
-    // g_signal_connect (renderer, "edited", G_CALLBACK (shortcut_edited),
-    // model);
-
-    column = GTK_TREE_VIEW_COLUMN (
-        gtk_builder_get_object (builder, "column_shortcut"));
-    renderer = GTK_CELL_RENDERER (
-        gtk_builder_get_object (builder, "cellrenderer_shortcut"));
-#if 0
-    gtk_tree_view_column_set_cell_data_func (
-        column, renderer, accel_set_func, NULL, NULL);
-    g_signal_connect (
-        renderer, "accel-edited", G_CALLBACK (accel_edited_callback), treeview);
-    g_signal_connect (renderer,
-                      "accel-cleared",
-                      G_CALLBACK (accel_cleared_callback),
-                      treeview);
-#endif
-
-    gtk_widget_show (GTK_WIDGET (window));
-    g_object_unref (builder);
-}

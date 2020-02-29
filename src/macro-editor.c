@@ -2,7 +2,12 @@
 
 #include <glib/gi18n.h>
 
-enum { COLUMN_SHORTCUT, COLUMN_ACTION, NUM_COLUMNS };
+typedef enum {
+    COLUMN_SHORTCUT,
+    COLUMN_ACTION,
+    COLUMN_DESCRIPTION,
+    NUM_COLUMNS
+} GtMacroEditorColumns;
 
 struct _GtMacroEditor {
     GtkDialog parent_instance;
@@ -128,6 +133,21 @@ accel_cleared_callback (GtkCellRendererAccel *cell,
     gtk_list_store_set (GTK_LIST_STORE (model), &iter, 0, NULL, -1);
 }
 
+static void
+text_cell_edited (GtkTreeModel *model,
+                  GtMacroEditorColumns column,
+                  const gchar *path_string,
+                  const gchar *new_text)
+{
+    GtkTreePath *path = gtk_tree_path_new_from_string (path_string);
+    GtkTreeIter iter;
+
+    gtk_tree_model_get_iter (model, &iter, path);
+
+    gtk_list_store_set (GTK_LIST_STORE (model), &iter, column, new_text, -1);
+    gtk_tree_path_free (path);
+}
+
 static gboolean
 shortcut_edited (GtkCellRendererText *cell,
                  const gchar *path_string,
@@ -135,18 +155,24 @@ shortcut_edited (GtkCellRendererText *cell,
                  gpointer data)
 {
     GtkTreeModel *model = (GtkTreeModel *)data;
-    GtkTreePath *path = gtk_tree_path_new_from_string (path_string);
-    GtkTreeIter iter;
 
-    gtk_tree_model_get_iter (model, &iter, path);
-
-    gtk_list_store_set (
-        GTK_LIST_STORE (model), &iter, COLUMN_ACTION, new_text, -1);
-    gtk_tree_path_free (path);
+    text_cell_edited (model, COLUMN_ACTION, path_string, new_text);
 
     return TRUE;
 }
 
+static gboolean
+description_edited (GtkCellRendererText *cell,
+                    const gchar *path_string,
+                    const gchar *new_text,
+                    gpointer data)
+{
+    GtkTreeModel *model = (GtkTreeModel *)data;
+
+    text_cell_edited (model, COLUMN_DESCRIPTION, path_string, new_text);
+
+    return TRUE;
+}
 static void
 show_help (GtkButton *button, gpointer pointer)
 {
@@ -231,6 +257,8 @@ gt_macro_editor_class_init (GtMacroEditorClass *klass)
     gtk_widget_class_bind_template_callback (widget_class, "gt_macros_save");
     gtk_widget_class_bind_template_callback_full (
         widget_class, "shortcut_edited", G_CALLBACK (shortcut_edited));
+    gtk_widget_class_bind_template_callback_full (
+        widget_class, "description_edited", G_CALLBACK (description_edited));
     gtk_widget_class_bind_template_callback_full (
         widget_class, "gt_macros_add_shortcut", G_CALLBACK (add_shortcut));
     gtk_widget_class_bind_template_callback_full (widget_class,

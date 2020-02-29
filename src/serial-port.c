@@ -961,7 +961,7 @@ gt_serial_port_get_status (GtSerialPort *self)
 }
 
 static gboolean
-on_serial_io_async_write (GPollableOutputStream *stream, gpointer user_data)
+on_serial_io_async_write (gpointer user_data)
 {
     GTask *task = G_TASK (user_data);
 

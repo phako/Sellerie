@@ -1048,6 +1048,7 @@ gt_serial_port_write_bytes_finish (GtSerialPort *self,
 static gboolean
 probe_port (const char *name)
 {
+#if defined(__linux__)
     gboolean retval = FALSE;
     struct serial_struct serinfo = {0};
 
@@ -1065,6 +1066,10 @@ probe_port_out:
         close (fd);
 
     return retval;
+#else
+    // FIXME: Add support for FreeBSD etc.
+    return TRUE;
+#endif
 }
 #else
 static const gchar *devices_to_check[] = {"/dev/ttyS%d",

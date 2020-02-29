@@ -748,7 +748,7 @@ Load_configuration_from_file (const gchar *config_name)
                 term_conf.font = pango_font_description_from_string (font[i]);
 
                 for (t = macro_list[i]; t != NULL; t = t->next) {
-                    macro_t *macro = macro_from_string (t->str);
+                    GtMacro *macro = gt_macro_from_string (t->str);
                     if (macro == NULL)
                         continue;
 
@@ -951,7 +951,7 @@ Hard_default_configuration (void)
 static void
 store_macro (gpointer data, gpointer user_data)
 {
-    char *string = serialize_macro ((macro_t *)data);
+    char *string = serialize_macro ((GtMacro *)data);
     cfgStoreValue (cfg, "macros", string, CFG_INI, GPOINTER_TO_INT (user_data));
     g_free (string);
 }

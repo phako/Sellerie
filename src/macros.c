@@ -31,6 +31,12 @@
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
+struct _GtMacro {
+    gchar *shortcut;
+    gchar *action;
+    GClosure *closure;
+};
+
 extern GtkWidget *Fenetre;
 
 void
@@ -61,8 +67,8 @@ shortcut_callback (gpointer number)
     gint i, length;
     guchar a;
     guint val_read;
-    macro_t *macro =
-        (macro_t *)g_list_nth_data (macros, GPOINTER_TO_INT (number));
+    GtMacro *macro =
+        (GtMacro *)g_list_nth_data (macros, GPOINTER_TO_INT (number));
 
     if (macro == NULL)
         return;
@@ -156,7 +162,7 @@ add_shortcuts (void)
     GList *it = macros;
 
     for (it = macros; it != NULL; it = it->next) {
-        macro_t *macro = (macro_t *)it->data;
+        GtMacro *macro = (GtMacro *)it->data;
 
         macro->closure = g_cclosure_new_swap (
             G_CALLBACK (shortcut_callback), GINT_TO_POINTER (i), NULL);
@@ -169,13 +175,26 @@ add_shortcuts (void)
 }
 
 char *
-serialize_macro (macro_t *macro)
+serialize_macro (GtMacro *macro)
 {
     return g_strdup_printf ("%s::%s", macro->shortcut, macro->action);
 }
 
-macro_t *
-macro_from_string (const char *str)
+GtMacro *
+gt_macro_new (const char *shortcut, const char *action)
+{
+    g_return_val_if_fail (shortcut != NULL, NULL);
+    g_return_val_if_fail (action != NULL, NULL);
+
+    GtMacro *macro = g_new0 (GtMacro, 1);
+    macro->shortcut = g_strdup (shortcut);
+    macro->action = g_strdup (action);
+
+    return macro;
+}
+
+GtMacro *
+gt_macro_from_string (const char *str)
 {
     g_return_val_if_fail (str != NULL, NULL);
 
@@ -186,7 +205,7 @@ macro_from_string (const char *str)
         return NULL;
     }
 
-    macro_t *macro = g_new0 (macro_t, 1);
+    GtMacro *macro = g_new0 (GtMacro, 1);
     macro->shortcut = parts[0];
     macro->action = parts[1];
 
@@ -199,7 +218,7 @@ macro_from_string (const char *str)
 static void
 free_macro (gpointer data)
 {
-    macro_t *macro = (macro_t *)data;
+    GtMacro *macro = (GtMacro *)data;
 
     g_free (macro->shortcut);
     g_free (macro->action);
@@ -210,7 +229,7 @@ free_macro (gpointer data)
 static void
 remove_macro (gpointer data, gpointer user_data)
 {
-    macro_t *macro = (macro_t *)data;
+    GtMacro *macro = (GtMacro *)data;
     if (macro->shortcut != NULL) {
         gt_main_window_remove_shortcut (GT_MAIN_WINDOW (user_data),
                                         macro->closure);
@@ -234,7 +253,7 @@ remove_shortcuts (void)
 static void
 fill_model (gpointer data, gpointer user_data)
 {
-    macro_t *macro = (macro_t *)data;
+    GtMacro *macro = (GtMacro *)data;
     GtkTreeIter iter;
 
     gtk_list_store_append (GTK_LIST_STORE (user_data), &iter);
@@ -297,7 +316,7 @@ build_macro_list (GtkTreeModel *model,
                   gpointer data)
 {
     GList **macros_list = (GList **)data;
-    macro_t *macro = g_new0 (macro_t, 1);
+    GtMacro *macro = g_new0 (GtMacro, 1);
     gtk_tree_model_get (model,
                         iter,
                         COLUMN_SHORTCUT,

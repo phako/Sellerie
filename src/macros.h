@@ -22,13 +22,7 @@
 
 #include <glib.h>
 
-typedef struct
-{
-  gchar *shortcut;
-  gchar *action;
-  GClosure *closure;
-}
-macro_t;
+typedef struct _GtMacro GtMacro;
 
 void Config_macros(GtkWindow *parent);
 void remove_shortcuts(void);
@@ -38,8 +32,11 @@ create_shortcuts (GList *);
 GList *
 get_shortcuts (void);
 char *
-serialize_macro (macro_t *macro);
-macro_t *
-macro_from_string (const char *str);
+serialize_macro (GtMacro *macro);
+GtMacro *
+gt_macro_from_string (const char *str);
+
+GtMacro *
+gt_macro_new (const char *shortcut, const char *action);
 
 #endif

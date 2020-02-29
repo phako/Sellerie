@@ -499,7 +499,9 @@ gt_file_transfer_start (GtFileTransfer *self,
     g_debug ("Starting file transfer of %s", path);
 
     GTask *task = g_task_new (self, cancellable, callback, user_data);
+#if GLIB_CHECK_VERSION(2, 60, 0)
     g_task_set_name (task, task_name);
+#endif
     g_file_query_info_async (self->file,
                              G_FILE_ATTRIBUTE_STANDARD_SIZE,
                              G_FILE_QUERY_INFO_NONE,

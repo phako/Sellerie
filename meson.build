@@ -17,6 +17,7 @@ prefix = get_option('prefix')
 
 add_global_arguments('-DHAVE_CONFIG_H=1', language : 'c')
 add_global_arguments('-DG_LOG_USE_STRUCTURED', language : 'c')
+add_global_arguments(['-Wno-unused-parameter', '-Wno-missing-field-initializers'], language : 'c')
 
 gtk_deps = dependency('gtk+-3.0', version : '>= 3.0.0')
 vte_deps = dependency('vte-2.91', version : '>= 0.28.0')

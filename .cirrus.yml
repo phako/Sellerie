@@ -1,0 +1,9 @@
+freebsd_instance:
+  image_family: freebsd-12-1
+
+task:
+  install_script: pkg install -y
+        meson ninja pkgconf gtk3 vte3 gettext gettext-tools
+  script:
+      - meson builddir --warnlevel 2 --buildtype release
+      - ninja -v -C builddir

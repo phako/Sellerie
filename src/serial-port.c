@@ -977,7 +977,7 @@ on_serial_io_async_write (gpointer user_data)
     gconstpointer buffer = g_bytes_get_data (data, &length);
 
     GError *write_error = NULL;
-    int bytes_written =
+    gsize bytes_written =
         gt_serial_port_write (self, (const char *)buffer, length, &write_error);
     if (write_error != NULL) {
         g_task_return_error (task, write_error);

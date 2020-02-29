@@ -453,7 +453,7 @@ on_serial_data_ready (GtSerialPort *port, GBytes *data, gpointer user_data)
 
     gsize size = 0;
     const guint8 *bytes = (const guint8 *)g_bytes_get_data (data, &size);
-    gssize char_position = 0;
+    gsize char_position = 0;
     while (char_position < size) {
         if (bytes[char_position++] == self->wait_char) {
             self->wait_char_found = TRUE;

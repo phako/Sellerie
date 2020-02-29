@@ -1096,12 +1096,14 @@ remove_section (gchar *cfg_file, gchar *section)
         return -1;
     }
 
-    size = ftell (f);
-    if (size == -1) {
+    long tell = ftell (f);
+    if (tell == -1) {
         fclose (f);
         perror ("ftell");
         return -1;
     }
+
+    size = (size_t)tell;
     rewind (f);
 
     buffer = g_malloc (size);

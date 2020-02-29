@@ -34,6 +34,8 @@
 struct _GtMacro {
     gchar *shortcut;
     gchar *action;
+    gchar *parsed_action;
+    gsize parsed_action_length;
     GClosure *closure;
 };
 
@@ -62,22 +64,74 @@ get_shortcuts (void)
 static void
 shortcut_callback (gpointer number)
 {
-    gchar *string;
-    gchar *str;
-    gint i, length;
-    guchar a;
-    guint val_read;
     GtMacro *macro =
         (GtMacro *)g_list_nth_data (macros, GPOINTER_TO_INT (number));
 
     if (macro == NULL)
         return;
 
-    string = macro->action;
-    length = strlen (string);
+    if (macro->parsed_action == NULL)
+        return;
 
-    for (i = 0; i < length; i++) {
+    gt_serial_port_send_chars (GT_MAIN_WINDOW (Fenetre)->serial_port,
+                               macro->parsed_action,
+                               macro->parsed_action_length);
+
+    g_autofree char *str =
+        g_strdup_printf (_ ("Macro \"%s\" sent !"), macro->shortcut);
+    gt_main_window_temp_message (GT_MAIN_WINDOW (Fenetre), str, 800);
+}
+
+void
+create_shortcuts (GList *macro)
+{
+    macros = macro;
+}
+
+void
+add_shortcuts (void)
+{
+    long i = 0;
+    guint acc_key;
+    GdkModifierType mod;
+    GList *it = macros;
+
+    for (it = macros; it != NULL; it = it->next) {
+        GtMacro *macro = (GtMacro *)it->data;
+        g_debug ("Adding shortcut %s", macro->shortcut);
+
+        macro->closure = g_cclosure_new_swap (
+            G_CALLBACK (shortcut_callback), GINT_TO_POINTER (i), NULL);
+        gtk_accelerator_parse (macro->shortcut, &acc_key, &mod);
+        if (acc_key != 0)
+            gt_main_window_add_shortcut (
+                GT_MAIN_WINDOW (Fenetre), acc_key, mod, macro->closure);
+        else
+            g_debug ("Failed to parse %s", macro->shortcut);
+        i++;
+    }
+}
+
+char *
+serialize_macro (GtMacro *macro)
+{
+    return g_strdup_printf ("%s::%s", macro->shortcut, macro->action);
+}
+
+static char *
+parse_action (const char *string, gsize *length)
+{
+    g_return_val_if_fail (string != NULL, NULL);
+    g_return_val_if_fail (length != NULL, NULL);
+    *length = 0;
+    gsize action_length = strlen (string);
+    guchar a;
+
+    GByteArray *parsed = g_byte_array_sized_new (action_length);
+
+    for (gsize i = 0; i < action_length; i++) {
         if (string[i] == '\\') {
+            const char *str = NULL;
             if (g_unichar_isdigit ((gunichar)string[i + 1])) {
                 if ((string[i + 1] == '0') && (string[i + 2] != 0)) {
                     if (g_unichar_isxdigit ((gunichar)string[i + 3])) {
@@ -97,6 +151,7 @@ shortcut_callback (gpointer number)
                     else
                         i++;
                 }
+                guint val_read = 0;
                 if (sscanf (str, "%02X", &val_read) == 1)
                     a = (guchar)val_read;
                 else
@@ -134,50 +189,14 @@ shortcut_callback (gpointer number)
                 }
                 i++;
             }
-            gt_serial_port_send_chars (
-                GT_MAIN_WINDOW (Fenetre)->serial_port, (gchar *)&a, 1);
+            g_byte_array_append (parsed, (guint8 *)&a, 1);
         } else {
-            gt_serial_port_send_chars (
-                GT_MAIN_WINDOW (Fenetre)->serial_port, &string[i], 1);
+            g_byte_array_append (parsed, (guint8 *)&string[i], 1);
         }
     }
 
-    str = g_strdup_printf (_ ("Macro \"%s\" sent !"), macro->shortcut);
-    gt_main_window_temp_message (GT_MAIN_WINDOW (Fenetre), str, 800);
-    g_free (str);
-}
-
-void
-create_shortcuts (GList *macro)
-{
-    macros = macro;
-}
-
-void
-add_shortcuts (void)
-{
-    long i = 0;
-    guint acc_key;
-    GdkModifierType mod;
-    GList *it = macros;
-
-    for (it = macros; it != NULL; it = it->next) {
-        GtMacro *macro = (GtMacro *)it->data;
-
-        macro->closure = g_cclosure_new_swap (
-            G_CALLBACK (shortcut_callback), GINT_TO_POINTER (i), NULL);
-        gtk_accelerator_parse (macro->shortcut, &acc_key, &mod);
-        if (acc_key != 0)
-            gt_main_window_add_shortcut (
-                GT_MAIN_WINDOW (Fenetre), acc_key, mod, macro->closure);
-        i++;
-    }
-}
-
-char *
-serialize_macro (GtMacro *macro)
-{
-    return g_strdup_printf ("%s::%s", macro->shortcut, macro->action);
+    *length = parsed->len;
+    return (char *)g_byte_array_free (parsed, FALSE);
 }
 
 GtMacro *
@@ -189,6 +208,8 @@ gt_macro_new (const char *shortcut, const char *action)
     GtMacro *macro = g_new0 (GtMacro, 1);
     macro->shortcut = g_strdup (shortcut);
     macro->action = g_strdup (action);
+
+    macro->parsed_action = parse_action (action, &macro->parsed_action_length);
 
     return macro;
 }
@@ -208,6 +229,8 @@ gt_macro_from_string (const char *str)
     GtMacro *macro = g_new0 (GtMacro, 1);
     macro->shortcut = parts[0];
     macro->action = parts[1];
+    macro->parsed_action =
+        parse_action (macro->action, &macro->parsed_action_length);
 
     /* Only free the array, the macro owns the parts now */
     g_free (parts);
@@ -222,6 +245,7 @@ free_macro (gpointer data)
 
     g_free (macro->shortcut);
     g_free (macro->action);
+    g_free (macro->parsed_action);
     // g_closure_unref (macro->closure);
     g_free (macro);
 }

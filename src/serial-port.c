@@ -515,12 +515,17 @@ gt_serial_port_read_signals (GtSerialPort *self)
         gt_serial_port_set_signals (self, 1);
     }
 
-    if (priv->serial_port_fd != -1) {
+    if (priv->serial_port_fd != -1 && isatty (priv->serial_port_fd)) {
+        errno = 0;
+        g_print ("Checking serial line states...");
         if (ioctl (priv->serial_port_fd, TIOCMGET, &stat_read) == -1) {
             /* Ignore EINVAL, as some serial ports
                genuinely lack these lines */
             /* Thanks to Elie De Brauwer on ubuntu launchpad */
-            if (errno != EINVAL) {
+
+            // I literaly asked you if that's a TTY, why are you telling me now it isn't one?
+            // Seems to happen for Linux PTYs recently
+            if (errno != EINVAL && errno != ENOTTY) {
                 GError *error = NULL;
 
                 gt_serial_port_close (self);

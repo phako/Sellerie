@@ -41,6 +41,7 @@
 #endif
 
 extern GtSerialPortConfiguration config;
+extern GtMacroManager* macro_manager;
 
 G_DEFINE_TYPE (GtMainWindow, gt_main_window, GTK_TYPE_APPLICATION_WINDOW)
 
@@ -224,12 +225,32 @@ on_config_profile_delete (GSimpleAction *action,
                           GVariant *parameter,
                           gpointer user_data);
 
+static void
+on_macro (GSimpleAction *a, GVariant *v, gpointer user_data)
+{
+    GtMainWindow *self = (GtMainWindow *)user_data;
+
+    const char *id = g_variant_get_string (v, NULL);
+    gsize length;
+
+    g_print ("Got call for macro %s\n", id);
+
+    const char *data = gt_macro_manager_get_bytes (macro_manager, id, &length);
+    const char *shortcut = gt_macro_manager_get_shortcut (macro_manager, id);
+    gt_serial_port_send_chars (self->serial_port, data, length);
+    g_autofree char *str =
+        g_strdup_printf (_ ("Macro \"%s\" sent !"), shortcut);
+    gt_main_window_temp_message (self, str, 800);
+}
+
 static const GActionEntry actions[] = {
     /* File menu */
     {"clear", on_clear_buffer},
     {"send-file", on_send_raw_file},
     {"save-file", on_save_raw_file},
     {"quit", on_quit},
+
+    {"macro", NULL, "s", "''", on_macro},
 
     /* Edit menu */
     {"select-all", on_edit_select_all_callback},
@@ -363,6 +384,22 @@ gt_main_window_class_init (GtMainWindowClass *klass)
         widget_class, GtMainWindow, hex_send_entry);
     gtk_widget_class_bind_template_child (widget_class, GtMainWindow, revealer);
 }
+
+static void
+on_accell_changed (GtkAccelGroup *g, guint keyval, GdkModifierType mod, GClosure *c, gpointer u)
+{
+    g_debug ("CHANGES!!!!!!!!!!!!");
+}
+
+static gboolean
+on_accell_act (GtkAccelGroup *g, GObject *a, guint k, GdkModifierType mod, gpointer u)
+{
+    g_debug ("=> ACTIVATED!!");
+
+    return FALSE;
+}
+
+
 static void
 gt_main_window_init (GtMainWindow *self)
 {
@@ -510,6 +547,8 @@ gt_main_window_init (GtMainWindow *self)
     self->shortcuts = gtk_accel_group_new ();
     gtk_window_add_accel_group (GTK_WINDOW (self),
                                 GTK_ACCEL_GROUP (self->shortcuts));
+    g_signal_connect (self->shortcuts, "accel-changed", G_CALLBACK (on_accell_changed), NULL);
+    g_signal_connect (self->shortcuts, "accel-activate", G_CALLBACK (on_accell_act), NULL);
 
     gt_main_window_set_view (self, GT_MAIN_WINDOW_VIEW_TYPE_ASCII);
 }
@@ -605,12 +644,14 @@ gt_main_window_show_message (GtMainWindow *self,
 
 void
 gt_main_window_add_shortcut (GtMainWindow *self,
-                             guint key,
-                             GdkModifierType mod,
-                             GClosure *closure)
+                             const char *accelerator,
+                             int index)
 {
-    gtk_accel_group_connect (
-        self->shortcuts, key, mod, GTK_ACCEL_MASK, closure);
+    GtkApplication *app = gtk_window_get_application (GTK_WINDOW (self));
+    char *action = g_strdup_printf ("main.macro::%d", index);
+    const char *const accelerators[] = {accelerator, NULL};
+    gtk_application_set_accels_for_action (app, action, accelerators);
+    g_free (action);
 }
 
 void
@@ -1300,7 +1341,7 @@ on_config_macros (GSimpleAction *action,
                   GVariant *parameter,
                   gpointer user_data)
 {
-    Config_macros (GTK_WINDOW (user_data));
+    Config_macros (GTK_WINDOW (user_data), macro_manager);
 }
 
 void

@@ -515,12 +515,15 @@ gt_serial_port_read_signals (GtSerialPort *self)
         gt_serial_port_set_signals (self, 1);
     }
 
-    if (priv->serial_port_fd != -1) {
+    if (priv->serial_port_fd != -1 && isatty(priv->serial_port_fd)) {
         if (ioctl (priv->serial_port_fd, TIOCMGET, &stat_read) == -1) {
             /* Ignore EINVAL, as some serial ports
                genuinely lack these lines */
             /* Thanks to Elie De Brauwer on ubuntu launchpad */
-            if (errno != EINVAL) {
+
+            // Apparently recently trying this on Linux PTYs fails with ENOTTY
+            // instead, so exempt this as well
+            if (errno != EINVAL && errno != ENOTTY) {
                 GError *error = NULL;
 
                 gt_serial_port_close (self);

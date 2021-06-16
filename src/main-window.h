@@ -75,8 +75,6 @@ void
 gt_main_window_set_info_bar (GtMainWindow *self, GtkWidget *widget);
 GtkWidget *gt_main_window_get_info_bar (GtMainWindow *self);
 void gt_main_window_show_message (GtMainWindow *self, const char *message, GtMessageType type);
-void gt_main_window_add_shortcut (GtMainWindow *self, guint key, GdkModifierType mod, GClosure *closure);
-void gt_main_window_remove_shortcut (GtMainWindow *self, GClosure *closure);
 
 G_END_DECLS
 

@@ -22,9 +22,35 @@
 
 #include <glib.h>
 
+G_BEGIN_DECLS
+
+G_DECLARE_FINAL_TYPE (
+    GtMacroManager, gt_macro_manager, GT, MACRO_MANAGER, GObject)
+
+GtMacroManager *
+gt_macro_manager_new (GtkApplication *app);
+
+void
+gt_macro_manager_add_from_string (GtMacroManager *self, const char *str);
+
+
+const char *
+gt_macro_manager_get_bytes (GtMacroManager *self,
+                            const char *id,
+                            gsize *length);
+
 typedef struct _GtMacro GtMacro;
 
-void Config_macros(GtkWindow *parent);
+void
+Config_macros (GtkWindow *parent, GtMacroManager *macro_manager);
+
+GList *
+gt_macro_manager_get_macros (GtMacroManager *self);
+
+const char*
+gt_macro_manager_get_shortcut (GtMacroManager *self, const char *id);
+
+#if 0
 void remove_shortcuts(void);
 void add_shortcuts(void);
 void
@@ -38,5 +64,8 @@ gt_macro_from_string (const char *str);
 
 GtMacro *
 gt_macro_new (const char *shortcut, const char *action);
+#endif
+
+G_END_DECLS
 
 #endif

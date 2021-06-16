@@ -41,12 +41,15 @@ GtSerialPort *serial_port;
 GtLogging *logger;
 GtkWidget *Fenetre;
 GtkWidget *display;
+GtMacroManager *macro_manager;
 
 static int
 on_gtk_application_local_options (GApplication *app,
                                   GVariantDict *options,
                                   gpointer user_data)
 {
+    Check_configuration_file ();
+
     if (config_port != NULL) {
         strncpy (config.port, config_port, sizeof (config.port) - 1);
     }
@@ -58,6 +61,7 @@ on_gtk_application_local_options (GApplication *app,
 static void
 on_gtk_application_startup (GApplication *app, gpointer user_data)
 {
+
     GtkBuilder *builder =
         gtk_builder_new_from_resource ("/org/jensge/Sellerie/main-menu.ui");
     GMenuModel *menu_model =
@@ -88,7 +92,6 @@ on_gtk_application_activate (GApplication *app, gpointer user_data)
 
     gt_serial_port_config (GT_MAIN_WINDOW (main_window)->serial_port, &config);
 
-    add_shortcuts ();
     gtk_window_present (GTK_WINDOW (main_window));
     gtk_widget_show_all (main_window);
 }
@@ -109,13 +112,14 @@ main (int argc, char *argv[])
     textdomain (PACKAGE);
 
     gtk_init (&argc, &argv);
-    Check_configuration_file ();
 
     app = gtk_application_new ("org.jensge.Sellerie", G_APPLICATION_NON_UNIQUE);
     add_option_group (G_APPLICATION (app));
 
+    macro_manager = gt_macro_manager_new (app);
+
     g_signal_connect (
-        app, "activate", G_CALLBACK (on_gtk_application_activate), NULL);
+        app, "activate", G_CALLBACK (on_gtk_application_activate), macro_manager);
     g_signal_connect (
         app, "startup", G_CALLBACK (on_gtk_application_startup), NULL);
     g_signal_connect (app,

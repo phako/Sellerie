@@ -62,6 +62,7 @@
 
 extern GtSerialPort *serial_port;
 extern GtkWidget *Fenetre;
+extern GtMacroManager *macro_manager;
 
 /* Configuration file variables */
 static gchar **port;
@@ -643,7 +644,6 @@ load_config (GtkDialog *dialog,
             Load_configuration_from_file (txt);
             Verify_configuration ();
             gt_serial_port_config (serial_port, &config);
-            add_shortcuts ();
         }
     }
 }
@@ -748,17 +748,8 @@ Load_configuration_from_file (const gchar *config_name)
                 term_conf.font = pango_font_description_from_string (font[i]);
 
                 for (t = macro_list[i]; t != NULL; t = t->next) {
-                    GtMacro *macro = gt_macro_from_string (t->str);
-                    if (macro == NULL)
-                        continue;
-
-                    macros = g_list_prepend (macros, macro);
+                    gt_macro_manager_add_from_string (macro_manager, t->str);
                 }
-                macros = g_list_reverse (macros);
-
-                remove_shortcuts ();
-                create_shortcuts (macros);
-                macros = NULL;
 
                 if (rows[i] != 0)
                     term_conf.rows = rows[i];
@@ -1026,7 +1017,9 @@ Copy_configuration (int pos)
     cfgStoreValue (cfg, "font", string, CFG_INI, pos);
     g_free (string);
 
-    g_list_foreach (get_shortcuts (), store_macro, GINT_TO_POINTER (pos));
+    g_list_foreach (gt_macro_manager_get_macros (macro_manager),
+                    store_macro,
+                    GINT_TO_POINTER (pos));
 
     string = g_strdup_printf ("%d", term_conf.rows);
     cfgStoreValue (cfg, "term_rows", string, CFG_INI, pos);

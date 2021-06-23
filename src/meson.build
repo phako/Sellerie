@@ -27,6 +27,7 @@ sources = [
     'view-config.c',
     'file-transfer.c',
     'file-transfer.h',
+    'macro-manager.c',
     resources,
     enum_headers,
     enums

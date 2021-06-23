@@ -20,6 +20,7 @@
 #endif
 
 #include "macros.h"
+#include "macro-manager.h"
 #include "main-window.h"
 
 #include <stdio.h>
@@ -42,210 +43,10 @@ gt_macros_save (GtkButton *button, gpointer pointer);
 void
 gt_macros_show_help (GtkButton *button, gpointer pointer);
 
-enum { COLUMN_SHORTCUT, COLUMN_ACTION, NUM_COLUMNS };
+enum { COLUMN_SHORTCUT, COLUMN_ACTION, COLUMN_ID, NUM_COLUMNS };
 
-static GList *macros = NULL;
 static GtkWidget *window = NULL;
 
-GList *
-get_shortcuts (void)
-{
-    return macros;
-}
-
-static void
-shortcut_callback (gpointer number)
-{
-    gchar *string;
-    gchar *str;
-    gint i, length;
-    guchar a;
-    guint val_read;
-    macro_t *macro =
-        (macro_t *)g_list_nth_data (macros, GPOINTER_TO_INT (number));
-
-    if (macro == NULL)
-        return;
-
-    string = macro->action;
-    length = strlen (string);
-
-    for (i = 0; i < length; i++) {
-        if (string[i] == '\\') {
-            if (g_unichar_isdigit ((gunichar)string[i + 1])) {
-                if ((string[i + 1] == '0') && (string[i + 2] != 0)) {
-                    if (g_unichar_isxdigit ((gunichar)string[i + 3])) {
-                        str = &string[i + 2];
-                        i += 3;
-                    } else {
-                        str = &string[i + 1];
-                        if (g_unichar_isxdigit ((gunichar)string[i + 2]))
-                            i += 2;
-                        else
-                            i++;
-                    }
-                } else {
-                    str = &string[i + 1];
-                    if (g_unichar_isxdigit ((gunichar)string[i + 2]))
-                        i += 2;
-                    else
-                        i++;
-                }
-                if (sscanf (str, "%02X", &val_read) == 1)
-                    a = (guchar)val_read;
-                else
-                    a = '\\';
-            } else {
-                switch (string[i + 1]) {
-                case 'a':
-                    a = '\a';
-                    break;
-                case 'b':
-                    a = '\b';
-                    break;
-                case 't':
-                    a = '\t';
-                    break;
-                case 'n':
-                    a = '\n';
-                    break;
-                case 'v':
-                    a = '\v';
-                    break;
-                case 'f':
-                    a = '\f';
-                    break;
-                case 'r':
-                    a = '\r';
-                    break;
-                case '\\':
-                    a = '\\';
-                    break;
-                default:
-                    a = '\\';
-                    i--;
-                    break;
-                }
-                i++;
-            }
-            gt_serial_port_send_chars (
-                GT_MAIN_WINDOW (Fenetre)->serial_port, (gchar *)&a, 1);
-        } else {
-            gt_serial_port_send_chars (
-                GT_MAIN_WINDOW (Fenetre)->serial_port, &string[i], 1);
-        }
-    }
-
-    str = g_strdup_printf (_ ("Macro \"%s\" sent !"), macro->shortcut);
-    gt_main_window_temp_message (GT_MAIN_WINDOW (Fenetre), str, 800);
-    g_free (str);
-}
-
-void
-create_shortcuts (GList *macro)
-{
-    macros = macro;
-}
-
-void
-add_shortcuts (void)
-{
-    long i = 0;
-    guint acc_key;
-    GdkModifierType mod;
-    GList *it = macros;
-
-    for (it = macros; it != NULL; it = it->next) {
-        macro_t *macro = (macro_t *)it->data;
-
-        macro->closure = g_cclosure_new_swap (
-            G_CALLBACK (shortcut_callback), GINT_TO_POINTER (i), NULL);
-        gtk_accelerator_parse (macro->shortcut, &acc_key, &mod);
-        if (acc_key != 0)
-            gt_main_window_add_shortcut (
-                GT_MAIN_WINDOW (Fenetre), acc_key, mod, macro->closure);
-        i++;
-    }
-}
-
-char *
-serialize_macro (macro_t *macro)
-{
-    return g_strdup_printf ("%s::%s", macro->shortcut, macro->action);
-}
-
-macro_t *
-macro_from_string (const char *str)
-{
-    g_return_val_if_fail (str != NULL, NULL);
-
-    gchar **parts = g_strsplit (str, "::", 2);
-    if (g_strv_length (parts) != 2) {
-        g_warning ("Failed to parse macro \"%s\"", str);
-
-        return NULL;
-    }
-
-    macro_t *macro = g_new0 (macro_t, 1);
-    macro->shortcut = parts[0];
-    macro->action = parts[1];
-
-    /* Only free the array, the macro owns the parts now */
-    g_free (parts);
-
-    return macro;
-}
-
-static void
-free_macro (gpointer data)
-{
-    macro_t *macro = (macro_t *)data;
-
-    g_free (macro->shortcut);
-    g_free (macro->action);
-    // g_closure_unref (macro->closure);
-    g_free (macro);
-}
-
-static void
-remove_macro (gpointer data, gpointer user_data)
-{
-    macro_t *macro = (macro_t *)data;
-    if (macro->shortcut != NULL) {
-        gt_main_window_remove_shortcut (GT_MAIN_WINDOW (user_data),
-                                        macro->closure);
-    }
-}
-
-static void
-macros_destroy (void)
-{
-    g_list_free_full (macros, free_macro);
-    macros = NULL;
-}
-
-void
-remove_shortcuts (void)
-{
-    g_list_foreach (macros, remove_macro, Fenetre);
-    macros_destroy ();
-}
-
-static void
-fill_model (gpointer data, gpointer user_data)
-{
-    macro_t *macro = (macro_t *)data;
-    GtkTreeIter iter;
-
-    gtk_list_store_append (GTK_LIST_STORE (user_data), &iter);
-    gtk_list_store_set (GTK_LIST_STORE (user_data),
-                        &iter,
-                        COLUMN_SHORTCUT,
-                        macro->shortcut,
-                        COLUMN_ACTION,
-                        macro->action,
-                        -1);
-}
 
 static gboolean
 shortcut_edited (GtkCellRendererText *cell,
@@ -296,16 +97,19 @@ build_macro_list (GtkTreeModel *model,
                   GtkTreeIter *iter,
                   gpointer data)
 {
-    GList **macros_list = (GList **)data;
-    macro_t *macro = g_new0 (macro_t, 1);
+    GtMacroManager *manager = GT_MACRO_MANAGER (data);
+    g_autofree char *shortcut;
+    g_autofree char *action;
+
     gtk_tree_model_get (model,
                         iter,
                         COLUMN_SHORTCUT,
-                        &(macro->shortcut),
+                        &(shortcut),
                         COLUMN_ACTION,
-                        &(macro->action),
+                        &(action),
                         -1);
-    *macros_list = g_list_prepend (*macros_list, macro);
+
+    gt_macro_manager_add (manager, shortcut, action, "");
 
     return FALSE;
 }
@@ -313,14 +117,13 @@ build_macro_list (GtkTreeModel *model,
 void
 gt_macros_save (GtkButton *button, gpointer pointer)
 {
-    remove_shortcuts ();
+    GtMacroManager *manager = gt_macro_manager_get_default ();
+
+    gt_macro_manager_clear (manager);
 
     gtk_tree_model_foreach (gtk_tree_view_get_model (GTK_TREE_VIEW (pointer)),
                             build_macro_list,
-                            &macros);
-    macros = g_list_reverse (macros);
-
-    add_shortcuts ();
+                            manager);
 }
 
 void
@@ -447,7 +250,19 @@ Config_macros (GtkWindow *parent)
     gtk_window_set_transient_for (GTK_WINDOW (window), parent);
     treeview = GTK_WIDGET (gtk_builder_get_object (builder, "treeview"));
     model = gtk_tree_view_get_model (GTK_TREE_VIEW (treeview));
-    g_list_foreach (macros, fill_model, GTK_LIST_STORE (model));
+    GtMacroManager *manager = gt_macro_manager_get_default ();
+    GListModel *list_model = gt_macro_manager_get_model (manager);
+    for (guint i = 0; i < g_list_model_get_n_items (list_model); i++) {
+        g_autoptr (GtMacro) macro = GT_MACRO (g_list_model_get_object (list_model, i));
+        gtk_list_store_insert_with_values (GTK_LIST_STORE (model),
+                                           NULL,
+                                           -1,
+                                           COLUMN_SHORTCUT,
+                                           gt_macro_get_shortcut (macro),
+                                           COLUMN_ACTION,
+                                           gt_macro_get_action (macro),
+                                           -1);
+    }
     renderer = GTK_CELL_RENDERER (
         gtk_builder_get_object (builder, "cellrenderer_action"));
     g_signal_connect (renderer, "edited", G_CALLBACK (shortcut_edited), model);

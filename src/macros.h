@@ -19,27 +19,8 @@
 #define MACROS_H_
 
 #include <gtk/gtk.h>
-
 #include <glib.h>
 
-typedef struct
-{
-  gchar *shortcut;
-  gchar *action;
-  GClosure *closure;
-}
-macro_t;
-
 void Config_macros(GtkWindow *parent);
-void remove_shortcuts(void);
-void add_shortcuts(void);
-void
-create_shortcuts (GList *);
-GList *
-get_shortcuts (void);
-char *
-serialize_macro (macro_t *macro);
-macro_t *
-macro_from_string (const char *str);
 
 #endif

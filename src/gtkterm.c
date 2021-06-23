@@ -88,7 +88,6 @@ on_gtk_application_activate (GApplication *app, gpointer user_data)
 
     gt_serial_port_config (GT_MAIN_WINDOW (main_window)->serial_port, &config);
 
-    add_shortcuts ();
     gtk_window_present (GTK_WINDOW (main_window));
     gtk_widget_show_all (main_window);
 }

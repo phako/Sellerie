@@ -26,6 +26,9 @@ gt_macro_get_shortcut (GtMacro *self);
 const char *
 gt_macro_get_action (GtMacro *self);
 
+GBytes *
+gt_macro_get_bytes (GtMacro *self);
+
 GtMacroManager *
 gt_macro_manager_get_default ();
 
@@ -60,5 +63,8 @@ gt_macro_manager_set (GtMacroManager *manager,
 
 void
 gt_macro_manager_clear (GtMacroManager *manager);
+
+GtMacro *
+gt_macro_manager_get (GtMacroManager *manager, const char *id);
 
 G_END_DECLS

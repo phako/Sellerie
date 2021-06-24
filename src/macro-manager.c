@@ -153,6 +153,12 @@ gt_macro_get_shortcut (GtMacro *self)
     return self->shortcut;
 }
 
+GBytes *
+gt_macro_get_bytes (GtMacro *self)
+{
+    return self->data;
+}
+
 struct _GtMacroManager {
     GObject parent_class;
 
@@ -374,4 +380,26 @@ gt_macro_manager_clear (GtMacroManager *self)
         gtk_application_set_accels_for_action(self->app, action, accels);
         g_list_store_remove (self->model, 0);
     }
+}
+
+GtMacro *
+gt_macro_manager_get (GtMacroManager *self, const char *id)
+{
+    guint position;
+
+    g_print ("Trying to find macro with id %s\n", id);
+    g_autoptr (GtMacro) macro = g_object_new (GT_TYPE_MACRO, NULL);
+    macro->id = id;
+
+    if (g_list_store_find_with_equal_func (self->model,
+                                           macro,
+                                           (GEqualFunc)gt_macro_has_id,
+                                           &position)) {
+        macro->id = NULL;
+        return g_list_model_get_item (G_LIST_MODEL (self->model), position);
+    }
+
+    macro->id = NULL;
+
+    return NULL;
 }

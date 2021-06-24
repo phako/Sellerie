@@ -26,6 +26,7 @@
 #include "serial-view.h"
 #include "term_config.h"
 #include "view-config.h"
+#include "macro-manager.h"
 
 #include <stdlib.h>
 
@@ -143,6 +144,9 @@ on_signals_send_rts (GSimpleAction *action,
 
 static void
 on_reconnect (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+
+static void
+on_macro (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 
 static void
 on_quit (GSimpleAction *action, GVariant *parameter, gpointer user_data);
@@ -267,6 +271,7 @@ static const GActionEntry actions[] = {
 
     // Misc actions
     {"reconnect", on_reconnect},
+    {"macro", NULL, "s", "''", on_macro},
 
     /* File menu */
     {"config.terminal", on_config_terminal},
@@ -276,7 +281,6 @@ static const GActionEntry actions[] = {
     {"config.profile.select", on_config_profile_select},
     {"config.profile.save", on_config_profile_save},
     {"config.profile.delete", on_config_profile_delete},
-
 };
 
 // static GParamSpec *properties[N_PROPS];
@@ -903,6 +907,26 @@ void
 on_reconnect (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
     gt_serial_port_reconnect (GT_MAIN_WINDOW (user_data)->serial_port);
+}
+
+void
+on_macro (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
+
+    const char *id = g_variant_get_string (parameter, NULL);
+    g_autoptr (GtMacro) macro =
+        gt_macro_manager_get (gt_macro_manager_get_default (), id);
+    const char *shortcut = gt_macro_get_shortcut (macro);
+    GBytes *bytes = gt_macro_get_bytes (macro);
+    gsize size;
+    const guint8 *data = g_bytes_get_data (bytes, &size);
+
+    g_autofree char *str =
+        g_strdup_printf (_ ("Macro \"%s\" sent !"), shortcut);
+    gt_main_window_temp_message (self, str, 800);
+
+    gt_serial_port_send_chars(self->serial_port, (char *)data, size);
 }
 
 void

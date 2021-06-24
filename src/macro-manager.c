@@ -4,6 +4,8 @@
 
 #include "macro-manager.h"
 
+#include <gtk/gtk.h>
+
 #include <memory.h>
 #include <stdio.h>
 
@@ -149,11 +151,44 @@ struct _GtMacroManager {
     GObject parent_class;
 
     GListStore *model;
+    GtkApplication *app;
 };
+
+enum GtMacroManagerProperties { PROP_APP = 1, N_PROPS };
+
+static GParamSpec *gt_macro_manager_properties[N_PROPS] = {
+    NULL,
+};
+
+static void
+gt_macro_manager_dispose (GObject *object);
+
+static void
+gt_macro_manager_set_property (GObject *,
+                               guint,
+                               const GValue *,
+                               GParamSpec *pspec);
+static void
+gt_macro_manager_get_property (GObject *, guint, GValue *, GParamSpec *pspec);
 
 static void
 gt_macro_manager_class_init (GtMacroManagerClass *klass)
 {
+    GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+    gt_macro_manager_properties[PROP_APP] = g_param_spec_object (
+        "app",
+        "app",
+        "app",
+        GTK_TYPE_APPLICATION,
+        G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+    g_object_class_install_properties (
+        object_class, N_PROPS, gt_macro_manager_properties);
+
+    object_class->set_property = gt_macro_manager_set_property;
+    object_class->get_property = gt_macro_manager_get_property;
+    object_class->dispose = gt_macro_manager_dispose;
 }
 
 static void
@@ -163,6 +198,50 @@ gt_macro_manager_init (GtMacroManager *self)
 }
 
 G_DEFINE_TYPE (GtMacroManager, gt_macro_manager, G_TYPE_OBJECT)
+
+static void
+gt_macro_manager_dispose (GObject *object)
+{
+    GtMacroManager *self = GT_MACRO_MANAGER (object);
+
+    g_clear_object (&self->model);
+    g_clear_object (&self->app);
+    G_OBJECT_CLASS (gt_macro_manager_parent_class)->dispose (object);
+}
+
+static void
+gt_macro_manager_set_property (GObject *object,
+                               guint property_id,
+                               const GValue *value,
+                               GParamSpec *pspec)
+{
+    GtMacroManager *self = GT_MACRO_MANAGER (object);
+
+    switch (property_id) {
+    case PROP_APP:
+        self->app = g_value_dup_object (value);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    }
+}
+
+static void
+gt_macro_manager_get_property (GObject *object,
+                               guint property_id,
+                               GValue *value,
+                               GParamSpec *pspec)
+{
+    GtMacroManager *self = GT_MACRO_MANAGER (object);
+
+    switch (property_id) {
+    case PROP_APP:
+        g_value_set_object (value, self->app);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    }
+}
 
 GtMacroManager *
 gt_macro_manager_get_default ()

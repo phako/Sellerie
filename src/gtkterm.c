@@ -26,6 +26,7 @@
 #include "parsecfg.h"
 #include "serial-port.h"
 #include "term_config.h"
+#include "macro-manager.h"
 
 #include <stdlib.h>
 
@@ -108,10 +109,12 @@ main (int argc, char *argv[])
     textdomain (PACKAGE);
 
     gtk_init (&argc, &argv);
-    Check_configuration_file ();
 
     app = gtk_application_new ("org.jensge.Sellerie", G_APPLICATION_NON_UNIQUE);
+    g_object_set (G_OBJECT (gt_macro_manager_get_default ()), "app", app, NULL);
     add_option_group (G_APPLICATION (app));
+
+    Check_configuration_file ();
 
     g_signal_connect (
         app, "activate", G_CALLBACK (on_gtk_application_activate), NULL);

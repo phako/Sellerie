@@ -129,6 +129,12 @@ gt_macro_parse_data (const char *string)
     return g_byte_array_free_to_bytes (bytes);
 }
 
+static gboolean
+gt_macro_has_id (GtMacro *self, GtMacro *other)
+{
+    return g_str_equal (self->id, other->id);
+}
+
 char *
 gt_macro_to_string (GtMacro *self)
 {
@@ -176,19 +182,20 @@ gt_macro_manager_class_init (GtMacroManagerClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+    object_class->set_property = gt_macro_manager_set_property;
+    object_class->get_property = gt_macro_manager_get_property;
+    object_class->dispose = gt_macro_manager_dispose;
+
     gt_macro_manager_properties[PROP_APP] = g_param_spec_object (
         "app",
         "app",
         "app",
         GTK_TYPE_APPLICATION,
-        G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+        G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
 
     g_object_class_install_properties (
         object_class, N_PROPS, gt_macro_manager_properties);
 
-    object_class->set_property = gt_macro_manager_set_property;
-    object_class->get_property = gt_macro_manager_get_property;
-    object_class->dispose = gt_macro_manager_dispose;
 }
 
 static void
@@ -204,6 +211,8 @@ gt_macro_manager_dispose (GObject *object)
 {
     GtMacroManager *self = GT_MACRO_MANAGER (object);
 
+    g_object_remove_weak_pointer (G_OBJECT (self->app), (gpointer *)&self->app);
+    self->app = NULL;
     g_clear_object (&self->model);
     g_clear_object (&self->app);
     G_OBJECT_CLASS (gt_macro_manager_parent_class)->dispose (object);
@@ -219,7 +228,9 @@ gt_macro_manager_set_property (GObject *object,
 
     switch (property_id) {
     case PROP_APP:
-        self->app = g_value_dup_object (value);
+        self->app = g_value_get_object (value);
+        if (self->app != NULL)
+            g_object_add_weak_pointer (G_OBJECT (self->app), (gpointer *) &self->app);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -257,7 +268,7 @@ gt_macro_manager_get_default ()
 GtMacroManager *
 gt_macro_manager_new (GApplication *app)
 {
-    return g_object_new (GT_TYPE_MACRO_MANAGER, NULL);
+    return g_object_new (GT_TYPE_MACRO_MANAGER, "app", app, NULL);
 }
 
 GListModel *
@@ -273,6 +284,11 @@ gt_macro_manager_add_empty (GtMacroManager *self)
     macro->id = g_uuid_string_random ();
 
     g_list_store_append (self->model, macro);
+
+    g_autofree char *action = g_strconcat ("main.macro::", macro->id, NULL);
+    const char *shortcuts[] = {macro->shortcut, NULL};
+
+    gtk_application_set_accels_for_action (self->app, action, shortcuts);
 
     return macro->id;
 }
@@ -291,6 +307,11 @@ gt_macro_manager_add (GtMacroManager *self,
     macro->data = gt_macro_parse_data (data);
 
     g_list_store_append (self->model, macro);
+
+    g_autofree char *action = g_strconcat ("main.macro::", macro->id, NULL);
+    const char *shortcuts[] = {macro->shortcut, NULL};
+
+    gtk_application_set_accels_for_action (self->app, action, shortcuts);
 
     return macro->id;
 }
@@ -319,11 +340,38 @@ gt_macro_manager_add_from_string (GtMacroManager *self,
 
     g_list_store_append (self->model, macro);
 
+    g_autofree char *action = g_strconcat ("main.macro::", macro->id, NULL);
+    const char *shortcuts[] = {macro->shortcut, NULL};
+
+    gtk_application_set_accels_for_action (self->app, action, shortcuts);
+
     return macro->id;
+}
+
+void
+gt_macro_manager_remove (GtMacroManager *self, const char *id)
+{
+    guint position;
+    g_autoptr (GtMacro) macro = g_object_new (GT_TYPE_MACRO, NULL);
+    macro->id = id;
+
+    if (g_list_store_find_with_equal_func (
+            self->model, macro, (GEqualFunc)gt_macro_has_id, &position)) {
+        g_list_store_remove (self->model, position);
+    }
+
+    macro->id = NULL;
 }
 
 void
 gt_macro_manager_clear (GtMacroManager *self)
 {
-    g_list_store_remove_all (self->model);
+    while (g_list_model_get_n_items (G_LIST_MODEL (self->model)) > 0) {
+        g_autoptr (GtMacro) macro =
+            g_list_model_get_item (G_LIST_MODEL (self->model), 0);
+        g_autofree char *action = g_strconcat ("main.macro::", macro->id, NULL);
+        const char *accels[] = {NULL};
+        gtk_application_set_accels_for_action(self->app, action, accels);
+        g_list_store_remove (self->model, 0);
+    }
 }

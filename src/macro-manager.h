@@ -49,7 +49,7 @@ const char *
 gt_macro_manager_add_empty (GtMacroManager *manager);
 
 void
-gt_macro_manager_remove (GtMacroManager *manager, const char *id);
+gt_macro_manager_remove (GtMacroManager *self, const char *id);
 
 void
 gt_macro_manager_set (GtMacroManager *manager,

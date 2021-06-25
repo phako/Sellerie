@@ -230,6 +230,7 @@ gt_serial_view_clear (GtSerialView *self)
     GtSerialViewPrivate *priv = gt_serial_view_get_instance_private (self);
 
     priv->hex_display.total_bytes = 0;
+    priv->hex_display.column = 0;
     vte_terminal_reset (VTE_TERMINAL (self), TRUE, TRUE);
 }
 

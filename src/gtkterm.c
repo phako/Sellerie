@@ -38,7 +38,6 @@ extern struct configuration_port config;
 extern char *default_file;
 extern char *config_port;
 GtSerialPort *serial_port;
-GtLogging *logger;
 GtkWidget *Fenetre;
 GtkWidget *display;
 
@@ -80,7 +79,6 @@ on_gtk_application_activate (GApplication *app, gpointer user_data)
 
 
     serial_port = GT_MAIN_WINDOW (main_window)->serial_port;
-    logger = GT_MAIN_WINDOW (main_window)->logger;
     display = GT_MAIN_WINDOW (main_window)->display;
     GT_MAIN_WINDOW (main_window)->default_raw_file = default_file;
 

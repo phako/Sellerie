@@ -221,11 +221,11 @@ description_edited (GtkCellRendererText *cell,
 static void
 show_help (GtkButton *button, gpointer pointer)
 {
-    GtkWidget *Dialog;
+    GtkWidget *dialog;
 
-    Dialog = gtk_message_dialog_new (
+    dialog = gtk_message_dialog_new (
         GTK_WINDOW (pointer),
-        GTK_DIALOG_DESTROY_WITH_PARENT,
+        GTK_DIALOG_DESTROY_WITH_PARENT | GTK_DIALOG_MODAL,
         GTK_MESSAGE_INFO,
         GTK_BUTTONS_CLOSE,
         _ ("The \"action\" field of a macro is the data to be sent on the "
@@ -236,8 +236,8 @@ show_help (GtkButton *button, gpointer pointer)
            "by a Line Feed\n\t\"Hello\\0A\" does the same thing but the LF is "
            "entered in hexadecimal"));
 
-    gtk_dialog_run (GTK_DIALOG (Dialog));
-    gtk_widget_destroy (Dialog);
+    gtk_dialog_run (GTK_DIALOG (dialog));
+    gtk_widget_destroy (dialog);
 }
 
 GtkWidget *

@@ -307,7 +307,7 @@ build_macro_list (GtkTreeModel *model,
                         -1);
     *macros_list = g_list_prepend (*macros_list, macro);
 
-    return TRUE;
+    return FALSE;
 }
 
 void

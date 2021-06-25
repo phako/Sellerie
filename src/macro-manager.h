@@ -26,6 +26,9 @@ gt_macro_get_shortcut (GtMacro *self);
 const char *
 gt_macro_get_action (GtMacro *self);
 
+const char *
+gt_macro_get_description (GtMacro *self);
+
 GBytes *
 gt_macro_get_bytes (GtMacro *self);
 

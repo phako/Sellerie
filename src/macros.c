@@ -39,8 +39,6 @@ gt_macros_save (GtkButton *button, gpointer pointer);
 
 enum { COLUMN_SHORTCUT, COLUMN_ACTION, COLUMN_ID, NUM_COLUMNS };
 
-static GtkWidget *window = NULL;
-
 
 static gboolean
 build_macro_list (GtkTreeModel *model,

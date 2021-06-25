@@ -20,7 +20,6 @@
 #endif
 
 #include "i18n.h"
-#include "macros.h"
 #include "main-window.h"
 #include "parsecfg.h"
 #include "sellerie-enums.h"
@@ -694,7 +693,6 @@ Load_configuration_from_file (const gchar *config_name)
 {
     int max, i;
     gchar *string = NULL;
-    GList *macros = NULL;
     cfgList *t;
 
     max = cfgParse (config_file, cfg, CFG_INI);
@@ -1019,8 +1017,9 @@ Copy_configuration (int pos)
 
     GListModel *model =
         gt_macro_manager_get_model (gt_macro_manager_get_default ());
+
     for (guint i = 0; i < g_list_model_get_n_items (model); i++) {
-        g_autoptr (GtMacro) macro = g_list_model_get_object (model, i);
+        g_autoptr (GtMacro) macro = g_list_model_get_item (model, i);
         g_autofree char *string = gt_macro_to_string (macro);
         cfgStoreValue (cfg, "macros", string, CFG_INI, i);
     }

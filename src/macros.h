@@ -21,9 +21,4 @@
 #include <gtk/gtk.h>
 #include <glib.h>
 
-  char *parsed_action;
-  gsize parsed_action_size;
-  gchar *description;
-void Config_macros(GtkWindow *parent);
-
 #endif

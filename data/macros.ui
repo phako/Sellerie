@@ -75,7 +75,7 @@
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_underline">True</property>
-                <signal name="clicked" handler="gt_macros_save" object="treeview" swapped="no"/>
+                <signal name="clicked" handler="gt_macros_save" object="GtMacroEditor" swapped="no"/>
                 <signal name="clicked" handler="gtk_widget_hide" object="GtMacroEditor" after="yes" swapped="yes"/>
                 <style>
                   <class name="suggested-action"/>

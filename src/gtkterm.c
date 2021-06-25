@@ -21,7 +21,6 @@
 
 #include "cmdline.h"
 #include "logging.h"
-#include "macros.h"
 #include "main-window.h"
 #include "parsecfg.h"
 #include "serial-port.h"

@@ -22,7 +22,6 @@
 #include "file-transfer.h"
 #include "infobar.h"
 #include "macro-editor.h"
-#include "macros.h"
 #include "main-window.h"
 #include "serial-view.h"
 #include "term_config.h"
@@ -1325,7 +1324,7 @@ on_config_macros (GSimpleAction *action,
                   GVariant *parameter,
                   gpointer user_data)
 {
-    GtkWidget *dialog = gt_macro_editor_new ();
+    GtkWidget *dialog = gt_macro_editor_new (gt_macro_manager_get_default());
     gtk_window_set_transient_for (GTK_WINDOW (dialog), GTK_WINDOW (user_data));
     gtk_dialog_run (GTK_DIALOG (dialog));
     gtk_widget_destroy (dialog);

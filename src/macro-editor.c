@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "macro-editor.h"
+#include "macro-manager.h"
 
 #include <glib/gi18n.h>
 
@@ -14,13 +17,55 @@ struct _GtMacroEditor {
 
     GtkCellRenderer *cellrenderer_shortcut;
     GtkTreeViewColumn *column_shortcut;
+    GtkTreeView *treeview;
+
+    GtMacroManager *macro_manager;
 };
 
 G_DEFINE_TYPE (GtMacroEditor, gt_macro_editor, GTK_TYPE_DIALOG)
 
-enum { PROP_0, N_PROPS };
+enum { PROP_0, PROP_MACRO_MANAGER, N_PROPS };
 
 static GParamSpec *properties[N_PROPS];
+
+static void
+gt_macro_manager_save (GtkButton *button, gpointer pointer);
+
+static gboolean
+build_macro_list (GtkTreeModel *model,
+                  GtkTreePath *path,
+                  GtkTreeIter *iter,
+                  gpointer data)
+{
+    GtMacroManager *manager = GT_MACRO_MANAGER (data);
+    g_autofree char *shortcut;
+    g_autofree char *action;
+
+    gtk_tree_model_get (model,
+                        iter,
+                        COLUMN_SHORTCUT,
+                        &(shortcut),
+                        COLUMN_ACTION,
+                        &(action),
+                        -1);
+
+    gt_macro_manager_add (manager, shortcut, action, "");
+
+    return FALSE;
+}
+
+void
+gt_macro_manager_save (GtkButton *button, gpointer pointer)
+{
+    GtMacroEditor *self = GT_MACRO_EDITOR (pointer);
+
+    gt_macro_manager_clear (self->macro_manager);
+
+    gtk_tree_model_foreach (gtk_tree_view_get_model (self->treeview),
+                            build_macro_list,
+                            self->macro_manager);
+}
+
 
 static void
 add_shortcut (GtkButton *button, gpointer pointer)
@@ -196,17 +241,20 @@ show_help (GtkButton *button, gpointer pointer)
 }
 
 GtkWidget *
-gt_macro_editor_new (void)
+gt_macro_editor_new (GtMacroManager *macro_editor)
 {
-    return g_object_new (GT_MACRO_TYPE_EDITOR, NULL);
+    return g_object_new (
+        GT_MACRO_TYPE_EDITOR, "macro-manager", macro_editor, NULL);
 }
 
 static void
-gt_macro_editor_finalize (GObject *object)
+gt_macro_editor_dispose (GObject *object)
 {
     GtMacroEditor *self = (GtMacroEditor *)object;
 
-    G_OBJECT_CLASS (gt_macro_editor_parent_class)->finalize (object);
+    g_clear_object (&self->macro_manager);
+
+    G_OBJECT_CLASS (gt_macro_editor_parent_class)->dispose (object);
 }
 
 static void
@@ -215,8 +263,6 @@ gt_macro_editor_get_property (GObject *object,
                               GValue *value,
                               GParamSpec *pspec)
 {
-    GtMacroEditor *self = GT_MACRO_EDITOR (object);
-
     switch (prop_id) {
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -232,21 +278,49 @@ gt_macro_editor_set_property (GObject *object,
     GtMacroEditor *self = GT_MACRO_EDITOR (object);
 
     switch (prop_id) {
+    case PROP_MACRO_MANAGER:
+        self->macro_manager = g_value_dup_object (value);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
 }
 
 static void
+gt_macro_editor_constructed (GObject *object)
+{
+    GtMacroEditor *self = GT_MACRO_EDITOR (object);
+
+    GListModel *list_model = gt_macro_manager_get_model (self->macro_manager);
+    for (guint i = 0; i < g_list_model_get_n_items (list_model); i++) {
+        g_autoptr (GtMacro) macro =
+            GT_MACRO (g_list_model_get_object (list_model, i));
+
+        GtkTreeModel *tree_model = gtk_tree_view_get_model (self->treeview);
+        gtk_list_store_insert_with_values (GTK_LIST_STORE (tree_model),
+                                           NULL,
+                                           -1,
+                                           COLUMN_SHORTCUT,
+                                           gt_macro_get_shortcut (macro),
+                                           COLUMN_ACTION,
+                                           gt_macro_get_action (macro),
+                                           COLUMN_DESCRIPTION,
+                                           gt_macro_get_description (macro),
+                                           -1);
+    }
+
+}
+
+static void
 gt_macro_editor_class_init (GtMacroEditorClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
+    GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-    object_class->finalize = gt_macro_editor_finalize;
+    object_class->dispose = gt_macro_editor_dispose;
     object_class->get_property = gt_macro_editor_get_property;
     object_class->set_property = gt_macro_editor_set_property;
-
-    GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+    object_class->constructed = gt_macro_editor_constructed;
 
     gtk_widget_class_set_template_from_resource (
         widget_class, "/org/jensge/Sellerie/macros.ui");
@@ -254,7 +328,12 @@ gt_macro_editor_class_init (GtMacroEditorClass *klass)
         widget_class, GtMacroEditor, cellrenderer_shortcut);
     gtk_widget_class_bind_template_child (
         widget_class, GtMacroEditor, column_shortcut);
-    gtk_widget_class_bind_template_callback (widget_class, "gt_macros_save");
+
+    gtk_widget_class_bind_template_child (
+        widget_class, GtMacroEditor, treeview);
+
+    gtk_widget_class_bind_template_callback_full (
+        widget_class, "gt_macros_save", G_CALLBACK (gt_macro_manager_save));
     gtk_widget_class_bind_template_callback_full (
         widget_class, "shortcut_edited", G_CALLBACK (shortcut_edited));
     gtk_widget_class_bind_template_callback_full (
@@ -271,6 +350,15 @@ gt_macro_editor_class_init (GtMacroEditorClass *klass)
         widget_class, "accel_cleared", G_CALLBACK (accel_cleared_callback));
     gtk_widget_class_bind_template_callback_full (
         widget_class, "show_help", G_CALLBACK (show_help));
+
+    properties[PROP_MACRO_MANAGER] = g_param_spec_object (
+        "macro-manager",
+        "macro-manager",
+        "macro-manager",
+        GT_TYPE_MACRO_MANAGER,
+        G_PARAM_CONSTRUCT_ONLY | G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS);
+
+    g_object_class_install_properties (object_class, N_PROPS, properties);
 }
 
 static void

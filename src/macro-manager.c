@@ -153,6 +153,12 @@ gt_macro_get_shortcut (GtMacro *self)
     return self->shortcut;
 }
 
+const char *
+gt_macro_get_description (GtMacro *self)
+{
+    return self->description;
+}
+
 GBytes *
 gt_macro_get_bytes (GtMacro *self)
 {

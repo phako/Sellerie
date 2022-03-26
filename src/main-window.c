@@ -65,11 +65,6 @@ gt_main_window_set_view (GtMainWindow *self, GtMainWindowViewType type);
 static void
 gt_main_window_clear_display (GtMainWindow *self);
 
-static GFile *
-gt_main_window_query_file (GtMainWindow *self,
-                           const char *title,
-                           const char *default_file);
-
 /* Call-backs */
 static void
 on_serial_port_status_changed (GObject *object,
@@ -86,10 +81,13 @@ on_serial_port_data_available (GtMainWindow *self,
                                GBytes *bytes,
                                gpointer user_data);
 
+#if 0
 static gboolean
 on_vte_button_press_callback (GtkWidget *widget,
                               GdkEventButton *event,
                               gpointer *data);
+#endif
+
 static void
 on_vte_popup_menu_callback (GtkWidget *widget, gpointer data);
 
@@ -374,10 +372,10 @@ gt_main_window_init (GtMainWindow *self)
     gtk_application_window_set_show_menubar (GTK_APPLICATION_WINDOW (self),
                                              TRUE);
 
-    GActionGroup *group = G_ACTION_GROUP (g_simple_action_group_new ());
+    self->group = G_ACTION_GROUP (g_simple_action_group_new ());
     g_action_map_add_action_entries (
-        G_ACTION_MAP (group), actions, G_N_ELEMENTS (actions), self);
-    gtk_widget_insert_action_group (GTK_WIDGET (self), "main", group);
+        G_ACTION_MAP (self->group), actions, G_N_ELEMENTS (actions), self);
+    gtk_widget_insert_action_group (GTK_WIDGET (self), "main", self->group);
 
     self->buffer = gt_buffer_new ();
     self->serial_port = gt_serial_port_new ();
@@ -385,10 +383,10 @@ gt_main_window_init (GtMainWindow *self)
 
     GPropertyAction *action = g_property_action_new (
         "config.local-echo", self->serial_port, "local-echo");
-    g_action_map_add_action (G_ACTION_MAP (group), G_ACTION (action));
+    g_action_map_add_action (G_ACTION_MAP (self->group), G_ACTION (action));
 
     action = g_property_action_new ("config.crlf", self->serial_port, "crlf");
-    g_action_map_add_action (G_ACTION_MAP (group), G_ACTION (action));
+    g_action_map_add_action (G_ACTION_MAP (self->group), G_ACTION (action));
 
     // Work-around to copy the local-echo setting into the global config
     g_signal_connect (G_OBJECT (self->serial_port),
@@ -413,7 +411,8 @@ gt_main_window_init (GtMainWindow *self)
     gtk_scrolled_window_set_vadjustment (
         GTK_SCROLLED_WINDOW (self->scrolled_window),
         gtk_scrollable_get_vadjustment (GTK_SCROLLABLE (self->display)));
-    gtk_container_add (GTK_CONTAINER (self->scrolled_window), self->display);
+    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (self->scrolled_window),
+                                   self->display);
 
     self->id = gtk_statusbar_get_context_id (GTK_STATUSBAR (self->status_bar),
                                              "Messages");
@@ -437,17 +436,16 @@ gt_main_window_init (GtMainWindow *self)
     /* Set up serial signal indicators */
     for (int i = 0; i < SIGNAL_COUNT; i++) {
         GtkWidget *label = gtk_label_new (signal_names[i]);
-        gtk_box_pack_end (GTK_BOX (self->status_bar), label, FALSE, TRUE, 5);
+        gtk_box_append (GTK_BOX (self->status_bar), label);
         gtk_widget_set_sensitive (GTK_WIDGET (label), FALSE);
         self->signals[i] = label;
     }
 
     action = g_property_action_new (
         "statusbar-visibility", self->status_bar, "visible");
-    g_action_map_add_action (G_ACTION_MAP (group), G_ACTION (action));
+    g_action_map_add_action (G_ACTION_MAP (self->group), G_ACTION (action));
 
     // Set up hex entry
-    gtk_widget_set_no_show_all (GTK_WIDGET (self->hex_box), TRUE);
     gtk_widget_set_visible (GTK_WIDGET (self->hex_box), FALSE);
     g_signal_connect (self->hex_send_entry,
                       "activate",
@@ -455,17 +453,20 @@ gt_main_window_init (GtMainWindow *self)
                       self);
 
     action = g_property_action_new ("view.send-hex", self->hex_box, "visible");
-    g_action_map_add_action (G_ACTION_MAP (group), G_ACTION (action));
+    g_action_map_add_action (G_ACTION_MAP (self->group), G_ACTION (action));
 
     // VTE popup menu
     GtkBuilder *builder =
         gtk_builder_new_from_resource ("/org/jensge/Sellerie/main-menu.ui");
+#if 0
     self->popup_menu = gtk_menu_new_from_model (
         G_MENU_MODEL (gtk_builder_get_object (builder, "popup-menu")));
     gtk_menu_attach_to_widget (
         GTK_MENU (self->popup_menu), self->display, NULL);
+#endif
     g_clear_object (&builder);
 
+#if 0
     g_signal_connect (G_OBJECT (self->display),
                       "button-press-event",
                       G_CALLBACK (on_vte_button_press_callback),
@@ -475,6 +476,7 @@ gt_main_window_init (GtMainWindow *self)
                       "popup-menu",
                       G_CALLBACK (on_vte_popup_menu_callback),
                       self);
+#endif
 
     g_signal_connect (G_OBJECT (self->display),
                       "selection-changed",
@@ -484,36 +486,36 @@ gt_main_window_init (GtMainWindow *self)
     on_selection_changed (VTE_TERMINAL (self->display), self);
 
     action = g_property_action_new ("menubar-visibility", self, "show-menubar");
-    g_action_map_add_action (G_ACTION_MAP (group), G_ACTION (action));
+    g_action_map_add_action (G_ACTION_MAP (self->group), G_ACTION (action));
 
     g_object_bind_property (
         G_OBJECT (self->logger),
         "active",
-        g_action_map_lookup_action (G_ACTION_MAP (group), "log.to-file"),
+        g_action_map_lookup_action (G_ACTION_MAP (self->group), "log.to-file"),
         "enabled",
         G_BINDING_INVERT_BOOLEAN | G_BINDING_SYNC_CREATE);
+    g_object_bind_property (G_OBJECT (self->logger),
+                            "active",
+                            g_action_map_lookup_action (
+                                G_ACTION_MAP (self->group), "log.pause-resume"),
+                            "enabled",
+                            G_BINDING_SYNC_CREATE);
     g_object_bind_property (
         G_OBJECT (self->logger),
         "active",
-        g_action_map_lookup_action (G_ACTION_MAP (group), "log.pause-resume"),
+        g_action_map_lookup_action (G_ACTION_MAP (self->group), "log.stop"),
         "enabled",
         G_BINDING_SYNC_CREATE);
     g_object_bind_property (
         G_OBJECT (self->logger),
         "active",
-        g_action_map_lookup_action (G_ACTION_MAP (group), "log.stop"),
-        "enabled",
-        G_BINDING_SYNC_CREATE);
-    g_object_bind_property (
-        G_OBJECT (self->logger),
-        "active",
-        g_action_map_lookup_action (G_ACTION_MAP (group), "log.clear"),
+        g_action_map_lookup_action (G_ACTION_MAP (self->group), "log.clear"),
         "enabled",
         G_BINDING_SYNC_CREATE);
 
-    self->shortcuts = gtk_accel_group_new ();
-    gtk_window_add_accel_group (GTK_WINDOW (self),
-                                GTK_ACCEL_GROUP (self->shortcuts));
+    self->shortcuts = gtk_shortcut_controller_new ();
+    gtk_shortcut_controller_set_scope (
+        GTK_SHORTCUT_CONTROLLER (self->shortcuts), GTK_SHORTCUT_SCOPE_GLOBAL);
 
     gt_main_window_set_view (self, GT_MAIN_WINDOW_VIEW_TYPE_ASCII);
 }
@@ -563,8 +565,8 @@ gt_main_window_set_title (GtMainWindow *self, const char *msg)
 void
 gt_main_window_set_info_bar (GtMainWindow *self, GtkWidget *widget)
 {
-    gtk_widget_show_all (widget);
-    gtk_container_add (GTK_CONTAINER (self->revealer), widget);
+    gtk_widget_show (widget);
+    gtk_revealer_set_child (GTK_REVEALER (self->revealer), widget);
     gtk_revealer_set_reveal_child (GTK_REVEALER (self->revealer), TRUE);
 }
 
@@ -572,19 +574,13 @@ void
 gt_main_window_remove_info_bar (GtMainWindow *self, GtkWidget *widget)
 {
     gtk_revealer_set_reveal_child (GTK_REVEALER (self->revealer), FALSE);
-    gtk_container_remove (GTK_CONTAINER (self->revealer), widget);
+    gtk_revealer_set_child (GTK_REVEALER (self->revealer), NULL);
 }
 
 GtkWidget *
 gt_main_window_get_info_bar (GtMainWindow *self)
 {
-    GList *children =
-        gtk_container_get_children (GTK_CONTAINER (self->revealer));
-    GtkWidget *result = children->data;
-
-    g_list_free (children);
-
-    return result;
+    return gtk_revealer_get_child (GTK_REVEALER (self->revealer));
 }
 
 void
@@ -598,36 +594,19 @@ gt_main_window_show_message (GtMainWindow *self,
 
     GtkWidget *dialog = gtk_message_dialog_new (GTK_WINDOW (self),
                                                 GTK_DIALOG_DESTROY_WITH_PARENT,
-                                                type,
+                                                (GtkMessageType)type,
                                                 GTK_BUTTONS_OK,
                                                 message,
                                                 NULL);
 
-    gtk_dialog_run (GTK_DIALOG (dialog));
-    gtk_widget_destroy (dialog);
-}
-
-void
-gt_main_window_add_shortcut (GtMainWindow *self,
-                             guint key,
-                             GdkModifierType mod,
-                             GClosure *closure)
-{
-    gtk_accel_group_connect (
-        self->shortcuts, key, mod, GTK_ACCEL_MASK, closure);
-}
-
-void
-gt_main_window_remove_shortcut (GtMainWindow *self, GClosure *closure)
-{
-    gtk_accel_group_disconnect (self->shortcuts, closure);
+    gtk_window_set_modal (GTK_WINDOW (dialog), TRUE);
+    g_signal_connect (dialog, "response", G_CALLBACK (g_object_unref), dialog);
 }
 
 void
 gt_main_window_set_view (GtMainWindow *self, GtMainWindowViewType type)
 {
-    GActionGroup *group =
-        gtk_widget_get_action_group (GTK_WIDGET (self), "main");
+    GActionGroup *group = self->group;
     GAction *show_index =
         g_action_map_lookup_action (G_ACTION_MAP (group), "view.index");
     GAction *hex_width =
@@ -694,9 +673,9 @@ on_serial_port_status_changed (GObject *object,
                                     "%s",
                                     msg);
         g_free (msg);
-
-        gtk_dialog_run (GTK_DIALOG (dialog));
-        g_clear_pointer (&dialog, gtk_widget_destroy);
+        gtk_window_set_modal (GTK_WINDOW (dialog), TRUE);
+        g_signal_connect (
+            dialog, "response", G_CALLBACK (g_object_unref), NULL);
 
     } else if (status == GT_SERIAL_PORT_STATE_OFFLINE) {
         g_debug ("Serial port went offline");
@@ -736,12 +715,12 @@ on_send_hexadecimal (GtkWidget *widget, gpointer pointer)
     gchar *message = NULL, **tokens = NULL, *buff = NULL;
     guint scan_val;
 
-    const char *text = gtk_entry_get_text (GTK_ENTRY (widget));
+    const char *text = gtk_editable_get_text (GTK_EDITABLE (widget));
 
     if (strlen (text) == 0) {
         message = g_strdup_printf (_ ("Nothing sent."));
         gt_main_window_temp_message (self, message, 1500);
-        gtk_entry_set_text (GTK_ENTRY (widget), "");
+        gtk_editable_set_text (GTK_EDITABLE (widget), "");
 
         goto exit;
     }
@@ -764,7 +743,7 @@ on_send_hexadecimal (GtkWidget *widget, gpointer pointer)
     message =
         g_strdup_printf (ngettext ("%d byte sent.", "%d bytes sent.", i), i);
     gt_main_window_temp_message (self, message, 2000);
-    gtk_entry_set_text (GTK_ENTRY (widget), "");
+    gtk_editable_set_text (GTK_EDITABLE (widget), "");
 
 exit:
     g_clear_pointer (&message, g_free);
@@ -786,6 +765,7 @@ on_vte_commit (VteTerminal *widget, gchar *text, guint length, gpointer ptr)
     }
 }
 
+#if 0
 static gboolean
 on_vte_button_press_callback (GtkWidget *widget,
                               GdkEventButton *event,
@@ -812,10 +792,12 @@ on_vte_button_press_callback (GtkWidget *widget,
 
     return FALSE;
 }
+#endif
 
 static void
 on_vte_popup_menu_callback (GtkWidget *widget, gpointer data)
 {
+#if 0
     GtMainWindow *self = GT_MAIN_WINDOW (data);
 
 #if GTK_CHECK_VERSION(3, 22, 0)
@@ -829,6 +811,7 @@ on_vte_popup_menu_callback (GtkWidget *widget, gpointer data)
                     NULL,
                     0,
                     gtk_get_current_event_time ());
+#endif
 #endif
 }
 
@@ -972,7 +955,7 @@ on_selection_changed (VteTerminal *terminal, gpointer data)
 
     can_copy = vte_terminal_get_has_selection (terminal);
 
-    group = gtk_widget_get_action_group (GTK_WIDGET (data), "main");
+    group = GT_MAIN_WINDOW (data)->group;
     action = g_action_map_lookup_action (G_ACTION_MAP (group), "copy");
     g_simple_action_set_enabled (G_SIMPLE_ACTION (action), can_copy);
 }
@@ -991,6 +974,27 @@ on_crlf_changed (GObject *gobject, GParamSpec *pspec, gpointer user_data)
         gt_serial_port_get_crlfauto (GT_MAIN_WINDOW (user_data)->serial_port);
 }
 
+static void
+on_logging_start_response (GtkDialog *self, gint response_id, gpointer data)
+{
+    GtMainWindow *w = GT_MAIN_WINDOW (data);
+
+    gtk_widget_hide (GTK_WIDGET (self));
+    if (response_id == GTK_RESPONSE_OK) {
+        GError *error = NULL;
+        g_autoptr (GFile) file =
+            gtk_file_chooser_get_file (GTK_FILE_CHOOSER (self));
+        g_autofree char *file_name = g_file_get_path (file);
+        gt_logging_start (w->logger, file_name, &error);
+        if (error != NULL) {
+            gt_main_window_show_message (
+                w, error->message, GT_MESSAGE_TYPE_ERROR);
+            g_error_free (error);
+        }
+    }
+    g_object_unref (self);
+}
+
 void
 on_logging_start (GSimpleAction *action,
                   GVariant *parameter,
@@ -999,7 +1003,6 @@ on_logging_start (GSimpleAction *action,
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
 
     GtkWidget *file_select;
-    gint retval = GTK_RESPONSE_NONE;
 
     file_select = gtk_file_chooser_dialog_new (_ ("Log file selection"),
                                                GTK_WINDOW (self),
@@ -1009,31 +1012,15 @@ on_logging_start (GSimpleAction *action,
                                                _ ("_OK"),
                                                GTK_RESPONSE_OK,
                                                NULL);
-    gtk_file_chooser_set_do_overwrite_confirmation (
-        GTK_FILE_CHOOSER (file_select), TRUE);
-
     const char *default_file = gt_logging_get_default_file (self->logger);
     if (default_file != NULL) {
-        gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (file_select),
-                                       default_file);
+        g_autoptr (GFile) file = g_file_new_for_commandline_arg (default_file);
+        gtk_file_chooser_set_file (GTK_FILE_CHOOSER (file_select), file, NULL);
     }
 
-    retval = gtk_dialog_run (GTK_DIALOG (file_select));
-    gtk_widget_hide (file_select);
-    if (retval == GTK_RESPONSE_OK) {
-        GError *error = NULL;
-        char *file_name =
-            gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_select));
-        gt_logging_start (self->logger, file_name, &error);
-        if (error != NULL) {
-            gt_main_window_show_message (
-                self, error->message, GT_MESSAGE_TYPE_ERROR);
-            g_error_free (error);
-        }
-        g_free (file_name);
-    }
-
-    gtk_widget_destroy (file_select);
+    gtk_window_set_modal (GTK_WINDOW (file_select), TRUE);
+    g_signal_connect (
+        file_select, "response", G_CALLBACK (on_logging_start_response), self);
 }
 
 void
@@ -1187,47 +1174,112 @@ on_file_transfer_ready (GObject *source_object,
     g_object_unref (source_object);
 }
 
+static void
+on_send_raw_file_response (GtkDialog *d, gint response_id, gpointer user_data)
+{
+    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
+    gtk_widget_hide (GTK_WIDGET (d));
+
+    if (response_id == GTK_RESPONSE_ACCEPT) {
+        g_autoptr (GFile) file =
+            gtk_file_chooser_get_file (GTK_FILE_CHOOSER (self));
+        GtFileTransfer *transfer =
+            gt_serial_port_send_file (self->serial_port, file);
+        GtkWidget *infobar = gt_infobar_new ();
+        g_autofree char *path = g_file_get_path (file);
+        g_autofree char *message =
+            g_strdup_printf (_ ("Sending file “%s”…"), path);
+        gt_infobar_set_label (GT_INFOBAR (infobar), message);
+        gt_main_window_set_info_bar (self, infobar);
+        g_object_bind_property (G_OBJECT (transfer),
+                                "progress",
+                                G_OBJECT (infobar),
+                                "progress",
+                                (GBindingFlags)0);
+
+        GCancellable *cancellable = g_cancellable_new ();
+        g_signal_connect (G_OBJECT (infobar),
+                          "close",
+                          G_CALLBACK (on_infobar_close),
+                          cancellable);
+        g_signal_connect (G_OBJECT (infobar),
+                          "response",
+                          G_CALLBACK (on_infobar_response),
+                          cancellable);
+
+        gt_file_transfer_start (
+            transfer, cancellable, on_file_transfer_ready, self);
+    }
+
+    g_object_unref (d);
+}
+
 void
 on_send_raw_file (GSimpleAction *action,
                   GVariant *parameter,
                   gpointer user_data)
 {
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
-    GFile *file = gt_main_window_query_file (
-        self, _ ("Send RAW file"), self->default_raw_file);
 
-    if (file == NULL)
-        return;
+    GtkWidget *file_selector =
+        gtk_file_chooser_dialog_new (_ ("Send RAW file"),
+                                     GTK_WINDOW (self),
+                                     GTK_FILE_CHOOSER_ACTION_OPEN,
+                                     _ ("_Cancel"),
+                                     GTK_RESPONSE_CANCEL,
+                                     _ ("_Send"),
+                                     GTK_RESPONSE_ACCEPT,
+                                     NULL);
 
-    GtFileTransfer *transfer =
-        gt_serial_port_send_file (self->serial_port, file);
-    GtkWidget *infobar = gt_infobar_new ();
-    char *path = g_file_get_path (file);
-    char *message = g_strdup_printf (_ ("Sending file “%s”…"), path);
-    g_free (path);
-    g_object_unref (file);
-    gt_infobar_set_label (GT_INFOBAR (infobar), message);
-    g_free (message);
-    gt_main_window_set_info_bar (self, infobar);
-    g_object_bind_property (G_OBJECT (transfer),
-                            "progress",
-                            G_OBJECT (infobar),
-                            "progress",
-                            (GBindingFlags)0);
+    if (self->default_raw_file != NULL) {
+        g_autoptr (GFile) file =
+            g_file_new_for_commandline_arg (self->default_raw_file);
+        gtk_file_chooser_set_file (
+            GTK_FILE_CHOOSER (file_selector), file, NULL);
+    }
 
-    GCancellable *cancellable = g_cancellable_new ();
-    g_signal_connect (G_OBJECT (infobar),
-                      "close",
-                      G_CALLBACK (on_infobar_close),
-                      cancellable);
-    g_signal_connect (G_OBJECT (infobar),
+    gtk_dialog_set_default_response (GTK_DIALOG (file_selector),
+                                     GTK_RESPONSE_ACCEPT);
+    gtk_window_set_transient_for (GTK_WINDOW (file_selector),
+                                  GTK_WINDOW (self));
+    gtk_window_set_modal (GTK_WINDOW (file_selector), TRUE);
+
+    g_signal_connect (file_selector,
                       "response",
-                      G_CALLBACK (on_infobar_response),
-                      cancellable);
-    // g_object_unref (infobar);
+                      G_CALLBACK (on_send_raw_file_response),
+                      self);
+}
 
-    gt_file_transfer_start (
-        transfer, cancellable, on_file_transfer_ready, self);
+static void
+on_save_raw_file_response (GtkDialog *file_select, gint result, gpointer data)
+{
+    GtMainWindow *self = GT_MAIN_WINDOW (data);
+
+    gtk_widget_hide (GTK_WIDGET (file_select));
+
+    if (result == GTK_RESPONSE_ACCEPT) {
+        g_autoptr (GFile) file =
+            gtk_file_chooser_get_file (GTK_FILE_CHOOSER (file_select));
+        if (file == NULL) {
+            g_autofree char *msg = g_strdup_printf (_ ("File error\n"));
+            gt_main_window_show_message (self, msg, GT_MESSAGE_TYPE_ERROR);
+        } else {
+            g_autofree char *fileName = g_file_get_path (file);
+
+            GError *error = NULL;
+            gt_buffer_write_to_file (self->buffer, fileName, &error);
+
+            if (error != NULL) {
+                g_autofree char *msg = g_strdup_printf (
+                    _ ("Failed to write buffer to file %s: %s"),
+                    fileName,
+                    error->message);
+                gt_main_window_show_message (self, msg, GT_MESSAGE_TYPE_ERROR);
+                g_error_free (error);
+            }
+        }
+    }
+    g_object_unref (file_select);
 }
 
 void
@@ -1236,12 +1288,6 @@ on_save_raw_file (GSimpleAction *action,
                   gpointer user_data)
 {
     GtMainWindow *self = GT_MAIN_WINDOW (user_data);
-    char *fileName = NULL;
-    char *msg = NULL;
-#if 0
-    const char *default_file = gt_file_get_default ();
-#endif
-    const char *default_file = NULL;
 
     GtkWidget *file_select =
         gtk_file_chooser_dialog_new (_ ("Save RAW File"),
@@ -1252,54 +1298,17 @@ on_save_raw_file (GSimpleAction *action,
                                      _ ("_OK"),
                                      GTK_RESPONSE_ACCEPT,
                                      NULL);
-    gtk_file_chooser_set_do_overwrite_confirmation (
-        GTK_FILE_CHOOSER (file_select), TRUE);
-
-    if (default_file != NULL)
-        gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (file_select),
-                                       default_file);
-
-    gint result = gtk_dialog_run (GTK_DIALOG (file_select));
-    gtk_widget_hide (file_select);
-
-    if (result == GTK_RESPONSE_ACCEPT) {
-        fileName =
-            gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (file_select));
-        if ((!fileName || (strcmp (fileName, ""))) == 0) {
-            msg = g_strdup_printf (_ ("File error\n"));
-            gt_main_window_show_message (self, msg, GT_MESSAGE_TYPE_ERROR);
-
-            goto out;
-        }
-
-        GError *error = NULL;
-        gt_buffer_write_to_file (self->buffer, fileName, &error);
-
-        if (error != NULL) {
-            msg = g_strdup_printf (_ ("Failed to write buffer to file %s: %s"),
-                                   fileName,
-                                   error->message);
-            gt_main_window_show_message (self, msg, GT_MESSAGE_TYPE_ERROR);
-        }
-    }
-
-out:
-    g_free (msg);
-    g_free (fileName);
-    gtk_widget_destroy (file_select);
+    gtk_window_set_modal (GTK_WINDOW (file_select), TRUE);
+    g_signal_connect (
+        file_select, "response", G_CALLBACK (on_save_raw_file_response), self);
 }
 
-void
-on_config_terminal (GSimpleAction *action,
-                    GVariant *parameter,
-                    gpointer user_data)
+static void
+on_config_terminal_response (GtkDialog *d, gint response_id, gpointer data)
 {
-    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
-    GtkWidget *d = gt_view_config_new (GT_SERIAL_VIEW (self->display));
-    gtk_window_set_transient_for (GTK_WINDOW (d), GTK_WINDOW (self));
-
-    gtk_dialog_run (GTK_DIALOG (d));
-    gtk_widget_destroy (d);
+    GtMainWindow *self = GT_MAIN_WINDOW (data);
+    gtk_widget_hide (GTK_WIDGET (d));
+    g_object_unref (G_OBJECT (d));
 
     PangoFontDescription *font_desc = NULL;
     GdkRGBA *text = NULL;
@@ -1320,14 +1329,27 @@ on_config_terminal (GSimpleAction *action,
 }
 
 void
+on_config_terminal (GSimpleAction *action,
+                    GVariant *parameter,
+                    gpointer user_data)
+{
+    GtMainWindow *self = GT_MAIN_WINDOW (user_data);
+    GtkWidget *d = gt_view_config_new (GT_SERIAL_VIEW (self->display));
+    gtk_window_set_transient_for (GTK_WINDOW (d), GTK_WINDOW (self));
+    gtk_window_set_modal (GTK_WINDOW (d), TRUE);
+    g_signal_connect (
+        d, "response", G_CALLBACK (on_config_terminal_response), self);
+}
+
+void
 on_config_macros (GSimpleAction *action,
                   GVariant *parameter,
                   gpointer user_data)
 {
     GtkWidget *dialog = gt_macro_editor_new (gt_macro_manager_get_default());
     gtk_window_set_transient_for (GTK_WINDOW (dialog), GTK_WINDOW (user_data));
-    gtk_dialog_run (GTK_DIALOG (dialog));
-    gtk_widget_destroy (dialog);
+    gtk_window_set_modal (GTK_WINDOW (dialog), TRUE);
+    g_signal_connect (dialog, "response", G_CALLBACK (g_object_unref), NULL);
 }
 
 void
@@ -1335,7 +1357,7 @@ on_config_profile_select (GSimpleAction *action,
                           GVariant *parameter,
                           gpointer user_data)
 {
-    select_config_callback (NULL, NULL);
+    select_config_callback (NULL);
 }
 
 void
@@ -1343,7 +1365,7 @@ on_config_profile_save (GSimpleAction *action,
                         GVariant *parameter,
                         gpointer user_data)
 {
-    save_config_callback (NULL, NULL);
+    save_config_callback (NULL);
 }
 
 void
@@ -1351,7 +1373,7 @@ on_config_profile_delete (GSimpleAction *action,
                           GVariant *parameter,
                           gpointer user_data)
 {
-    delete_config_callback (NULL, NULL);
+    delete_config_callback (NULL);
 }
 
 static void
@@ -1368,40 +1390,4 @@ on_display_updated (GtMainWindow *self,
             self, error->message, GT_MESSAGE_TYPE_ERROR);
         g_error_free (error);
     }
-}
-
-static GFile *
-gt_main_window_query_file (GtMainWindow *self,
-                           const char *title,
-                           const char *default_file)
-{
-    GtkWidget *file_selector =
-        gtk_file_chooser_dialog_new (title,
-                                     GTK_WINDOW (self),
-                                     GTK_FILE_CHOOSER_ACTION_OPEN,
-                                     _ ("_Cancel"),
-                                     GTK_RESPONSE_CANCEL,
-                                     _ ("_Send"),
-                                     GTK_RESPONSE_ACCEPT,
-                                     NULL);
-
-    if (default_file != NULL)
-        gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (file_selector),
-                                       default_file);
-
-    gtk_dialog_set_default_response (GTK_DIALOG (file_selector),
-                                     GTK_RESPONSE_ACCEPT);
-    gtk_window_set_transient_for (GTK_WINDOW (file_selector),
-                                  GTK_WINDOW (self));
-    gint response = gtk_dialog_run (GTK_DIALOG (file_selector));
-    gtk_widget_hide (file_selector);
-
-    GFile *result = NULL;
-    if (response == GTK_RESPONSE_ACCEPT) {
-        result = gtk_file_chooser_get_file (GTK_FILE_CHOOSER (file_selector));
-    }
-
-    gtk_widget_destroy (file_selector);
-
-    return result;
 }

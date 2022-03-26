@@ -26,7 +26,7 @@ G_BEGIN_DECLS
 
 #define GT_TYPE_INFOBAR (gt_infobar_get_type())
 
-G_DECLARE_FINAL_TYPE (GtInfobar, gt_infobar, GT, INFOBAR, GtkInfoBar)
+G_DECLARE_FINAL_TYPE (GtInfobar, gt_infobar, GT, INFOBAR, GtkBox)
 
 GtkWidget *gt_infobar_new (void);
 void gt_infobar_set_label (GtInfobar *, const char *);

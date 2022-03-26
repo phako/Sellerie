@@ -236,8 +236,8 @@ show_help (GtkButton *button, gpointer pointer)
            "by a Line Feed\n\t\"Hello\\0A\" does the same thing but the LF is "
            "entered in hexadecimal"));
 
-    gtk_dialog_run (GTK_DIALOG (dialog));
-    gtk_widget_destroy (dialog);
+    gtk_window_set_modal (GTK_WINDOW (dialog), TRUE);
+    g_signal_connect (dialog, "response", G_CALLBACK (g_object_unref), NULL);
 }
 
 GtkWidget *

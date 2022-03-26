@@ -45,7 +45,8 @@ struct _GtMainWindow
     GtkWidget *popup_menu;
     GtkWidget *revealer;
     GtLogging *logger;
-    GtkAccelGroup *shortcuts;
+    GActionGroup *group;
+    GtkEventController *shortcuts;
     char *default_raw_file;
 };
 

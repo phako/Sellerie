@@ -162,6 +162,18 @@ Selec_couleur (GdkRGBA *, gfloat, gfloat, gfloat);
 
 extern GtkWidget *display;
 
+static void
+on_config_dialog_response (GtkDialog *self, gint response_id, gpointer data)
+{
+    gtk_widget_hide (GTK_WIDGET (self));
+    if (response_id == GTK_RESPONSE_OK) {
+        Lis_Config (GTK_BUILDER (data));
+    }
+
+    g_object_unref (G_OBJECT (data));
+    g_object_unref (self);
+}
+
 void
 Config_Port_Fenetre (GtkWindow *parent)
 {
@@ -172,7 +184,6 @@ Config_Port_Fenetre (GtkWindow *parent)
     GList *device_list = NULL;
     GList *it = NULL;
     char *rate = NULL;
-    int result = GTK_RESPONSE_CANCEL;
 
     device_list = gt_serial_port_detect_devices ();
 
@@ -192,6 +203,7 @@ Config_Port_Fenetre (GtkWindow *parent)
     dialog =
         GTK_DIALOG (gtk_builder_get_object (builder, "dialog-settings-port"));
     gtk_window_set_transient_for (GTK_WINDOW (dialog), parent);
+    gtk_window_set_modal (GTK_WINDOW (dialog), TRUE);
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-device"));
 
     for (it = device_list; it != NULL; it = it->next) {
@@ -203,16 +215,16 @@ Config_Port_Fenetre (GtkWindow *parent)
 
     /* Set values on first page */
     if (config.port[0] != '\0') {
-        entry = gtk_bin_get_child (GTK_BIN (combo));
+        entry = gtk_combo_box_get_child (GTK_COMBO_BOX (combo));
 
-        gtk_entry_set_text (GTK_ENTRY (entry), config.port);
+        gtk_editable_set_text (GTK_EDITABLE (entry), config.port);
     } else {
         gtk_combo_box_set_active (GTK_COMBO_BOX (combo), 0);
     }
 
     combo = GTK_WIDGET (gtk_builder_get_object (builder, "combo-baud-rate"));
     rate = g_strdup_printf ("%d", config.vitesse);
-    entry = gtk_bin_get_child (GTK_BIN (combo));
+    entry = gtk_combo_box_get_child (GTK_COMBO_BOX (combo));
     g_signal_connect (G_OBJECT (entry),
                       "insert-text",
                       G_CALLBACK (check_text_input),
@@ -222,7 +234,7 @@ Config_Port_Fenetre (GtkWindow *parent)
         gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), "9600");
     } else {
         if (!gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), rate)) {
-            gtk_entry_set_text (GTK_ENTRY (entry), rate);
+            gtk_editable_set_text (GTK_EDITABLE (entry), rate);
         }
     }
     g_free (rate);
@@ -260,7 +272,7 @@ Config_Port_Fenetre (GtkWindow *parent)
             GTK_WIDGET (gtk_builder_get_object (builder, "entry-wait-char"));
 
         if (config.car != -1) {
-            gtk_entry_set_text (GTK_ENTRY (combo), &(config.car));
+            gtk_editable_set_text (GTK_EDITABLE (combo), &(config.car));
             gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (combo), TRUE);
         }
     }
@@ -277,16 +289,8 @@ Config_Port_Fenetre (GtkWindow *parent)
             GTK_SPIN_BUTTON (combo),
             (gfloat)config.rs485_rts_time_after_transmit);
     }
-
-    result = gtk_dialog_run (dialog);
-    gtk_widget_hide (GTK_WIDGET (dialog));
-    if (result == GTK_RESPONSE_OK) {
-        Lis_Config (builder);
-    }
-
-    g_object_unref (builder);
-
-    gtk_widget_destroy (GTK_WIDGET (dialog));
+    g_signal_connect (
+        dialog, "response", G_CALLBACK (on_config_dialog_response), builder);
 }
 
 gint
@@ -332,7 +336,7 @@ Lis_Config (GtkBuilder *builder)
     widget = gtk_builder_get_object (builder, "check-use-wait-char");
     if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget))) {
         widget = gtk_builder_get_object (builder, "entry-wait-char");
-        config.car = *gtk_entry_get_text (GTK_ENTRY (widget));
+        config.car = *gtk_editable_get_text (GTK_EDITABLE (widget));
         config.delai = 0;
     } else
         config.car = -1;
@@ -356,19 +360,19 @@ Grise_Degrise (GtkWidget *bouton, gpointer pointeur)
 }
 
 void
-select_config_callback (GtkAction *action, gpointer data)
+select_config_callback (gpointer data)
 {
     Select_config (_ ("Load configuration"), G_CALLBACK (load_config));
 }
 
 void
-save_config_callback (GtkAction *action, gpointer data)
+save_config_callback (gpointer data)
 {
     Save_config_file ();
 }
 
 void
-delete_config_callback (GtkAction *action, gpointer data)
+delete_config_callback (gpointer data)
 {
     Select_config (_ ("Delete configuration"), G_CALLBACK (delete_config));
 }
@@ -426,12 +430,12 @@ Select_config (gchar *title, void *callback)
 
         Frame = gtk_frame_new (NULL);
 
-        Scroll = gtk_scrolled_window_new (NULL, NULL);
+        Scroll = gtk_scrolled_window_new ();
         gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (Scroll),
                                         GTK_POLICY_AUTOMATIC,
                                         GTK_POLICY_AUTOMATIC);
-        gtk_container_add (GTK_CONTAINER (Frame), Scroll);
-        gtk_container_add (GTK_CONTAINER (Scroll), Liste);
+        gtk_frame_set_child (GTK_FRAME (Frame), Scroll);
+        gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (Scroll), Liste);
 
         renderer = gtk_cell_renderer_text_new ();
 
@@ -471,12 +475,12 @@ Select_config (gchar *title, void *callback)
                           GTK_TREE_SELECTION (Selection_Liste));
         g_signal_connect_swapped (GTK_WIDGET (dialog),
                                   "response",
-                                  G_CALLBACK (gtk_widget_destroy),
+                                  G_CALLBACK (g_object_unref),
                                   GTK_WIDGET (dialog));
 
-        gtk_box_pack_start (GTK_BOX (content_area), Frame, TRUE, TRUE, 0);
+        gtk_box_prepend (GTK_BOX (content_area), Frame);
 
-        gtk_widget_show_all (dialog);
+        gtk_widget_show (dialog);
     }
 }
 
@@ -501,10 +505,10 @@ Save_config_file (void)
 
     box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
     entry = gtk_entry_new ();
-    gtk_entry_set_text (GTK_ENTRY (entry), "default");
+    gtk_editable_set_text (GTK_EDITABLE (entry), "default");
     gtk_entry_set_activates_default (GTK_ENTRY (entry), TRUE);
-    gtk_box_pack_start (GTK_BOX (box), label, FALSE, TRUE, 0);
-    gtk_box_pack_start (GTK_BOX (box), entry, TRUE, TRUE, 0);
+    gtk_box_prepend (GTK_BOX (box), label);
+    gtk_box_prepend (GTK_BOX (box), entry);
 
     // validate input text (alpha-numeric only)
     g_signal_connect (GTK_ENTRY (entry),
@@ -517,12 +521,12 @@ Save_config_file (void)
                       GTK_ENTRY (entry));
     g_signal_connect_swapped (GTK_WIDGET (dialog),
                               "response",
-                              G_CALLBACK (gtk_widget_destroy),
+                              G_CALLBACK (g_object_unref),
                               GTK_WIDGET (dialog));
 
-    gtk_box_pack_start (GTK_BOX (content_area), box, TRUE, FALSE, 5);
+    gtk_box_prepend (GTK_BOX (content_area), box);
 
-    gtk_widget_show_all (dialog);
+    gtk_widget_show (dialog);
 }
 
 void
@@ -578,6 +582,15 @@ really_save_config (GtkDialog *dialog, gint response_id, gpointer data)
         Save_config_file ();
 }
 
+static void
+on_save_config_response (GtkDialog *self, gint response_id, gpointer user_data)
+{
+    if (response_id == GTK_RESPONSE_ACCEPT)
+        really_save_config (NULL, GTK_RESPONSE_ACCEPT, user_data);
+
+    g_object_unref (self);
+}
+
 void
 save_config (GtkDialog *dialog, gint response_id, GtkWidget *edit)
 {
@@ -590,7 +603,7 @@ save_config (GtkDialog *dialog, gint response_id, GtkWidget *edit)
         if (max == -1)
             return;
 
-        config_name = gtk_entry_get_text (GTK_ENTRY (edit));
+        config_name = gtk_editable_get_text (GTK_EDITABLE (edit));
 
         for (i = 0; i < max; i++) {
             if (!strcmp (config_name, cfgSectionNumberToName (i))) {
@@ -611,12 +624,12 @@ save_config (GtkDialog *dialog, gint response_id, GtkWidget *edit)
                                         GTK_RESPONSE_ACCEPT,
                                         NULL);
 
-                if (gtk_dialog_run (GTK_DIALOG (message_dialog)) ==
-                    GTK_RESPONSE_ACCEPT)
-                    really_save_config (
-                        NULL, GTK_RESPONSE_ACCEPT, (gpointer)config_name);
+                gtk_window_set_modal (GTK_WINDOW (message_dialog), TRUE);
 
-                gtk_widget_destroy (message_dialog);
+                g_signal_connect (message_dialog,
+                                  "response",
+                                  G_CALLBACK (on_save_config_response),
+                                  (gpointer)config_name);
 
                 i = max + 1;
             }

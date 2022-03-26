@@ -35,10 +35,14 @@ typedef enum _GtSerialPortParity {
 
 void Config_Port_Fenetre(GtkWindow *parent);
 gint Lis_Config(GtkBuilder *builder);
-void Config_Terminal(GtkAction *action, gpointer data);
-void select_config_callback(GtkAction *action, gpointer data);
-void save_config_callback(GtkAction *action, gpointer data);
-void delete_config_callback(GtkAction *action, gpointer data);
+void
+Config_Terminal (gpointer data);
+void
+select_config_callback (gpointer data);
+void
+save_config_callback (gpointer data);
+void
+delete_config_callback (gpointer data);
 void Verify_configuration(void);
 gint Load_configuration_from_file(const gchar *);
 gint Check_configuration_file(void);

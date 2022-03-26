@@ -22,7 +22,8 @@
 #include "infobar.h"
 
 struct _GtInfobar {
-    GtkInfoBar parent_instance;
+    GtkBox parent_instance;
+    GtkInfoBar *info_bar;
     GtkProgressBar *progress;
     GtkLabel *label;
 };

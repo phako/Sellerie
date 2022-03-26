@@ -1,100 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.20.0 -->
 <interface domain="sellerie">
-  <requires lib="gtk+" version="3.18"/>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="gtk" version="4.0"/>
   <template class="GtMainWindow" parent="GtkApplicationWindow">
-    <property name="can_focus">False</property>
     <property name="default_width">750</property>
     <property name="default_height">550</property>
-    <property name="show_menubar">True</property>
     <child>
       <object class="GtkBox" id="main_box">
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
         <property name="orientation">vertical</property>
         <child>
           <object class="GtkRevealer" id="revealer">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
+            <property name="visible">0</property>
+            <property name="valign">center</property>
             <property name="transition_type">none</property>
-            <property name="reveal_child">True</property>
+            <property name="reveal_child">1</property>
             <child>
               <placeholder/>
             </child>
           </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">0</property>
-          </packing>
         </child>
         <child>
           <object class="GtkScrolledWindow" id="scrolled_window">
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
+            <property name="vexpand">1</property>
+            <property name="focusable">1</property>
             <child>
               <placeholder/>
             </child>
           </object>
-          <packing>
-            <property name="expand">True</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
         </child>
         <child>
           <object class="GtkBox" id="hex_box">
+            <property name="valign">center</property>
+            <property name="visible">0</property>
             <property name="name">hex_box</property>
-            <property name="can_focus">False</property>
             <child>
               <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Hexadecimal data to send (separator : ';' or space) : </property>
+                <property name="visible">0</property>
+                <property name="halign">center</property>
+                <property name="label" translatable="yes">Hexadecimal data to send (separator : &apos;;&apos; or space) : </property>
               </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="padding">5</property>
-                <property name="position">0</property>
-              </packing>
             </child>
             <child>
               <object class="GtkEntry" id="hex_send_entry">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="visible">0</property>
+                <property name="hexpand">1</property>
+                <property name="focusable">1</property>
               </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="padding">5</property>
-                <property name="position">1</property>
-              </packing>
             </child>
           </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="padding">2</property>
-            <property name="position">2</property>
-          </packing>
         </child>
         <child>
           <object class="GtkStatusbar" id="status_bar">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
+            <property name="valign">center</property>
             <property name="margin_start">20</property>
             <property name="margin_end">20</property>
             <property name="margin_top">6</property>
             <property name="margin_bottom">6</property>
-            <property name="spacing">2</property>
           </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="pack_type">end</property>
-            <property name="position">3</property>
-          </packing>
         </child>
       </object>
     </child>

@@ -1,113 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.22.1 -->
 <interface>
-  <requires lib="gtk+" version="3.18"/>
+  <requires lib="gtk" version="4.0"/>
   <object class="GtkListStore" id="macros-list-store">
     <columns>
-      <!-- column-name shortcut -->
       <column type="gchararray"/>
-      <!-- column-name action -->
       <column type="gchararray"/>
-      <!-- column-name description -->
       <column type="gchararray"/>
     </columns>
   </object>
   <template class="GtMacroEditor" parent="GtkDialog">
-    <property name="can_focus">False</property>
     <property name="title" translatable="yes">Configure Macros</property>
-    <property name="modal">True</property>
+    <property name="modal">1</property>
     <property name="default_width">400</property>
     <property name="default_height">320</property>
-    <property name="destroy_with_parent">True</property>
-    <property name="type_hint">dialog</property>
-    <child>
-      <placeholder/>
-    </child>
-    <child internal-child="vbox">
+    <property name="destroy_with_parent">1</property>
+    <child type="titlebar" />
+    <child internal-child="content_area">
       <object class="GtkBox">
-        <property name="can_focus">False</property>
         <property name="margin_start">6</property>
         <property name="margin_end">6</property>
         <property name="margin_bottom">6</property>
         <property name="orientation">vertical</property>
         <property name="spacing">6</property>
-        <child internal-child="action_area">
-          <object class="GtkButtonBox">
-            <property name="can_focus">False</property>
-            <property name="layout_style">end</property>
-            <child>
-              <object class="GtkButton" id="button1">
-                <property name="label" translatable="yes">_Help</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_underline">True</property>
-                <signal name="clicked" handler="show_help" object="GtMacroEditor" swapped="no"/>
-                <accelerator key="F1" signal="clicked"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="pack_type">end</property>
-                <property name="position">0</property>
-                <property name="secondary">True</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="button2">
-                <property name="label" translatable="yes">_Cancel</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_underline">True</property>
-                <signal name="clicked" handler="gtk_widget_hide" object="GtMacroEditor" swapped="yes"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="button3">
-                <property name="label" translatable="yes">_OK</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_underline">True</property>
-                <signal name="clicked" handler="gt_macros_save" object="GtMacroEditor" swapped="no"/>
-                <signal name="clicked" handler="gtk_widget_hide" object="GtMacroEditor" after="yes" swapped="yes"/>
-                <style>
-                  <class name="suggested-action"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">2</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
         <child>
           <object class="GtkBox">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
+            <property name="vexpand">1</property>
             <property name="orientation">vertical</property>
             <child>
               <object class="GtkScrolledWindow">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="shadow_type">in</property>
-                <child>
+                <property name="vexpand">1</property>
+                <property name="focusable">1</property>
+                <property name="child">
                   <object class="GtkTreeView" id="treeview">
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="focusable">1</property>
                     <property name="model">macros-list-store</property>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
@@ -118,7 +43,7 @@
                         <property name="sort_column_id">0</property>
                         <child>
                           <object class="GtkCellRendererAccel" id="cellrenderer_shortcut">
-                            <property name="editable">True</property>
+                            <property name="editable">1</property>
                             <signal name="accel-cleared" handler="accel_cleared" object="treeview" swapped="no"/>
                             <signal name="accel-edited" handler="accel_edited" object="treeview" swapped="no"/>
                           </object>
@@ -131,7 +56,7 @@
                         <property name="sort_column_id">1</property>
                         <child>
                           <object class="GtkCellRendererText" id="cellrenderer_action">
-                            <property name="editable">True</property>
+                            <property name="editable">1</property>
                             <signal name="edited" handler="shortcut_edited" object="macros-list-store" swapped="no"/>
                           </object>
                           <attributes>
@@ -145,7 +70,7 @@
                         <property name="title" translatable="yes">Description</property>
                         <child>
                           <object class="GtkCellRendererText" id="cellrenderer_description">
-                            <property name="editable">True</property>
+                            <property name="editable">1</property>
                             <signal name="edited" handler="description_edited" object="macros-list-store" swapped="no"/>
                           </object>
                           <attributes>
@@ -155,65 +80,39 @@
                       </object>
                     </child>
                   </object>
-                </child>
+                </property>
               </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
             </child>
             <child>
-              <object class="GtkToolbar">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="icon_size">2</property>
+              <object class="GtkBox">
+                <property name="can_focus">0</property>
                 <child>
-                  <object class="GtkToolButton">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
+                  <object class="GtkButton">
+                    <property name="can_focus">0</property>
                     <property name="tooltip_text" translatable="yes">Add a macro from the list of macros</property>
                     <property name="label" translatable="yes">Add a macro</property>
-                    <property name="use_underline">True</property>
+                    <property name="use_underline">1</property>
                     <property name="icon_name">list-add-symbolic</property>
                     <signal name="clicked" handler="gt_macros_add_shortcut" object="macros-list-store" swapped="no"/>
                   </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="homogeneous">True</property>
-                  </packing>
                 </child>
                 <child>
-                  <object class="GtkToolButton">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
+                  <object class="GtkButton">
+                    <property name="can_focus">0</property>
                     <property name="tooltip_text" translatable="yes">Remove a macro from the list of macros</property>
                     <property name="label" translatable="yes">Remove a macro</property>
-                    <property name="use_underline">True</property>
+                    <property name="use_underline">1</property>
                     <property name="icon_name">list-remove-symbolic</property>
                     <signal name="clicked" handler="gt_macros_remove_shortcut" object="treeview" swapped="no"/>
                   </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="homogeneous">True</property>
-                  </packing>
                 </child>
                 <style>
+                  <class name="toolbar"/>
                   <class name="inline-toolbar"/>
                 </style>
               </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
             </child>
           </object>
-          <packing>
-            <property name="expand">True</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
         </child>
       </object>
     </child>
@@ -222,5 +121,36 @@
       <action-widget response="-6">button2</action-widget>
       <action-widget response="-5">button3</action-widget>
     </action-widgets>
+        <child type="action">
+          <object class="GtkButton" id="button1">
+            <property name="label" translatable="yes">_Help</property>
+            <property name="focusable">1</property>
+            <property name="receives_default">1</property>
+            <property name="use_underline">1</property>
+            <signal name="clicked" handler="show_help" object="GtMacroEditor" swapped="no"/>
+          </object>
+        </child>
+        <child type="action">
+          <object class="GtkButton" id="button2">
+            <property name="label" translatable="yes">_Cancel</property>
+            <property name="focusable">1</property>
+            <property name="receives_default">1</property>
+            <property name="use_underline">1</property>
+            <signal name="clicked" handler="gtk_widget_hide" object="GtMacroEditor" swapped="yes"/>
+          </object>
+        </child>
+        <child type="action">
+          <object class="GtkButton" id="button3">
+            <property name="label" translatable="yes">_OK</property>
+            <property name="focusable">1</property>
+            <property name="receives_default">1</property>
+            <property name="use_underline">1</property>
+            <signal name="clicked" handler="gt_macros_save" object="GtMacroEditor" swapped="no"/>
+            <signal name="clicked" handler="gtk_widget_hide" object="GtMacroEditor" after="yes" swapped="yes"/>
+            <style>
+              <class name="suggested-action"/>
+            </style>
+          </object>
+        </child>
   </template>
 </interface>

@@ -60,7 +60,7 @@ on_gtk_application_startup (GApplication *app, gpointer user_data)
     GtkBuilder *builder =
         gtk_builder_new_from_resource ("/org/jensge/Sellerie/main-menu.ui");
     GMenuModel *menu_model =
-        G_MENU_MODEL (gtk_builder_get_object (builder, "window-menu"));
+        G_MENU_MODEL (gtk_builder_get_object (builder, "menubar"));
 
     gtk_application_set_menubar (GTK_APPLICATION (app), menu_model);
 
@@ -87,7 +87,7 @@ on_gtk_application_activate (GApplication *app, gpointer user_data)
     gt_serial_port_config (GT_MAIN_WINDOW (main_window)->serial_port, &config);
 
     gtk_window_present (GTK_WINDOW (main_window));
-    gtk_widget_show_all (main_window);
+    gtk_widget_show (main_window);
 }
 
 int
@@ -105,7 +105,7 @@ main (int argc, char *argv[])
     bind_textdomain_codeset (PACKAGE, "UTF-8");
     textdomain (PACKAGE);
 
-    gtk_init (&argc, &argv);
+    gtk_init ();
 
     app = gtk_application_new ("org.jensge.Sellerie", G_APPLICATION_NON_UNIQUE);
     g_object_set (G_OBJECT (gt_macro_manager_get_default ()), "app", app, NULL);

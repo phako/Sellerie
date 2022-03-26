@@ -36,16 +36,19 @@ struct _GtMainWindow
     GtkBox *main_box;
     GtkWidget *hex_box;
     GtkWidget *hex_send_entry;
+    GtkWidget *status_box;
     GtkWidget *status_bar;
     GtkWidget *scrolled_window;
     guint id;
     GtSerialPort *serial_port;
     GtBuffer *buffer;
     GtkWidget *signals[SIGNAL_COUNT];
+    GMenuModel *popup_menu_model;
     GtkWidget *popup_menu;
     GtkWidget *revealer;
     GtLogging *logger;
-    GtkAccelGroup *shortcuts;
+    GActionGroup *group;
+    GtkEventController *shortcuts;
     char *default_raw_file;
 };
 

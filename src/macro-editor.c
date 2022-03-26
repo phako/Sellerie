@@ -236,15 +236,21 @@ show_help (GtkButton *button, gpointer pointer)
            "by a Line Feed\n\t\"Hello\\0A\" does the same thing but the LF is "
            "entered in hexadecimal"));
 
-    gtk_dialog_run (GTK_DIALOG (dialog));
-    gtk_widget_destroy (dialog);
+    gtk_window_set_modal (GTK_WINDOW (dialog), TRUE);
+    gtk_widget_show (dialog);
+    g_signal_connect (
+        dialog, "response", G_CALLBACK (gtk_window_destroy), NULL);
 }
 
 GtkWidget *
 gt_macro_editor_new (GtMacroManager *macro_editor)
 {
-    return g_object_new (
-        GT_MACRO_TYPE_EDITOR, "macro-manager", macro_editor, NULL);
+    return g_object_new (GT_MACRO_TYPE_EDITOR,
+                         "macro-manager",
+                         macro_editor,
+                         "use-header-bar",
+                         1,
+                         NULL);
 }
 
 static void

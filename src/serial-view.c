@@ -213,6 +213,8 @@ gt_serial_view_class_init (GtSerialViewClass *klass)
     g_object_class_install_properties (object_class, N_PROPS, properties);
 }
 
+
+
 static void
 gt_serial_view_init (GtSerialView *self)
 {
@@ -326,8 +328,8 @@ on_write_hex (GtSerialView *self, gchar *string, guint size)
     g_object_add_weak_pointer (G_OBJECT (self), (gpointer *)&term);
 
     while (i < size) {
-        while (gtk_events_pending ())
-            gtk_main_iteration ();
+        while (g_main_context_pending (NULL))
+            g_main_context_iteration (NULL, TRUE);
 
         // User closed window, stop right here
         if (term == NULL)

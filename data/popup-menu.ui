@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface domain="sellerie">
+  <requires lib="gtk" version="4.0"/>
+<menu id="popup-menu">
+  <section>
+    <item>
+      <attribute name="label" translatable="yes">_Show menu bar</attribute>
+      <attribute name="action">main.menubar-visibility</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Show status _bar</attribute>
+      <attribute name="action">main.statusbar-visibility</attribute>
+    </item>
+  </section>
+  <section>
+    <item>
+      <attribute name="label" translatable="yes">_Reconnect</attribute>
+      <attribute name="action">main.reconnect</attribute>
+    </item>
+  </section>
+  <section>
+    <item>
+      <attribute name="label" translatable="yes">_Copy</attribute>
+      <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;c</attribute>
+      <attribute name="action">main.copy</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">_Paste</attribute>
+      <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;v</attribute>
+      <attribute name="action">main.paste</attribute>
+    </item>
+  </section>
+  <section>
+    <item>
+      <attribute name="label" translatable="yes">Select _All</attribute>
+      <attribute name="accel">&lt;Primary&gt;&lt;Shift&gt;a</attribute>
+      <attribute name="action">main.select-all</attribute>
+    </item>
+  </section>
+</menu>
+</interface>

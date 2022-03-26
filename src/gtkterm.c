@@ -60,7 +60,7 @@ on_gtk_application_startup (GApplication *app, gpointer user_data)
     GtkBuilder *builder =
         gtk_builder_new_from_resource ("/org/jensge/Sellerie/main-menu.ui");
     GMenuModel *menu_model =
-        G_MENU_MODEL (gtk_builder_get_object (builder, "window-menu"));
+        G_MENU_MODEL (gtk_builder_get_object (builder, "menubar"));
 
     gtk_application_set_menubar (GTK_APPLICATION (app), menu_model);
 

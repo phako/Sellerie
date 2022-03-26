@@ -374,14 +374,15 @@ gt_main_window_init (GtMainWindow *self)
     gtk_application_window_set_show_menubar (GTK_APPLICATION_WINDOW (self),
                                              TRUE);
 
-    self->group = G_ACTION_GROUP (g_simple_action_group_new ());
-    g_action_map_add_action_entries (
-        G_ACTION_MAP (self->group), actions, G_N_ELEMENTS (actions), self);
-    gtk_widget_insert_action_group (GTK_WIDGET (self), "main", self->group);
 
     self->buffer = gt_buffer_new ();
     self->serial_port = gt_serial_port_new ();
     self->logger = gt_logging_new ();
+
+    self->group = G_ACTION_GROUP (g_simple_action_group_new ());
+    g_action_map_add_action_entries (
+        G_ACTION_MAP (self->group), actions, G_N_ELEMENTS (actions), self);
+    gtk_widget_insert_action_group (GTK_WIDGET (self), "main", self->group);
 
     GPropertyAction *action = g_property_action_new (
         "config.local-echo", self->serial_port, "local-echo");

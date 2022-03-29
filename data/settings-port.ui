@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.20.0 -->
 <interface>
-  <requires lib="gtk+" version="3.18"/>
+  <requires lib="gtk" version="4.0"/>
   <object class="GtkAdjustment" id="adjustment1">
     <property name="lower">5</property>
     <property name="upper">8</property>
@@ -34,7 +33,6 @@
   </object>
   <object class="GtkListStore" id="ls">
     <columns>
-      <!-- column-name ratestring -->
       <column type="gchararray"/>
     </columns>
     <data>
@@ -71,444 +69,345 @@
     </data>
   </object>
   <object class="GtkDialog" id="dialog-settings-port">
-    <property name="can_focus">False</property>
     <property name="title" translatable="yes">Configure serial port</property>
-    <property name="type_hint">dialog</property>
-    <child internal-child="vbox">
+    <property name="use-header-bar">1</property>
+    <child internal-child="content_area">
       <object class="GtkBox">
-        <property name="can_focus">False</property>
         <property name="margin_start">6</property>
         <property name="margin_end">6</property>
         <property name="margin_bottom">6</property>
         <property name="orientation">vertical</property>
         <property name="spacing">6</property>
-        <child internal-child="action_area">
-          <object class="GtkButtonBox">
-            <property name="can_focus">False</property>
-            <property name="layout_style">end</property>
-            <child>
-              <object class="GtkButton" id="button2">
-                <property name="label">_Cancel</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_underline">True</property>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="button1">
-                <property name="label">_OK</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="can_default">True</property>
-                <property name="has_default">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_underline">True</property>
-                <style>
-                  <class name="suggested-action"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
         <child>
           <object class="GtkNotebook">
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
+            <property name="vexpand">1</property>
+            <property name="focusable">1</property>
             <child>
-              <object class="GtkGrid">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="margin_start">6</property>
-                <property name="margin_end">6</property>
-                <property name="margin_top">6</property>
-                <property name="margin_bottom">6</property>
-                <property name="row_spacing">6</property>
-                <property name="column_spacing">6</property>
-                <property name="row_homogeneous">True</property>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="halign">end</property>
-                    <property name="label" translatable="yes">Port</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">0</property>
-                    <property name="top_attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="halign">end</property>
-                    <property name="label" translatable="yes">Baud Rate</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">0</property>
-                    <property name="top_attach">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="halign">end</property>
-                    <property name="label" translatable="yes">Parity</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">0</property>
-                    <property name="top_attach">2</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="halign">end</property>
-                    <property name="label" translatable="yes">Bits	</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">0</property>
-                    <property name="top_attach">3</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkSpinButton" id="spin-bits">
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="hexpand">True</property>
-                    <property name="text">8</property>
-                    <property name="input_purpose">digits</property>
-                    <property name="adjustment">adjustment1</property>
-                    <property name="numeric">True</property>
-                    <property name="value">8</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="top_attach">3</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="halign">end</property>
-                    <property name="label" translatable="yes">Stopbits</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">0</property>
-                    <property name="top_attach">4</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkSpinButton" id="spin-stopbits">
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="hexpand">True</property>
-                    <property name="text">1</property>
-                    <property name="adjustment">adjustment2</property>
-                    <property name="numeric">True</property>
-                    <property name="value">1</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="top_attach">4</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="halign">end</property>
-                    <property name="label" translatable="yes">Flow control</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">0</property>
-                    <property name="top_attach">5</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkComboBoxText" id="combo-parity">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="hexpand">True</property>
-                    <property name="active">0</property>
-                    <items>
-                      <item id="none" translatable="yes">none</item>
-                      <item id="odd" translatable="yes">odd</item>
-                      <item id="even" translatable="yes">even</item>
-                    </items>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="top_attach">2</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkComboBoxText" id="combo-flow">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="active">0</property>
-                    <items>
-                      <item id="none" translatable="yes">none</item>
-                      <item id="xon" translatable="yes">XON/XOFF</item>
-                      <item id="rts" translatable="yes">RTS/CTS</item>
-                      <item id="rs485" translatable="yes">RS485 Half-Duplex (RTS)</item>
-                    </items>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="top_attach">5</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkComboBoxText" id="combo-device">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="hexpand">True</property>
-                    <property name="has_entry">True</property>
-                    <child internal-child="entry">
-                      <object class="GtkEntry">
-                        <property name="can_focus">True</property>
-                        <property name="caps_lock_warning">False</property>
+              <object class="GtkNotebookPage">
+                <property name="child">
+                  <object class="GtkGrid">
+                    <property name="margin_start">6</property>
+                    <property name="margin_end">6</property>
+                    <property name="margin_top">6</property>
+                    <property name="margin_bottom">6</property>
+                    <property name="row_spacing">6</property>
+                    <property name="column_spacing">6</property>
+                    <property name="row_homogeneous">1</property>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="halign">end</property>
+                        <property name="label" translatable="yes">Port</property>
+                        <layout>
+                          <property name="column">0</property>
+                          <property name="row">0</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="halign">end</property>
+                        <property name="label" translatable="yes">Baud Rate</property>
+                        <layout>
+                          <property name="column">0</property>
+                          <property name="row">1</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="halign">end</property>
+                        <property name="label" translatable="yes">Parity</property>
+                        <layout>
+                          <property name="column">0</property>
+                          <property name="row">2</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="halign">end</property>
+                        <property name="label" translatable="yes">Bits	</property>
+                        <layout>
+                          <property name="column">0</property>
+                          <property name="row">3</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSpinButton" id="spin-bits">
+                        <property name="focusable">1</property>
+                        <property name="hexpand">1</property>
+                        <property name="text">8</property>
+                        <property name="adjustment">adjustment1</property>
+                        <property name="numeric">1</property>
+                        <property name="value">8</property>
+                        <layout>
+                          <property name="column">1</property>
+                          <property name="row">3</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="halign">end</property>
+                        <property name="label" translatable="yes">Stopbits</property>
+                        <layout>
+                          <property name="column">0</property>
+                          <property name="row">4</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSpinButton" id="spin-stopbits">
+                        <property name="focusable">1</property>
+                        <property name="hexpand">1</property>
+                        <property name="text">1</property>
+                        <property name="adjustment">adjustment2</property>
+                        <property name="numeric">1</property>
+                        <property name="value">1</property>
+                        <layout>
+                          <property name="column">1</property>
+                          <property name="row">4</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="halign">end</property>
+                        <property name="label" translatable="yes">Flow control</property>
+                        <layout>
+                          <property name="column">0</property>
+                          <property name="row">5</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkComboBoxText" id="combo-parity">
+                        <property name="hexpand">1</property>
+                        <property name="active">0</property>
+                        <items>
+                          <item id="none" translatable="yes">none</item>
+                          <item id="odd" translatable="yes">odd</item>
+                          <item id="even" translatable="yes">even</item>
+                        </items>
+                        <layout>
+                          <property name="column">1</property>
+                          <property name="row">2</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkComboBoxText" id="combo-flow">
+                        <property name="active">0</property>
+                        <items>
+                          <item id="none" translatable="yes">none</item>
+                          <item id="xon" translatable="yes">XON/XOFF</item>
+                          <item id="rts" translatable="yes">RTS/CTS</item>
+                          <item id="rs485" translatable="yes">RS485 Half-Duplex (RTS)</item>
+                        </items>
+                        <layout>
+                          <property name="column">1</property>
+                          <property name="row">5</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkComboBoxText" id="combo-device">
+                        <property name="hexpand">1</property>
+                        <property name="has_entry">1</property>
+                        <layout>
+                          <property name="column">1</property>
+                          <property name="row">0</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkComboBox" id="combo-baud-rate">
+                        <property name="hexpand">1</property>
+                        <property name="model">ls</property>
+                        <property name="has_entry">1</property>
+                        <property name="entry_text_column">0</property>
+                        <property name="id_column">0</property>
+                        <property name="active_id">9600</property>
+                        <layout>
+                          <property name="column">1</property>
+                          <property name="row">1</property>
+                        </layout>
                       </object>
                     </child>
                   </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="top_attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkComboBox" id="combo-baud-rate">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="hexpand">True</property>
-                    <property name="model">ls</property>
-                    <property name="has_entry">True</property>
-                    <property name="entry_text_column">0</property>
-                    <property name="id_column">0</property>
-                    <property name="active_id">9600</property>
-                    <child internal-child="entry">
-                      <object class="GtkEntry">
-                        <property name="can_focus">True</property>
-                        <property name="input_purpose">number</property>
+                </property>
+                <property name="tab">
+                  <object class="GtkLabel">
+                    <property name="label" translatable="yes">Serial Port</property>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkNotebookPage">
+                <property name="position">1</property>
+                <property name="tab_fill">False</property>
+                <property name="child">
+                  <object class="GtkGrid">
+                    <property name="margin_start">6</property>
+                    <property name="margin_end">6</property>
+                    <property name="margin_top">6</property>
+                    <property name="margin_bottom">6</property>
+                    <property name="row_spacing">6</property>
+                    <property name="column_spacing">6</property>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="halign">end</property>
+                        <property name="label" translatable="yes">End of line delay (milliseconds)</property>
+                        <layout>
+                          <property name="column">0</property>
+                          <property name="row">0</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSpinButton" id="spin-eol-delay">
+                        <property name="focusable">1</property>
+                        <property name="hexpand">1</property>
+                        <property name="adjustment">adjustment3</property>
+                        <property name="numeric">1</property>
+                        <layout>
+                          <property name="column">1</property>
+                          <property name="row">0</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="entry-wait-char">
+                        <property name="sensitive">0</property>
+                        <property name="focusable">1</property>
+                        <property name="hexpand">1</property>
+                        <property name="max_length">1</property>
+                        <layout>
+                          <property name="column">1</property>
+                          <property name="row">1</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkCheckButton" id="check-use-wait-char">
+                        <property name="label" translatable="yes">Use wait character</property>
+                        <property name="focusable">1</property>
+                        <property name="tooltip_text" translatable="yes">Wait for this character before passing to next line</property>
+                        <property name="halign">end</property>
+                        <layout>
+                          <property name="column">0</property>
+                          <property name="row">1</property>
+                        </layout>
                       </object>
                     </child>
                   </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="top_attach">1</property>
-                  </packing>
-                </child>
+                </property>
+                <property name="tab">
+                  <object class="GtkLabel">
+                    <property name="label" translatable="yes">ASCII file transfer</property>
+                  </object>
+                </property>
               </object>
-            </child>
-            <child type="tab">
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Serial Port</property>
-              </object>
-              <packing>
-                <property name="tab_fill">False</property>
-              </packing>
             </child>
             <child>
-              <object class="GtkGrid">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="margin_start">6</property>
-                <property name="margin_end">6</property>
-                <property name="margin_top">6</property>
-                <property name="margin_bottom">6</property>
-                <property name="row_spacing">6</property>
-                <property name="column_spacing">6</property>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="halign">end</property>
-                    <property name="label" translatable="yes">End of line delay (milliseconds)</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">0</property>
-                    <property name="top_attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkSpinButton" id="spin-eol-delay">
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="hexpand">True</property>
-                    <property name="adjustment">adjustment3</property>
-                    <property name="numeric">True</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="top_attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkEntry" id="entry-wait-char">
-                    <property name="visible">True</property>
-                    <property name="sensitive">False</property>
-                    <property name="can_focus">True</property>
-                    <property name="hexpand">True</property>
-                    <property name="max_length">1</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="top_attach">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkCheckButton" id="check-use-wait-char">
-                    <property name="label" translatable="yes">Use wait character</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="tooltip_text" translatable="yes">Wait for this character before passing to next line</property>
-                    <property name="halign">end</property>
-                    <property name="draw_indicator">True</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">0</property>
-                    <property name="top_attach">1</property>
-                  </packing>
-                </child>
-              </object>
-              <packing>
-                <property name="position">1</property>
-                <property name="tab_fill">False</property>
-              </packing>
-            </child>
-            <child type="tab">
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="label" translatable="yes">ASCII file transfer</property>
-              </object>
-              <packing>
-                <property name="position">1</property>
-                <property name="tab_fill">False</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkGrid">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="margin_start">6</property>
-                <property name="margin_end">6</property>
-                <property name="margin_top">6</property>
-                <property name="margin_bottom">6</property>
-                <property name="row_spacing">6</property>
-                <property name="column_spacing">6</property>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="tooltip_text" translatable="yes">Time in milliseconds with RTS 'on' before transmit</property>
-                    <property name="halign">end</property>
-                    <property name="label" translatable="yes">'on' time (milliseconds)</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">0</property>
-                    <property name="top_attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkSpinButton" id="spin-rs485-on">
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="hexpand">True</property>
-                    <property name="adjustment">adjustment4</property>
-                    <property name="numeric">True</property>
-                    <property name="value">30</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="top_attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="tooltip_text" translatable="yes">Time in milliseconds with RTS 'on' after transmit</property>
-                    <property name="halign">end</property>
-                    <property name="label" translatable="yes">'off' time (milliseconds)</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">0</property>
-                    <property name="top_attach">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkSpinButton" id="spin-rs485-off">
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="hexpand">True</property>
-                    <property name="adjustment">adjustment5</property>
-                    <property name="numeric">True</property>
-                    <property name="value">30</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="top_attach">1</property>
-                  </packing>
-                </child>
-              </object>
-              <packing>
+              <object class="GtkNotebookPage">
                 <property name="position">2</property>
-              </packing>
-            </child>
-            <child type="tab">
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="tooltip_text" translatable="yes">Half-duplex parameters (RTS signal used to send)</property>
-                <property name="label" translatable="yes">RS485</property>
+                <property name="child">
+                  <object class="GtkGrid">
+                    <property name="margin_start">6</property>
+                    <property name="margin_end">6</property>
+                    <property name="margin_top">6</property>
+                    <property name="margin_bottom">6</property>
+                    <property name="row_spacing">6</property>
+                    <property name="column_spacing">6</property>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="tooltip_text" translatable="yes">Time in milliseconds with RTS &apos;on&apos; before transmit</property>
+                        <property name="halign">end</property>
+                        <property name="label" translatable="yes">&apos;on&apos; time (milliseconds)</property>
+                        <layout>
+                          <property name="column">0</property>
+                          <property name="row">0</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSpinButton" id="spin-rs485-on">
+                        <property name="focusable">1</property>
+                        <property name="hexpand">1</property>
+                        <property name="adjustment">adjustment4</property>
+                        <property name="numeric">1</property>
+                        <property name="value">30</property>
+                        <layout>
+                          <property name="column">1</property>
+                          <property name="row">0</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="tooltip_text" translatable="yes">Time in milliseconds with RTS &apos;on&apos; after transmit</property>
+                        <property name="halign">end</property>
+                        <property name="label" translatable="yes">&apos;off&apos; time (milliseconds)</property>
+                        <layout>
+                          <property name="column">0</property>
+                          <property name="row">1</property>
+                        </layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSpinButton" id="spin-rs485-off">
+                        <property name="focusable">1</property>
+                        <property name="hexpand">1</property>
+                        <property name="adjustment">adjustment5</property>
+                        <property name="numeric">1</property>
+                        <property name="value">30</property>
+                        <layout>
+                          <property name="column">1</property>
+                          <property name="row">1</property>
+                        </layout>
+                      </object>
+                    </child>
+                  </object>
+                </property>
+                <property name="tab">
+                  <object class="GtkLabel">
+                    <property name="tooltip_text" translatable="yes">Half-duplex parameters (RTS signal used to send)</property>
+                    <property name="label" translatable="yes">RS485</property>
+                  </object>
+                </property>
               </object>
-              <packing>
-                <property name="position">2</property>
-                <property name="tab_fill">False</property>
-              </packing>
             </child>
           </object>
-          <packing>
-            <property name="expand">True</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
         </child>
       </object>
     </child>
+    <child type="action">
+      <object class="GtkButton" id="button2">
+        <property name="label">_Cancel</property>
+        <property name="use-underline">1</property>
+      </object>
+    </child>
+    <child type="action">
+      <object class="GtkButton" id="button1">
+        <property name="label">_OK</property>
+        <property name="use-underline">1</property>
+        <style>
+          <class name="suggested-action"/>
+        </style>
+      </object>
+    </child>
     <action-widgets>
-      <action-widget response="-6">button2</action-widget>
-      <action-widget response="-5">button1</action-widget>
+      <action-widget response="cancel">button2</action-widget>
+      <action-widget response="ok" default="true">button1</action-widget>
     </action-widgets>
   </object>
   <object class="GtkEntryCompletion" id="entrycompletion1">
     <property name="model">ls</property>
     <property name="text_column">0</property>
-    <property name="inline_completion">True</property>
-    <property name="popup_completion">False</property>
+    <property name="inline_completion">1</property>
+    <property name="popup_completion">0</property>
   </object>
 </interface>

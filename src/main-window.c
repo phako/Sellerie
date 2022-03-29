@@ -570,6 +570,7 @@ void
 gt_main_window_set_info_bar (GtMainWindow *self, GtkWidget *widget)
 {
     gtk_widget_show (widget);
+    gtk_widget_show (self->revealer);
     gtk_revealer_set_child (GTK_REVEALER (self->revealer), widget);
     gtk_revealer_set_reveal_child (GTK_REVEALER (self->revealer), TRUE);
 }
@@ -577,6 +578,7 @@ gt_main_window_set_info_bar (GtMainWindow *self, GtkWidget *widget)
 void
 gt_main_window_remove_info_bar (GtMainWindow *self, GtkWidget *widget)
 {
+    gtk_widget_hide (self->revealer);
     gtk_revealer_set_reveal_child (GTK_REVEALER (self->revealer), FALSE);
     gtk_revealer_set_child (GTK_REVEALER (self->revealer), NULL);
 }
@@ -604,7 +606,8 @@ gt_main_window_show_message (GtMainWindow *self,
                                                 NULL);
 
     gtk_window_set_modal (GTK_WINDOW (dialog), TRUE);
-    g_signal_connect (dialog, "response", G_CALLBACK (g_object_unref), dialog);
+    g_signal_connect (
+        dialog, "response", G_CALLBACK (gtk_window_destroy), dialog);
 }
 
 void
@@ -679,7 +682,7 @@ on_serial_port_status_changed (GObject *object,
         g_free (msg);
         gtk_window_set_modal (GTK_WINDOW (dialog), TRUE);
         g_signal_connect (
-            dialog, "response", G_CALLBACK (g_object_unref), NULL);
+            dialog, "response", G_CALLBACK (gtk_window_destroy), NULL);
 
     } else if (status == GT_SERIAL_PORT_STATE_OFFLINE) {
         g_debug ("Serial port went offline");
@@ -996,7 +999,7 @@ on_logging_start_response (GtkDialog *self, gint response_id, gpointer data)
             g_error_free (error);
         }
     }
-    g_object_unref (self);
+    gtk_window_destroy (GTK_WINDOW (self));
 }
 
 void
@@ -1216,7 +1219,7 @@ on_send_raw_file_response (GtkDialog *d, gint response_id, gpointer user_data)
             transfer, cancellable, on_file_transfer_ready, self);
     }
 
-    g_object_unref (d);
+    gtk_window_destroy (GTK_WINDOW (d));
 }
 
 void
@@ -1286,7 +1289,7 @@ on_save_raw_file_response (GtkDialog *file_select, gint result, gpointer data)
             }
         }
     }
-    g_object_unref (file_select);
+    gtk_window_destroy (GTK_WINDOW (file_select));
 }
 
 void
@@ -1316,7 +1319,7 @@ on_config_terminal_response (GtkDialog *d, gint response_id, gpointer data)
 {
     GtMainWindow *self = GT_MAIN_WINDOW (data);
     gtk_widget_hide (GTK_WIDGET (d));
-    g_object_unref (G_OBJECT (d));
+    gtk_window_destroy (GTK_WINDOW (d));
 
     PangoFontDescription *font_desc = NULL;
     GdkRGBA *text = NULL;
@@ -1357,7 +1360,8 @@ on_config_macros (GSimpleAction *action,
     GtkWidget *dialog = gt_macro_editor_new (gt_macro_manager_get_default());
     gtk_window_set_transient_for (GTK_WINDOW (dialog), GTK_WINDOW (user_data));
     gtk_window_set_modal (GTK_WINDOW (dialog), TRUE);
-    g_signal_connect (dialog, "response", G_CALLBACK (g_object_unref), NULL);
+    g_signal_connect (
+        dialog, "response", G_CALLBACK (gtk_window_destroy), NULL);
 }
 
 void

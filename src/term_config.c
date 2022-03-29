@@ -171,7 +171,7 @@ on_config_dialog_response (GtkDialog *self, gint response_id, gpointer data)
     }
 
     g_object_unref (G_OBJECT (data));
-    g_object_unref (self);
+    gtk_window_destroy (GTK_WINDOW (self));
 }
 
 void
@@ -291,6 +291,7 @@ Config_Port_Fenetre (GtkWindow *parent)
     }
     g_signal_connect (
         dialog, "response", G_CALLBACK (on_config_dialog_response), builder);
+    gtk_widget_show (GTK_WIDGET (dialog));
 }
 
 gint
@@ -334,7 +335,7 @@ Lis_Config (GtkBuilder *builder)
     config.flow = gt_serial_port_flow_control_from_string (message);
 
     widget = gtk_builder_get_object (builder, "check-use-wait-char");
-    if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget))) {
+    if (gtk_check_button_get_active (GTK_CHECK_BUTTON (widget))) {
         widget = gtk_builder_get_object (builder, "entry-wait-char");
         config.car = *gtk_editable_get_text (GTK_EDITABLE (widget));
         config.delai = 0;
@@ -475,7 +476,7 @@ Select_config (gchar *title, void *callback)
                           GTK_TREE_SELECTION (Selection_Liste));
         g_signal_connect_swapped (GTK_WIDGET (dialog),
                                   "response",
-                                  G_CALLBACK (g_object_unref),
+                                  G_CALLBACK (gtk_window_destroy),
                                   GTK_WIDGET (dialog));
 
         gtk_box_prepend (GTK_BOX (content_area), Frame);
@@ -521,7 +522,7 @@ Save_config_file (void)
                       GTK_ENTRY (entry));
     g_signal_connect_swapped (GTK_WIDGET (dialog),
                               "response",
-                              G_CALLBACK (g_object_unref),
+                              G_CALLBACK (gtk_window_destroy),
                               GTK_WIDGET (dialog));
 
     gtk_box_prepend (GTK_BOX (content_area), box);
@@ -588,7 +589,7 @@ on_save_config_response (GtkDialog *self, gint response_id, gpointer user_data)
     if (response_id == GTK_RESPONSE_ACCEPT)
         really_save_config (NULL, GTK_RESPONSE_ACCEPT, user_data);
 
-    g_object_unref (self);
+    gtk_window_destroy (GTK_WINDOW (self));
 }
 
 void
@@ -630,6 +631,7 @@ save_config (GtkDialog *dialog, gint response_id, GtkWidget *edit)
                                   "response",
                                   G_CALLBACK (on_save_config_response),
                                   (gpointer)config_name);
+                gtk_widget_show (GTK_WIDGET (message_dialog));
 
                 i = max + 1;
             }

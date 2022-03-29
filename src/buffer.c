@@ -245,12 +245,13 @@ gt_buffer_write_to_file (GtBuffer *self, const char *file_name, GError **error)
     g_autoptr (GFile) file = g_file_new_for_commandline_arg (file_name);
     gboolean retval = TRUE;
 
-    GFileIOStream *stream = g_file_replace_readwrite (
+    g_autoptr (GFileIOStream) stream = g_file_replace_readwrite (
         file, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION, NULL, error);
 
     if (stream == NULL) {
         return FALSE;
     }
+
     GOutputStream *os = g_io_stream_get_output_stream (G_IO_STREAM (stream));
 
     /* Write the second half of the ringbuffer first (contains start of data) */
@@ -261,15 +262,13 @@ gt_buffer_write_to_file (GtBuffer *self, const char *file_name, GError **error)
                                             NULL,
                                             NULL,
                                             error);
-        if (!retval) {
-            goto out;
-        }
     }
+
+    if (!retval)
+        return retval;
+
     retval = g_output_stream_write_all (
         os, priv->buffer, priv->pointer, NULL, NULL, error);
-
-out:
-    g_object_unref (stream);
 
     return retval;
 }

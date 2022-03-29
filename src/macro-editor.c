@@ -237,7 +237,8 @@ show_help (GtkButton *button, gpointer pointer)
            "entered in hexadecimal"));
 
     gtk_window_set_modal (GTK_WINDOW (dialog), TRUE);
-    g_signal_connect (dialog, "response", G_CALLBACK (g_object_unref), NULL);
+    g_signal_connect (
+        dialog, "response", G_CALLBACK (gtk_window_destroy), NULL);
 }
 
 GtkWidget *

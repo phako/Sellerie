@@ -242,12 +242,11 @@ gboolean
 gt_buffer_write_to_file (GtBuffer *self, const char *file_name, GError **error)
 {
     GtBufferPrivate *priv = gt_buffer_get_instance_private (self);
-    GFile *file = g_file_new_for_commandline_arg (file_name);
+    g_autoptr (GFile) file = g_file_new_for_commandline_arg (file_name);
     gboolean retval = TRUE;
 
     GFileIOStream *stream = g_file_replace_readwrite (
         file, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION, NULL, error);
-    g_object_unref (&file);
 
     if (stream == NULL) {
         return FALSE;

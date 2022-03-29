@@ -36,6 +36,7 @@ struct _GtMainWindow
     GtkBox *main_box;
     GtkWidget *hex_box;
     GtkWidget *hex_send_entry;
+    GtkWidget *status_box;
     GtkWidget *status_bar;
     GtkWidget *scrolled_window;
     guint id;

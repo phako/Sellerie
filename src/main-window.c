@@ -360,6 +360,8 @@ gt_main_window_class_init (GtMainWindowClass *klass)
     gtk_widget_class_bind_template_child (
         widget_class, GtMainWindow, status_bar);
     gtk_widget_class_bind_template_child (
+        widget_class, GtMainWindow, status_box);
+    gtk_widget_class_bind_template_child (
         widget_class, GtMainWindow, scrolled_window);
     gtk_widget_class_bind_template_child (
         widget_class, GtMainWindow, hex_send_entry);
@@ -436,8 +438,9 @@ gt_main_window_init (GtMainWindow *self)
     /* Set up serial signal indicators */
     for (int i = 0; i < SIGNAL_COUNT; i++) {
         GtkWidget *label = gtk_label_new (signal_names[i]);
-        gtk_box_append (GTK_BOX (self->status_bar), label);
+        gtk_box_append (GTK_BOX (self->status_box), label);
         gtk_widget_set_sensitive (GTK_WIDGET (label), FALSE);
+        gtk_widget_set_halign (GTK_WIDGET (label), GTK_ALIGN_END);
         self->signals[i] = label;
     }
 

@@ -35,14 +35,12 @@
             <property name="name">hex_box</property>
             <child>
               <object class="GtkLabel">
-                <property name="visible">0</property>
                 <property name="halign">center</property>
                 <property name="label" translatable="yes">Hexadecimal data to send (separator : &apos;;&apos; or space) : </property>
               </object>
             </child>
             <child>
               <object class="GtkEntry" id="hex_send_entry">
-                <property name="visible">0</property>
                 <property name="hexpand">1</property>
                 <property name="focusable">1</property>
               </object>

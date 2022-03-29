@@ -28,7 +28,7 @@ struct _GtInfobar {
     GtkLabel *label;
 };
 
-G_DEFINE_TYPE (GtInfobar, gt_infobar, GTK_TYPE_INFO_BAR)
+G_DEFINE_TYPE (GtInfobar, gt_infobar, GTK_TYPE_BOX)
 
 enum { PROP_0, PROP_PROGRESS, N_PROPS };
 

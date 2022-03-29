@@ -445,7 +445,7 @@ gt_main_window_init (GtMainWindow *self)
     }
 
     action = g_property_action_new (
-        "statusbar-visibility", self->status_bar, "visible");
+        "statusbar-visibility", self->status_box, "visible");
     g_action_map_add_action (G_ACTION_MAP (self->group), G_ACTION (action));
 
     // Set up hex entry
@@ -1024,6 +1024,7 @@ on_logging_start (GSimpleAction *action,
     gtk_window_set_modal (GTK_WINDOW (file_select), TRUE);
     g_signal_connect (
         file_select, "response", G_CALLBACK (on_logging_start_response), self);
+    gtk_widget_show (file_select);
 }
 
 void
@@ -1185,7 +1186,7 @@ on_send_raw_file_response (GtkDialog *d, gint response_id, gpointer user_data)
 
     if (response_id == GTK_RESPONSE_ACCEPT) {
         g_autoptr (GFile) file =
-            gtk_file_chooser_get_file (GTK_FILE_CHOOSER (self));
+            gtk_file_chooser_get_file (GTK_FILE_CHOOSER (d));
         GtFileTransfer *transfer =
             gt_serial_port_send_file (self->serial_port, file);
         GtkWidget *infobar = gt_infobar_new ();
@@ -1251,6 +1252,8 @@ on_send_raw_file (GSimpleAction *action,
                       "response",
                       G_CALLBACK (on_send_raw_file_response),
                       self);
+
+    gtk_widget_show (file_selector);
 }
 
 static void
@@ -1304,6 +1307,7 @@ on_save_raw_file (GSimpleAction *action,
     gtk_window_set_modal (GTK_WINDOW (file_select), TRUE);
     g_signal_connect (
         file_select, "response", G_CALLBACK (on_save_raw_file_response), self);
+    gtk_widget_show (file_select);
 }
 
 static void

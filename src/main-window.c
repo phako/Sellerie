@@ -909,7 +909,7 @@ on_macro (GSimpleAction *action, GVariant *parameter, gpointer user_data)
         g_strdup_printf (_ ("Macro \"%s\" sent !"), shortcut);
     gt_main_window_temp_message (self, str, 800);
 
-    gt_serial_port_send_chars(self->serial_port, (char *)data, size);
+    on_vte_commit (NULL, (char *)data, size, self);
 }
 
 void

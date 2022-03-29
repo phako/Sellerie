@@ -286,8 +286,8 @@ static const GActionEntry actions[] = {
 GtkWidget *
 gt_main_window_new (GtkApplication *app)
 {
-    return GTK_WIDGET (
-        g_object_new (GT_TYPE_MAIN_WINDOW, "application", app, NULL));
+    return GTK_WIDGET (g_object_new (
+        GT_TYPE_MAIN_WINDOW, "application", app, "show-menubar", TRUE, NULL));
 }
 
 static void

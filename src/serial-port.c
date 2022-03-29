@@ -1025,7 +1025,7 @@ gt_serial_port_write_bytes_async (GtSerialPort *self,
     GtSerialPortPrivate *priv = gt_serial_port_get_instance_private (self);
     GTask *task = g_task_new (self, cancellable, callback, user_data);
     if (priv->last_error != NULL) {
-        g_task_return_error (task, priv->last_error);
+        g_task_return_error (task, g_error_copy (priv->last_error));
         return;
     }
 

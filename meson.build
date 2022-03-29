@@ -4,11 +4,6 @@ project(
     version: '1.0.0',
     default_options : [
       'c_std=gnu11',
-      'vte:werror=false',
-      'vte:gir=false',
-      'vte:vapi=false',
-      'vte:gtk3=false',
-      'vte:gtk4=true',
     ],
     meson_version : '>= 0.45.0'
 )
@@ -27,7 +22,18 @@ add_global_arguments('-DG_LOG_USE_STRUCTURED', language : 'c')
 
 gtk_deps = dependency('gtk4', version : '>= 4')
 #vte_deps = dependency('vte-2.91', version : '>= 0.28.0')
-vte_deps = dependency('vte-2.91-gtk4', version: '>= 0.67', fallback: ['vte', 'libvte_gtk4_dep'])
+vte_deps = dependency(
+  'vte-2.91-gtk4',
+  version: '>= 0.67',
+  default_options : [
+      'werror=false',
+      'gir=false',
+      'vapi=false',
+      'glade=false',
+      'gtk3=false',
+      'gtk4=true',
+  ],
+  fallback: ['vte', 'libvte_gtk4_dep'])
 udev_deps = dependency('gudev-1.0', version: '>= 230', required: false)
 
 conf = configuration_data()

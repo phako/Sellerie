@@ -59,8 +59,8 @@ limitation to user space programs.
 ## Building:
 Sellerie has a few dependencies:
 
-  * Gtk+3 (version 3.14 or higher)
-  * vte 2.91 (version 0.44 or higher)
+  * Gtk+4 (version 4.4 or higher)
+  * vte 2.91-gtk4 (version 0.69 or higher, if not available will be pulled in through meson submodule)
 
 Once these dependencies are installed, most people should simply run:
 
